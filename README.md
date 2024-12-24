@@ -4,7 +4,7 @@
 A Role-Based Retrieval Augmented Generation (RAG) System for Enterprise Information Management
 
 ## Overview
-Mig iBot is a RAG system that retrieves information based on user roles and policies, ensuring secure and contextual access to enterprise knowledge.
+MigiBot is a RAG system that retrieves information based on user roles and policies, ensuring secure and contextual access to enterprise knowledge.
 
 ## Project Structure
 
