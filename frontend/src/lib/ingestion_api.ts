@@ -78,6 +78,19 @@ export const ingestionApi = {
     }
   },
 
+  getLoaders: async (): Promise<string[]> => {
+    const response = await fetch(`${config.apiUrl}/document/loaders`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch loaders');
+    }
+    return response.json(); 
+  },  
+
   getDocuments: async (): Promise<DocumentType[]> => {
     const response = await fetch(`${config.apiUrl}/ingestion`, {
       cache: 'no-cache',

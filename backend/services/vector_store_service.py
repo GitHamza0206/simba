@@ -32,6 +32,17 @@ class VectorStoreService:
         docstore = self.store.docstore
         document = docstore.search(document_id)
         return document
+    
+    def update_document(self, document_id: str, newDocument: Document) -> bool:
+        try:        
+            if newDocument:
+                newDocument.metadata["id"] = document_id
+                if self.add_documents([newDocument]):
+                    self.delete_documents([document_id])
+            return True
+        except Exception as e:
+            logger.error(f"Error updating document {document_id}: {e}")
+            raise e
 
     def get_documents(self):
         docstore = self.store.docstore
@@ -46,11 +57,17 @@ class VectorStoreService:
         
         return all_documents
 
-    def add_documents(self, documents: list[Document]):
+    def add_documents(self, documents: list[Document]) -> bool:
         # Add documents to store
-        print(f"Adding {len(documents)} documents to store")
-        self.store.add_documents(documents)
-        self.save()
+        try:
+            print(f"Adding {len(documents)} documents to store")
+            self.store.add_documents(documents)
+            self.save()
+            return True
+        except Exception as e:
+            logger.error(f"Error adding documents: {e}")
+            return False
+        
 
     def count_documents(self):
         """Count documents in store."""

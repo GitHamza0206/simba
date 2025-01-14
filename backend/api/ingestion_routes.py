@@ -6,6 +6,8 @@ from typing import List
 from services.ingestion_service.document_ingestion_service import DocumentIngestionService
 from services.vector_store_service import VectorStoreService
 
+from langchain_core.documents import Document
+
 
 MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
 
@@ -58,6 +60,21 @@ async def ingest_document(file: UploadFile = File(...)):
             detail=f"Error processing document: {str(e)}"
         )
 
+@ingestion.put("/document/{document_id}")
+async def update_document(document_id: str, newDocument: Document):
+    """Update the loader of a specific document"""
+    ingestion_service = DocumentIngestionService()
+    ingestion_service.update_document(document_id, newDocument)
+    return {"message": f"Document {document_id} loader updated successfully"}   
+
+#NOTE: This one should be written before the get_document_content endpoint because fastapi will match the first endpoint that matches the path
+@ingestion.get("/document/loaders")
+async def get_loaders():
+    """Get the list of loaders supported by the document ingestion service"""
+    loaders = [ loader.__name__ for loader in DocumentIngestionService.SUPPORTED_EXTENSIONS.values()]
+    print(loaders)
+    return {"loaders": loaders}
+
 @ingestion.get("/document/{document_id}")
 async def get_document_content(document_id: str):
     """Get the content of a specific document"""
@@ -96,5 +113,6 @@ async def get_document_content(document_id: str):
             status_code=500,
             content={"message": f"Error retrieving document: {str(e)}"}
         )
+
 
 

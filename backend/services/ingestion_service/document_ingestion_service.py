@@ -124,7 +124,13 @@ class DocumentIngestionService:
             return {"message": "Error ingesting document"}
 
 
-
+    def update_document(self,document_id:str, newDocument:Document):
+        try:
+            self.vector_store.update_document(document_id, newDocument)
+            logger.info(f"Document {document_id} updated successfully")
+        except Exception as e:
+            logger.error(f"Error updating document {document_id}: {e}")
+            raise e
 
 
     def ingest_markdowns_from_dir(self):
