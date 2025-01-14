@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { FileUploadModal } from './FileUploadModal';
+import { cn } from '@/lib/utils';
 
 interface DocumentListProps {
   documents: DocumentType[];
@@ -27,6 +28,7 @@ interface DocumentListProps {
   onSearch: (query: string) => void;
   onUpload: (files: FileList) => void;
   onPreview: (document: DocumentType) => void;
+  onReindex: (id: string) => void;
 }
 
 const DocumentList: React.FC<DocumentListProps> = ({
@@ -36,11 +38,23 @@ const DocumentList: React.FC<DocumentListProps> = ({
   onSearch,
   onUpload,
   onPreview,
+  onReindex,
 }) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const actions = (document: DocumentType) => (
     <div className="flex gap-2">
+      {document.loaderModified && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onReindex(document.id)}
+          className="bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-700"
+        >
+          Re-index
+        </Button>
+      )}
+
       <Button
         variant="ghost"
         size="icon"
@@ -49,6 +63,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
       >
         <Eye className="h-4 w-4" />
       </Button>
+      
       <Button
         variant="ghost"
         size="icon"
@@ -119,7 +134,17 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 <td className="p-4 text-sm text-gray-500">{document.type}</td>
                 <td className="p-4 text-sm text-gray-500">{document.size}</td>
                 <td className="p-4 text-sm text-gray-500">{document.uploadedAt}</td>
-                <td className="p-4 text-sm text-gray-500">{document.loader}</td>
+                <td className={cn(
+                  "text-sm",
+                  document.loaderModified && "text-red-500"
+                )}>
+                  <div className={cn(
+                    "text-sm",
+                    document.loaderModified && "text-red-500"
+                  )}>
+                    {document.loader}
+                  </div>
+                </td>
                 <td className="p-4 text-right">
                   <div className="flex items-center justify-end gap-2">
                     {actions(document)}

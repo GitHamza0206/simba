@@ -177,6 +177,14 @@ const DocumentManagementApp: React.FC = () => {
         isOpen={!!selectedDocument}
         onClose={() => setSelectedDocument(null)}
         document={selectedDocument}
+        onUpdate={(updatedDoc) => {
+          setDocuments(prevDocs => 
+            prevDocs.map(doc => 
+              doc.id === updatedDoc.id ? updatedDoc : doc
+            )
+          );
+          setSelectedDocument(updatedDoc);
+        }}
       />
       <Toaster />
     </div>

@@ -68,7 +68,7 @@ async def update_document(document_id: str, newDocument: Document):
     return {"message": f"Document {document_id} loader updated successfully"}   
 
 #NOTE: This one should be written before the get_document_content endpoint because fastapi will match the first endpoint that matches the path
-@ingestion.get("/document/loaders")
+@ingestion.get("/loaders")
 async def get_loaders():
     """Get the list of loaders supported by the document ingestion service"""
     loaders = [ loader.__name__ for loader in DocumentIngestionService.SUPPORTED_EXTENSIONS.values()]

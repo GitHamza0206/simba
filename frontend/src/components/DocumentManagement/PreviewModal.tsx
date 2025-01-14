@@ -9,6 +9,7 @@ interface PreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   document: DocumentType | null;
+  onUpdate: (document: DocumentType) => void;
 }
 
 
@@ -16,14 +17,17 @@ interface PreviewModalProps {
 const PreviewModal: React.FC<PreviewModalProps> = ({ 
   isOpen, 
   onClose, 
-  document
+  document,
+  onUpdate
 }) => {
   console.log('Preview Document:', document);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedLoader, setSelectedLoader] = useState(document?.loader);
+  const [confirmedLoader, setConfirmedLoader] = useState(document?.loader);
   const [loaders, setLoaders] = useState<string[]>([]);
+  const [hasEdited, setHasEdited] = useState(false);
 
   useEffect(() => {
     const fetchLoaders = async () => {
@@ -35,7 +39,34 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 
   useEffect(() => {
     setSelectedLoader(document?.loader);
+    setConfirmedLoader(document?.loader);
+    setHasEdited(false);
   }, [document]);
+
+  const handleLoaderChange = (value: string) => {
+    setSelectedLoader(value);
+    setHasEdited(true);
+  };
+
+  const handleConfirmLoader = () => {
+    setConfirmedLoader(selectedLoader);
+    setIsEditing(false);
+  };
+
+  const handleSave = () => {
+    if (document) {
+      const updatedDoc = {
+        ...document,
+        loader: confirmedLoader,
+        loaderModified: true
+      };
+      onUpdate(updatedDoc);
+      setHasEdited(false);
+      onClose();
+    }
+  };
+
+  const showSaveButton = hasEdited && confirmedLoader !== document?.loader;
 
   const renderContent = () => {
     if (isLoading) {
@@ -63,22 +94,23 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
     );
   };
 
-  const handleSave = () => {
-    // TODO: Add API call to update loader
-    console.log('Saving new loader:', selectedLoader);
-    setIsEditing(false);
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Document Preview</DialogTitle>
+          <div className="flex justify-between items-center">
+            <DialogTitle>Document Preview</DialogTitle>
+            {showSaveButton && (
+              <Button onClick={handleSave} className="px-6 mr-8">
+                Save Changes
+              </Button>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {isEditing ? (
               <>
                 <div className="text-sm text-muted-foreground">Loader:</div>
-                <Select value={selectedLoader} onValueChange={setSelectedLoader}>
+                <Select value={selectedLoader} onValueChange={handleLoaderChange}>
                   <SelectTrigger className="w-[200px]">
                     <SelectValue>{selectedLoader}</SelectValue>
                   </SelectTrigger>
@@ -90,14 +122,14 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                     ))}
                   </SelectContent>
                 </Select>
-                <Button variant="ghost" size="icon" onClick={handleSave}>
+                <Button variant="ghost" size="icon" onClick={handleConfirmLoader}>
                   <Check className="h-4 w-4" />
                 </Button>
               </>
             ) : (
               <>
                 <div className="text-sm text-muted-foreground">
-                  Loader: {document?.loader}
+                  Loader: {confirmedLoader}
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
                   <Pencil className="h-4 w-4" />

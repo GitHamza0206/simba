@@ -6,6 +6,7 @@ export interface DocumentType {
   uploadedAt: string;
   content: string;
   loader?: string;
+  loaderModified?: boolean;
 }
 
 export interface DocumentStatsType {

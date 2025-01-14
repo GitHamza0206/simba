@@ -79,7 +79,7 @@ export const ingestionApi = {
   },
 
   getLoaders: async (): Promise<string[]> => {
-    const response = await fetch(`${config.apiUrl}/document/loaders`, {
+    const response = await fetch(`${config.apiUrl}/loaders`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
