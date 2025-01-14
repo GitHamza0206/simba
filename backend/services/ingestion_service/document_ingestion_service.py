@@ -18,12 +18,21 @@ from langchain_community.document_loaders import (
 from services.vector_store_service import VectorStoreService
 import tempfile
 from services.ingestion_service.utils import get_file_size_mb
+import json
+from datetime import datetime
 logger = logging.getLogger(__name__)
 
 class IngestedDocument(BaseModel):
     id: str
     page_content: str
     metadata: dict
+
+    def to_dict(self):
+        return json.dumps({
+            "id": self.id,
+            "page_content": self.page_content,
+            "metadata": self.metadata
+        })
 
 class DocumentIngestionService:
 
@@ -34,6 +43,7 @@ class DocumentIngestionService:
         ".xlsx": UnstructuredExcelLoader,
         ".docx": UnstructuredWordDocumentLoader,
     }
+
 
 
     def __init__(self):
@@ -61,8 +71,7 @@ class DocumentIngestionService:
         documents_dict = {}
         for doc in all_documents:
             doc_id = doc.id
-            file_path = doc.metadata['source']
-            filename = doc.metadata['filename'] if 'filename' in doc.metadata else "None"
+
             page_content = doc.page_content
             metadata = doc.metadata
             documents_dict[doc_id] = IngestedDocument(
@@ -90,7 +99,7 @@ class DocumentIngestionService:
             file_extension = f".{file.filename.split('.')[-1].lower()}" 
             loader = self.SUPPORTED_EXTENSIONS[file_extension]
             # Créer un fichier temporaire
-            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
                 temp_file.write(file.file.read())
                 temp_path = temp_file.name
 
@@ -100,6 +109,8 @@ class DocumentIngestionService:
                 document[0].metadata['type'] = file.content_type
                 file_size_mb = get_file_size_mb(file)
                 document[0].metadata['size'] = file_size_mb
+                document[0].metadata['loader'] = loader.__name__
+                document[0].metadata['uploadedAt'] = datetime.now().isoformat()
             finally:
                 # Nettoyer le fichier temporaire
                 os.unlink(temp_path)

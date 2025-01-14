@@ -10,7 +10,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { DocumentType } from '@/types/document';
-import { Search, Trash2, Plus, Filter } from 'lucide-react';
+import { Search, Trash2, Plus, Filter, Eye } from 'lucide-react';
 import { Button } from '../ui/button';
 import { 
   DropdownMenu,
@@ -26,6 +26,7 @@ interface DocumentListProps {
   onDelete: (id: string) => void;
   onSearch: (query: string) => void;
   onUpload: (files: FileList) => void;
+  onPreview: (document: DocumentType) => void;
 }
 
 const DocumentList: React.FC<DocumentListProps> = ({
@@ -34,12 +35,35 @@ const DocumentList: React.FC<DocumentListProps> = ({
   onDelete,
   onSearch,
   onUpload,
+  onPreview,
 }) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
+  const actions = (document: DocumentType) => (
+    <div className="flex gap-2">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onPreview(document)}
+        title="Preview document"
+      >
+        <Eye className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onDelete(document.id)}
+        title="Delete document"
+        className="hover:bg-red-100 hover:text-red-600"
+      >
+        <Trash2 className="h-4 w-4 text-red-500" />
+      </Button>
+    </div>
+  );
+
   return (
-    <CardContent>
-      <div className="space-y-4">
+    <div className="flex-1 flex flex-col">
+      <div className="p-4 border-b flex-shrink-0">
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
@@ -71,59 +95,48 @@ const DocumentList: React.FC<DocumentListProps> = ({
             Add Document
           </Button>
         </div>
-
-        <FileUploadModal 
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
-          onUpload={onUpload}
-        />
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Size</TableHead>
-              <TableHead>Uploaded</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center">
-                  Loading...
-                </TableCell>
-              </TableRow>
-            ) : documents.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center">
-                  No documents found
-                </TableCell>
-              </TableRow>
-            ) : (
-              documents.map((doc) => (
-                <TableRow key={doc.id}>
-                  <TableCell>{doc.name}</TableCell>
-                  <TableCell>{doc.type}</TableCell>
-                  <TableCell>{doc.size}</TableCell>
-                  <TableCell>{doc.uploadedAt}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onDelete(doc.id)}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
       </div>
-    </CardContent>
+
+      <div className="flex-1 overflow-auto">
+        <table className="w-full">
+          <thead className="sticky top-0 bg-white z-10">
+            <tr>
+              <th className="text-left p-4 font-medium text-gray-500">Name</th>
+              <th className="text-left p-4 font-medium text-gray-500">Type</th>
+              <th className="text-left p-4 font-medium text-gray-500">Size</th>
+              <th className="text-left p-4 font-medium text-gray-500">Uploaded Date</th>
+              <th className="text-left p-4 font-medium text-gray-500">Loader</th>
+              <th className="text-right p-4 font-medium text-gray-500">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {documents.map((document) => (
+              <tr 
+                key={document.id}
+                className="hover:bg-gray-50 transition-colors"
+              >
+                <td className="p-4 text-sm">{document.name}</td>
+                <td className="p-4 text-sm text-gray-500">{document.type}</td>
+                <td className="p-4 text-sm text-gray-500">{document.size}</td>
+                <td className="p-4 text-sm text-gray-500">{document.uploadedAt}</td>
+                <td className="p-4 text-sm text-gray-500">{document.loader}</td>
+                <td className="p-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {actions(document)}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <FileUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUpload={onUpload}
+      />
+    </div>
   );
 };
 

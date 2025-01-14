@@ -7,12 +7,16 @@ import DocumentManagementHeader from '@/components/DocumentManagement/DocumentMa
 import DocumentList from '@/components/DocumentManagement/DocumentList';
 import { DocumentType, DocumentStatsType } from '@/types/document';
 import { ingestionApi } from '@/lib/ingestion_api';
+import PreviewModal from '@/components/DocumentManagement/PreviewModal';
 
 const DocumentManagementApp: React.FC = () => {
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const { toast } = useToast();
+  const [previewContent, setPreviewContent] = useState<string>("");
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
 
   // Fonction de chargement des documents
   const fetchDocuments = async () => {
@@ -143,28 +147,39 @@ const DocumentManagementApp: React.FC = () => {
     console.log('Searching:', query);
   };
 
+  const handlePreview = (document: DocumentType) => {
+    setSelectedDocument(document);
+  };
+
   return (
-    <>
-      <div className="p-6 h-full relative">
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1 p-6">
         {isLoading && (
-          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex flex-col gap-4 items-center justify-center z-50">
+          <div className="fixed inset-0 bg-background/50 backdrop-blur-sm flex flex-col gap-4 items-center justify-center z-50">
             <Progress value={progress} className="w-[60%] max-w-md" />
             <p className="text-sm text-muted-foreground">Loading documents... {progress}%</p>
           </div>
         )}
-        <Card className="bg-white shadow-xl flex flex-col h-full rounded-xl">
-          <DocumentManagementHeader stats={stats} />
+        <Card className="bg-white shadow-xl rounded-xl h-full flex flex-col">
+          <DocumentManagementHeader stats={stats} className="flex-shrink-0" />
           <DocumentList
             documents={documents}
             isLoading={isLoading}
             onDelete={handleDelete}
             onSearch={handleSearch}
             onUpload={handleUpload}
+            onPreview={handlePreview}
+            
           />
         </Card>
       </div>
+      <PreviewModal 
+        isOpen={!!selectedDocument}
+        onClose={() => setSelectedDocument(null)}
+        document={selectedDocument}
+      />
       <Toaster />
-    </>
+    </div>
   );
 };
 

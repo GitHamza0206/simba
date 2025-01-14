@@ -48,8 +48,6 @@ async def invoke_graph(query: Query = Body(...)):
 
                 if event_type == "on_chat_model_stream":
                     chunk = event["data"]["chunk"].content  
-                    
-                   
                     # Buffer numeric chunks until we get non-numeric content
                     if is_numeric(chunk) or (buffer and chunk in [" ", ",", "."]):
                         buffer += chunk

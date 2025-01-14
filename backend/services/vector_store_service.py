@@ -28,6 +28,11 @@ class VectorStoreService:
     def save(self):
         self.store.save_local(settings.paths.faiss_index_dir)
 
+    def get_document(self, document_id: str):
+        docstore = self.store.docstore
+        document = docstore.search(document_id)
+        return document
+
     def get_documents(self):
         docstore = self.store.docstore
         index_to_docstore_id = self.store.index_to_docstore_id

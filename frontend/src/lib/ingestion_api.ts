@@ -98,7 +98,9 @@ export const ingestionApi = {
       name: doc.metadata.filename || 'Unknown',
       type: doc.metadata.type || 'Unknown',
       size: (doc.metadata.size || 0) + " MB",
-      uploadedAt: new Date().toLocaleDateString(),
+      uploadedAt: doc.metadata.uploadedAt || 'Unknown',
+      content: doc.page_content || 'Unknown',
+      loader: doc.metadata.loader || 'Unknown',
     }));
   },
 
@@ -126,6 +128,32 @@ export const ingestionApi = {
       return response.json();
     } catch (error: any) {
       throw new Error(error.message || 'Failed to delete document');
+    }
+  },
+
+  async getDocument(id: string): Promise<{ content: string; type: string }> {
+    try {
+      const response = await fetch(`${config.apiUrl}/document/${id}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch document');
+      }
+
+      const data = await response.json();
+      
+      // Handle both PDF and text content
+      return {
+        content: data.content,
+        type: data.type || 'text'
+      };
+    } catch (error) {
+      console.error('Error fetching document:', error);
+      throw error;
     }
   },
 };

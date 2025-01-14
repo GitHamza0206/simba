@@ -18,8 +18,6 @@ def generate(state):
     last_message = messages[-1]
 
     docs = last_message.content
-
-
     # Run
     response = generate_chain.invoke({"context": docs, "question": question})
     
