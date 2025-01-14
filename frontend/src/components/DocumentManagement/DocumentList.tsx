@@ -42,6 +42,17 @@ const DocumentList: React.FC<DocumentListProps> = ({
 }) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
+  const formatDate = (dateString: string) => {
+    if (dateString === "Unknown") return dateString;
+    
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
   const actions = (document: DocumentType) => (
     <div className="flex gap-2">
       {document.loaderModified && (
@@ -133,7 +144,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 <td className="p-4 text-sm">{document.name}</td>
                 <td className="p-4 text-sm text-gray-500">{document.type}</td>
                 <td className="p-4 text-sm text-gray-500">{document.size}</td>
-                <td className="p-4 text-sm text-gray-500">{document.uploadedAt}</td>
+                <td className="p-4 text-sm text-gray-500">{formatDate(document.uploadedAt)}</td>
                 <td className={cn(
                   "text-sm",
                   document.loaderModified && "text-red-500"

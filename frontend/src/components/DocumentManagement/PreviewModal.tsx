@@ -77,20 +77,21 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
       return <div>No document selected</div>;
     }
 
-    if (document.type === 'pdf') {
-      return (
-        <iframe
-          src={`data:application/pdf;base64,${document.content}`}
-          className="w-full h-[70vh]"
-          title="PDF Preview"
-        />
-      );
-    }
-    
     return (
-      <ReactMarkdown className="prose prose-sm max-w-none">
-        {document.content || 'No content available'}
-      </ReactMarkdown>
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-base font-medium text-slate-900">
+            Document Content
+          </h3>
+          <Button variant="ghost" size="icon" className="h-6 w-6">
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        <ReactMarkdown className="prose prose-sm max-w-none">
+          {document.content || 'No content available'}
+        </ReactMarkdown>
+      </div>
     );
   };
 
@@ -106,6 +107,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
               </Button>
             )}
           </div>
+            
           <div className="flex items-center gap-2">
             {isEditing ? (
               <>
