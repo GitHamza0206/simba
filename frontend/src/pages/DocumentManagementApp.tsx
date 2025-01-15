@@ -9,6 +9,10 @@ import { DocumentType, DocumentStatsType } from '@/types/document';
 import { ingestionApi } from '@/lib/ingestion_api';
 import PreviewModal from '@/components/DocumentManagement/PreviewModal';
 
+interface DocumentManagementHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  stats: DocumentStatsType;
+}
+
 const DocumentManagementApp: React.FC = () => {
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,15 +31,43 @@ const DocumentManagementApp: React.FC = () => {
         return;
       }
       setDocuments(docs);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching documents:', error);
       setDocuments([]);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to fetch documents",
+        description: error instanceof Error ? error.message : "Failed to fetch documents",
       });
+      // Start retry mechanism
+      retryFetchWithBackoff(1);
     }
+  };
+
+  // Retry mechanism with exponential backoff
+  const retryFetchWithBackoff = async (attempt: number) => {
+    const maxAttempts = 5;
+    const baseDelay = 1000; // 1 second
+    
+    if (attempt > maxAttempts) return;
+    
+    const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), 10000); // Max 10 seconds
+    
+    setTimeout(async () => {
+      try {
+        const docs = await ingestionApi.getDocuments();
+        if (docs) {
+          setDocuments(docs);
+          toast({
+            title: "Success",
+            description: "Documents fetched successfully",
+          });
+        }
+      } catch (error: unknown) {
+        console.error(`Retry attempt ${attempt} failed:`, error);
+        retryFetchWithBackoff(attempt + 1);
+      }
+    }, delay);
   };
 
   // Chargement initial
@@ -151,6 +183,11 @@ const DocumentManagementApp: React.FC = () => {
     setSelectedDocument(document);
   };
 
+  const handleReindex = async (id: string) => {
+    // TODO: Implement reindex logic
+    console.log('Reindexing document:', id);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 p-6">
@@ -169,7 +206,7 @@ const DocumentManagementApp: React.FC = () => {
             onSearch={handleSearch}
             onUpload={handleUpload}
             onPreview={handlePreview}
-            
+            onReindex={handleReindex}
           />
         </Card>
       </div>

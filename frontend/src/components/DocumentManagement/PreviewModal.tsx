@@ -23,23 +23,37 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   console.log('Preview Document:', document);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingLoader, setIsEditingLoader] = useState(false);
+  const [isEditingParser, setIsEditingParser] = useState(false);
   const [selectedLoader, setSelectedLoader] = useState(document?.loader);
   const [confirmedLoader, setConfirmedLoader] = useState(document?.loader);
   const [loaders, setLoaders] = useState<string[]>([]);
+  const [selectedParser, setSelectedParser] = useState(document?.parser || 'not needed');
+  const [confirmedParser, setConfirmedParser] = useState(document?.parser || 'not needed');
+  const [parsers, setParsers] = useState<string[]>([]);
   const [hasEdited, setHasEdited] = useState(false);
 
   useEffect(() => {
-    const fetchLoaders = async () => {
-      const response = await ingestionApi.getLoaders();
-      setLoaders(response.loaders);
+    const fetchData = async () => {
+      try {
+        const [loadersResponse, parsersResponse] = await Promise.all([
+          ingestionApi.getLoaders(),
+          ingestionApi.getParsers()
+        ]);
+        setLoaders(loadersResponse.loaders);
+        setParsers(parsersResponse.parsers);
+      } catch (error) {
+        console.error('Error fetching loaders and parsers:', error);
+      }
     };
-    fetchLoaders();
+    fetchData();
   }, []);
 
   useEffect(() => {
     setSelectedLoader(document?.loader);
     setConfirmedLoader(document?.loader);
+    setSelectedParser(document?.parser || 'not needed');
+    setConfirmedParser(document?.parser || 'not needed');
     setHasEdited(false);
   }, [document]);
 
@@ -50,7 +64,17 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 
   const handleConfirmLoader = () => {
     setConfirmedLoader(selectedLoader);
-    setIsEditing(false);
+    setIsEditingLoader(false);
+  };
+
+  const handleParserChange = (value: string) => {
+    setSelectedParser(value);
+    setHasEdited(true);
+  };
+
+  const handleConfirmParser = () => {
+    setConfirmedParser(selectedParser);
+    setIsEditingParser(false);
   };
 
   const handleSave = () => {
@@ -58,7 +82,9 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
       const updatedDoc = {
         ...document,
         loader: confirmedLoader,
-        loaderModified: true
+        parser: confirmedParser,
+        loaderModified: true,
+        parserModified: true
       };
       onUpdate(updatedDoc);
       setHasEdited(false);
@@ -108,36 +134,70 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
             )}
           </div>
             
-          <div className="flex items-center gap-2">
-            {isEditing ? (
-              <>
-                <div className="text-sm text-muted-foreground">Loader:</div>
-                <Select value={selectedLoader} onValueChange={handleLoaderChange}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue>{selectedLoader}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent defaultValue={document?.loader}>
-                    {loaders.map((loader) => (
-                      <SelectItem key={loader} value={loader}>
-                        {loader}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button variant="ghost" size="icon" onClick={handleConfirmLoader}>
-                  <Check className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
-              <>
-                <div className="text-sm text-muted-foreground">
-                  Loader: {confirmedLoader}
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              </>
-            )}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              {isEditingLoader ? (
+                <>
+                  <div className="text-sm text-muted-foreground">Loader:</div>
+                  <Select value={selectedLoader} onValueChange={handleLoaderChange}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue>{selectedLoader}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent defaultValue={document?.loader}>
+                      {loaders.map((loader) => (
+                        <SelectItem key={loader} value={loader}>
+                          {loader}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="icon" onClick={handleConfirmLoader}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="text-sm text-muted-foreground">
+                    Loader: {confirmedLoader}
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setIsEditingLoader(true)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isEditingParser ? (
+                <>
+                  <div className="text-sm text-muted-foreground">Parser:</div>
+                  <Select value={selectedParser} onValueChange={handleParserChange}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue>{selectedParser}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent defaultValue={document?.parser}>
+                      {parsers.map((parser) => (
+                        <SelectItem key={parser} value={parser}>
+                          {parser}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="icon" onClick={handleConfirmParser}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="text-sm text-muted-foreground">
+                    Parser: {confirmedParser}
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setIsEditingParser(true)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </DialogHeader>
         <div className="mt-4">

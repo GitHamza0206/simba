@@ -18,6 +18,7 @@ class PathConfig(BaseModel):
     markdown_dir: Path = Field(default="markdown")
     faiss_index_dir: Path = Field(default="vector_stores/faiss_index")
     vector_store_dir: Path = Field(default="vector_stores")
+    upload_dir: Path = Field(default="uploads") 
 
 class LLMConfig(BaseModel):
     model_config = ConfigDict(protected_namespaces=())  

@@ -3,7 +3,9 @@ from fastapi.responses import JSONResponse
 import base64
 
 from typing import List
+from services.ingestion_service.config import SUPPORTED_EXTENSIONS
 from services.ingestion_service.document_ingestion_service import DocumentIngestionService
+from services.parser_service import ParserService
 from services.vector_store_service import VectorStoreService
 
 from langchain_core.documents import Document
@@ -28,32 +30,11 @@ async def get_ingestion_documents():
 @ingestion.post("/ingestion")
 async def ingest_document(file: UploadFile = File(...)):
     """Ingest documents into the vector store"""
-    # Validate file extension
-    file_extension = f".{file.filename.split('.')[-1].lower()}"
-    if file_extension not in DocumentIngestionService.SUPPORTED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type. Supported types: {list(DocumentIngestionService.SUPPORTED_EXTENSIONS.keys())}"
-        )
-    
-    # Validate file size
-    file_size = 0
-    chunk_size = 1024 * 1024  # 1MB chunks
-    while chunk := await file.read(chunk_size):
-        file_size += len(chunk)
-        if file_size > MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File size exceeds maximum limit of {MAX_FILE_SIZE / (1024 * 1024)}MB"
-            )
-    
-    # Reset file position for processing
-    await file.seek(0)
-    
+
     try:
         ingestion_service = DocumentIngestionService()
         result = ingestion_service.ingest_document(file)
-        return {"message": f"File {file.filename} ingested successfully", "count": result}
+        return result
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -71,7 +52,7 @@ async def update_document(document_id: str, newDocument: Document):
 @ingestion.get("/loaders")
 async def get_loaders():
     """Get the list of loaders supported by the document ingestion service"""
-    loaders = [ loader.__name__ for loader in DocumentIngestionService.SUPPORTED_EXTENSIONS.values()]
+    loaders = [ loader.__name__ for loader in SUPPORTED_EXTENSIONS.values()]
     print(loaders)
     return {"loaders": loaders}
 
@@ -113,6 +94,13 @@ async def get_document_content(document_id: str):
             status_code=500,
             content={"message": f"Error retrieving document: {str(e)}"}
         )
+
+@ingestion.get("/parsers")
+async def get_parsers():
+    """Get the list of parsers supported by the document ingestion service"""
+    parser_service = ParserService()
+    parsers = parser_service.get_parsers()
+    return {"parsers": parsers}
 
 
 

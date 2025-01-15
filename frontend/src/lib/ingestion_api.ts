@@ -91,6 +91,19 @@ export const ingestionApi = {
     return response.json(); 
   },  
 
+  getParsers: async (): Promise<{ parsers: string[] }> => {
+    const response = await fetch(`${config.apiUrl}/parsers`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch parsers');
+    }
+    return response.json();
+  },
+
   getDocuments: async (): Promise<DocumentType[]> => {
     const response = await fetch(`${config.apiUrl}/ingestion`, {
       cache: 'no-cache',

@@ -16,3 +16,7 @@ data/
 !data/xlsx/.gitkeep
 !data/markdown_zerox/.gitkeep
 !data/markdownOld/.gitkeep
+
+
+uploads/**
+!uploads/.gitkeep
