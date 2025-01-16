@@ -5,6 +5,7 @@ export const reindexDocument = async (documentId: string, document: DocumentType
   try {
     console.log("Starting reindex with document:", {
       id: document.id,
+      document_id: document.document_id,
       file_path: document.file_path,
       parser: document.parser,
       parserModified: document.parserModified
@@ -12,7 +13,7 @@ export const reindexDocument = async (documentId: string, document: DocumentType
     
     if (document.parserModified) {
       const requestData = {
-        file_path: document.file_path,
+        document_id: document.id,
         parser: document.parser
       };
       console.log("Sending parse request with:", requestData);
@@ -34,7 +35,8 @@ export const reindexDocument = async (documentId: string, document: DocumentType
       const parseResult = await parseResponse.json();
       console.log("Parse result:", parseResult);
       
-      document.file_path = parseResult.parsed_document.file_path;
+    //   document.file_path = parseResult.parsed_document.file_path;
+    //   document.content = parseResult.parsed_document.content;
     }
 
     // Now proceed with regular reindexing

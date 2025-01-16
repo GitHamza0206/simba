@@ -23,7 +23,7 @@ class DocumentIngestionService:
     def __init__(self):
         self.vector_store = VectorStoreService()
 
-    def ingest_document(self, file: UploadFile):
+    def ingest_document(self, file: UploadFile) -> Document:
         """
         Process and ingest documents into the vector store.
         
@@ -31,16 +31,17 @@ class DocumentIngestionService:
             file: UploadFile to ingest
             
         Returns:
-            int: Number of documents successfully ingested
+            Document: The ingested document
         """
         try:
             logger.info(f"Starting ingestion of {file.filename}")
 
-            UPLOAD_DIR = settings.paths.base_dir / settings.paths.upload_dir
+            # Create relative paths instead of absolute paths
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             folder_name = f"{timestamp}_{file.filename}".replace(".", "_")
-            folder_path = UPLOAD_DIR / folder_name  # Create Path object
-            file_path = folder_path / file.filename  # Create complete file path
+            relative_folder_path = Path(settings.paths.upload_dir) / folder_name
+            folder_path = settings.paths.base_dir / relative_folder_path
+            file_path = folder_path / file.filename
             
             file_extension = f".{file.filename.split('.')[-1].lower()}" 
             loader = SUPPORTED_EXTENSIONS[file_extension]
@@ -56,24 +57,29 @@ class DocumentIngestionService:
             try:
                 document = loader(temp_path).load()
                 
+                # Format size in a human-readable format
+                size_in_mb = round(len(content) / (1024 * 1024), 2)
+                size_str = f"{size_in_mb} MB"
+                
                 metadata = MetadataType(
                     filename=file.filename,
-                    type=file.content_type,
-                    size=len(content),
+                    type=file_extension,
+                    size=size_str,
                     loader=loader.__name__,
                     uploadedAt=datetime.now().isoformat(),
-                    file_path=str(file_path),  # Use the complete file path
+                    file_path=str(settings.paths.base_dir / relative_folder_path / file.filename),
                     parser=None
                 )
                 document[0].metadata = metadata.dict()
 
-                # Pass the Path object
+                # Pass the Path object for saving
                 save_file_locally(file, folder_path)
 
-                self.vector_store.add_documents(document)
-                count = self.vector_store.count_documents()
-                logger.info(f"Successfully ingested documents. Total count: {count}")
-                return count
+                # Add to vector store and get the document back
+                ingested_doc = self.vector_store.add_documents(document)[0]
+                
+                # Create and return IngestedDocument
+                return ingested_doc
 
             finally:
                 if os.path.exists(temp_path):
@@ -82,8 +88,16 @@ class DocumentIngestionService:
         except Exception as e:
             logger.error(f"Error ingesting document: {e}")
             raise e
+        
+    def get_document(self, document_id: str) -> Document:
+        try:
+            document = self.vector_store.get_document(document_id)
+            return document
+        except Exception as e:
+            logger.error(f"Error getting document {document_id}: {e}")
+            raise e
 
-    def delete_ingested_document(self, uid: str):
+    def delete_ingested_document(self, uid: str) -> int:
         try:
             self.vector_store.delete_documents([uid])
             count = self.vector_store.count_documents()
@@ -100,22 +114,25 @@ class DocumentIngestionService:
         
         for doc in all_documents:
             try:
-                # Convert size to int if it exists
-                if 'size' in doc.metadata:
-                    doc.metadata['size'] = int(doc.metadata['size'])
+                # Format size as string if it's a number
+                size = doc.metadata.get('size', 'unknown')
+                if isinstance(size, (int, float)):
+                    size_in_mb = round(size / (1024 * 1024), 2)
+                    size = f"{size_in_mb} MB"
 
                 # Set default metadata values
                 default_metadata = {
-                    'filename': os.path.basename(doc.metadata['filename']),
-                    'type': 'unknown',
-                    'loader': 'unknown',
-                    'parser': 'not needed',
-                    'uploadedAt': datetime.now().isoformat(),
-                    'file_path': doc.metadata['filename']
+                    'filename': os.path.basename(doc.metadata.get('filename', 'unknown')),
+                    'size': size,
+                    'type': doc.metadata.get('type', 'unknown'),
+                    'loader': doc.metadata.get('loader', 'unknown'),
+                    'parser': doc.metadata.get('parser', 'not needed'),
+                    'uploadedAt': doc.metadata.get('uploadedAt', datetime.now().isoformat()),
+                    'file_path': doc.metadata.get('file_path', doc.metadata.get('filename', 'unknown'))
                 }
 
-                # Merge with existing metadata, giving priority to existing values
-                metadata = MetadataType(**{**default_metadata, **doc.metadata})
+                # Create metadata object
+                metadata = MetadataType(**default_metadata)
 
                 documents_dict[doc.id] = IngestedDocument(
                     id=doc.id,

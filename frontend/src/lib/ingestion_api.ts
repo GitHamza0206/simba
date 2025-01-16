@@ -121,6 +121,7 @@ export const ingestionApi = {
     
     return Object.entries(data).map(([id, doc]: [string, any]) => ({
       id,
+      document_id: doc.id,
       name: doc.metadata.filename || 'Unknown',
       type: doc.metadata.type || 'Unknown',
       size: (doc.metadata.size || 0) + " MB",
@@ -128,8 +129,8 @@ export const ingestionApi = {
       content: doc.page_content || 'Unknown',
       loader: doc.metadata.loader || 'Unknown',
       parser: doc.metadata.parser || 'no parser',
-      file_path: doc.metadata.file_path || 'none'
-      
+      file_path: doc.metadata.file_path || 'none',
+
     }));
   },
 

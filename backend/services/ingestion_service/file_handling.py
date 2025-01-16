@@ -4,6 +4,10 @@ from pathlib import Path
 from datetime import datetime
 from fastapi import UploadFile, HTTPException
 from core.config import settings
+import io
+
+import logging
+logger = logging.getLogger(__name__)
 
 # Use the base_dir from settings
 UPLOAD_DIR = settings.paths.base_dir / settings.paths.upload_dir
@@ -65,3 +69,24 @@ def save_file_locally(file: UploadFile, folder_path: Path) -> Path:
         json.dump(metadata, meta_file, indent=2, ensure_ascii=False)
 
     return folder_path
+
+
+def load_file_from_path(file_path: Path) -> UploadFile:
+    """
+    this functions loads the markdown file from the file_path 
+    and returns an UploadFile object
+
+    """
+    try:
+        file_path_md = file_path.split('.')[0] + '.md'
+        if not os.path.exists(file_path_md):
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        with open(file_path_md, "rb") as file:
+            content = file.read()
+        
+        return UploadFile(filename=file_path_md, file=io.BytesIO(content))
+    
+    except Exception as e:
+        logger.error(f"Error loading file from path: {e}")
+        raise e

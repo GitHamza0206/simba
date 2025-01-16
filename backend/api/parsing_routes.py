@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from services.ingestion_service.types import IngestedDocument
+from services.vector_store_service import VectorStoreService
 from services.parser_service import ParserService
 from pydantic import BaseModel
 import logging
@@ -16,7 +16,7 @@ async def get_parsers():
     return {"parsers": parsers}
 
 class ParseDocumentRequest(BaseModel):
-    file_path: str
+    document_id: str
     parser: str
 
 @parsing.post("/parse")
@@ -25,21 +25,13 @@ async def parse_document(request: ParseDocumentRequest):
     try:
         logger.info(f"Received parse request: {request}")
         
-        if not os.path.exists(request.file_path):
-            raise HTTPException(
-                status_code=404,
-                detail=f"File not found: {request.file_path}"
-            )
-            
-        parser_service = ParserService()
-        parsed_document = parser_service.parse_document(request.file_path, request.parser)
+        vector_store = VectorStoreService()
+        document = vector_store.get_document(request.document_id)
         
-        return {
-            "parsed_document": {
-                "file_path": os.path.splitext(request.file_path)[0] + '.md',
-                "content": parsed_document
-            }
-        }
+        parser_service = ParserService()
+        parsed_document = parser_service.parse_document(document, request.parser)
+        
+        return parsed_document
     except Exception as e:
         logger.error(f"Error parsing document: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

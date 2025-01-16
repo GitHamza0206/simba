@@ -4,12 +4,11 @@ import logging
 from pathlib import Path
 import shlex
 from pydantic import BaseModel
-
+from langchain.schema import Document
+from services.vector_store_service import VectorStoreService
 logger = logging.getLogger(__name__)
 
-class ParsedResult(BaseModel):
-    file_path: str
-    content: str
+
 
 class ParserService:
     SUPPORTED_PARSERS = [
@@ -19,11 +18,11 @@ class ParserService:
     def get_parsers(self):
         return self.SUPPORTED_PARSERS
 
-    def parse_document(self, file_path: str, parser: str):
+    def parse_document(self, document: Document, parser: str)-> Document:
+        file_path = document.metadata.get('file_path')
         if parser == "markitdown":
             try:
                 logger.info(f"Starting to parse document: {file_path}")
-                
                 # Ensure file exists
                 if not os.path.exists(file_path):
                     raise ValueError(f"File not found: {file_path}")
@@ -60,7 +59,13 @@ class ParserService:
                 if os.path.exists(output_path):
                     with open(output_path, 'r') as f:
                         content = f.read()
-                    return ParsedResult(file_path=output_path, content=content)
+                        document.page_content = content
+                        document.metadata["file_path"] = output_path
+                        document.metadata["parser"] = "markitdown"
+                        f.close()
+
+                    return document
+                
                 else:
                     raise ValueError("Output file was not created")
                 

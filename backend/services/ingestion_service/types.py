@@ -6,7 +6,7 @@ import json
 class MetadataType(BaseModel):
     filename: str
     type: str
-    size: int
+    size: str
     loader: str 
     parser: Optional[str] = None
     uploadedAt: str

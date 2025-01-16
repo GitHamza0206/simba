@@ -5,11 +5,15 @@ import base64
 from typing import List
 from services.ingestion_service.config import SUPPORTED_EXTENSIONS
 from services.ingestion_service.document_ingestion_service import DocumentIngestionService
+from services.ingestion_service.file_handling import load_file_from_path
+from services.ingestion_service.types import IngestedDocument
 from services.parser_service import ParserService
 from services.vector_store_service import VectorStoreService
 
 from langchain_core.documents import Document
+import logging
 
+logger = logging.getLogger(__name__)
 
 MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
 
@@ -69,25 +73,9 @@ async def get_document_content(document_id: str):
                 content={"message": "Document not found"}
             )
             
-        # Get the original file path from metadata
-        file_path = document.metadata.get('source')
-        file_type = document.metadata.get('type', '').lower()
-        
-        # If it's a PDF, read and encode the binary content
-        if file_type == 'pdf':
-            with open(file_path, 'rb') as file:
-                pdf_content = file.read()
-                pdf_base64 = base64.b64encode(pdf_content).decode('utf-8')
-                return {
-                    "content": pdf_base64,
-                    "type": "pdf"
-                }
         
         # For other file types, return the text content
-        return {
-            "content": document.page_content,
-            "type": file_type
-        }
+        return document
         
     except Exception as e:
         return JSONResponse(
@@ -104,3 +92,23 @@ async def get_parsers():
 
 
 
+
+@ingestion.post("/ingestion/{document_id}/reindex")
+async def reindex_document(document_id: str):
+    """Reindex a document with new parser/loader settings"""
+    try:
+        ingestion_service = DocumentIngestionService()
+
+        document = ingestion_service.get_document(document_id)
+
+        file_path = document.metadata.get('file_path')
+        file = load_file_from_path(file_path)
+
+        ingestion_service.delete_ingested_document(document_id)
+        ingestion_service.ingest_document(file)
+        
+        return {"message": "Document reindexed successfully"}
+        
+    except Exception as e:
+        logger.error(f"Error reindexing document: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

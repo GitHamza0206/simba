@@ -22,13 +22,13 @@ class VectorStoreService:
         elif settings.vector_store.provider == "chroma":
             self.store = self._initialize_chroma()
     
-    def as_retriever(self, **kwargs):
+    def as_retriever(self, **kwargs) :
         return self.store.as_retriever(**kwargs)
     
     def save(self):
         self.store.save_local(settings.paths.faiss_index_dir)
 
-    def get_document(self, document_id: str):
+    def get_document(self, document_id: str) -> Document:
         docstore = self.store.docstore
         document = docstore.search(document_id)
         return document
@@ -44,7 +44,7 @@ class VectorStoreService:
             logger.error(f"Error updating document {document_id}: {e}")
             raise e
 
-    def get_documents(self):
+    def get_documents(self) -> list[Document]:
         docstore = self.store.docstore
         index_to_docstore_id = self.store.index_to_docstore_id
 
@@ -57,13 +57,13 @@ class VectorStoreService:
         
         return all_documents
 
-    def add_documents(self, documents: list[Document]) -> bool:
+    def add_documents(self, documents: list[Document]) -> list[Document]:
         # Add documents to store
         try:
             print(f"Adding {len(documents)} documents to store")
             self.store.add_documents(documents)
             self.save()
-            return True
+            return documents
         except Exception as e:
             logger.error(f"Error adding documents: {e}")
             return False
