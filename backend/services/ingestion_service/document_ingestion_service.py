@@ -35,49 +35,47 @@ class DocumentIngestionService:
         """
         try:
             logger.info(f"Starting ingestion of {file.filename}")
+
+            UPLOAD_DIR = settings.paths.base_dir / settings.paths.upload_dir
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            folder_name = f"{timestamp}_{file.filename}".replace(".", "_")
+            folder_path = UPLOAD_DIR / folder_name  # Create Path object
+            file_path = folder_path / file.filename  # Create complete file path
+            
             file_extension = f".{file.filename.split('.')[-1].lower()}" 
             loader = SUPPORTED_EXTENSIONS[file_extension]
 
             # Create a temporary file and save the uploaded content
             with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
-                # Reset file pointer to beginning
                 file.file.seek(0)
-                
-                # Copy content to temporary file
                 content = file.file.read()
                 temp_file.write(content)
                 temp_path = temp_file.name
-
-                # Reset file pointer for potential future use
                 file.file.seek(0)
 
             try:
-                # Load document using the appropriate loader
                 document = loader(temp_path).load()
                 
-                # Create metadata
                 metadata = MetadataType(
                     filename=file.filename,
                     type=file.content_type,
-                    size=len(content),  # Use the content length we already have
+                    size=len(content),
                     loader=loader.__name__,
                     uploadedAt=datetime.now().isoformat(),
-                    file_path=temp_path,
+                    file_path=str(file_path),  # Use the complete file path
                     parser=None
                 )
                 document[0].metadata = metadata.dict()
 
-                # Save file locally with metadata
-                save_file_locally(file)
+                # Pass the Path object
+                save_file_locally(file, folder_path)
 
-                # Add to vector store
                 self.vector_store.add_documents(document)
                 count = self.vector_store.count_documents()
                 logger.info(f"Successfully ingested documents. Total count: {count}")
                 return count
 
             finally:
-                # Clean up temporary file
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)
 
@@ -111,6 +109,7 @@ class DocumentIngestionService:
                     'filename': os.path.basename(doc.metadata['filename']),
                     'type': 'unknown',
                     'loader': 'unknown',
+                    'parser': 'not needed',
                     'uploadedAt': datetime.now().isoformat(),
                     'file_path': doc.metadata['filename']
                 }

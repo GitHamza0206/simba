@@ -9,18 +9,22 @@ from core.config import settings
 UPLOAD_DIR = settings.paths.base_dir / settings.paths.upload_dir
 MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
 
+
+
+
 # Ensure upload directory exists
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-def save_file_locally(file: UploadFile) -> Path:
+def save_file_locally(file: UploadFile, folder_path: Path) -> Path:
     """
     Saves the uploaded file to a unique directory under UPLOAD_DIR 
     and returns the path to the newly created directory.
     """
-    # Create a unique folder name with timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    folder_name = f"{timestamp}_{file.filename}".replace(".", "_")
-    folder_path = UPLOAD_DIR / folder_name
+    # Ensure folder_path is a Path object
+    if isinstance(folder_path, str):
+        folder_path = Path(folder_path)
+        
+    # Create the directory
     folder_path.mkdir(exist_ok=True)
 
     file_size = 0

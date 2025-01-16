@@ -20,6 +20,17 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { FileUploadModal } from './FileUploadModal';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { reindexDocument } from '@/lib/parsing_api';
 
 interface DocumentListProps {
   documents: DocumentType[];
@@ -28,7 +39,7 @@ interface DocumentListProps {
   onSearch: (query: string) => void;
   onUpload: (files: FileList) => void;
   onPreview: (document: DocumentType) => void;
-  onReindex: (id: string) => void;
+  fetchDocuments: () => void;
 }
 
 const DocumentList: React.FC<DocumentListProps> = ({
@@ -38,9 +49,12 @@ const DocumentList: React.FC<DocumentListProps> = ({
   onSearch,
   onUpload,
   onPreview,
-  onReindex,
+  fetchDocuments,
 }) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [showReindexDialog, setShowReindexDialog] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
+  const [isReindexing, setIsReindexing] = useState(false);
 
   const formatDate = (dateString: string) => {
     if (dateString === "Unknown") return dateString;
@@ -53,13 +67,80 @@ const DocumentList: React.FC<DocumentListProps> = ({
     });
   };
 
+  const handleReindexClick = (document: DocumentType) => {
+    if (!document.file_path) {
+      console.error("Document missing file_path:", document);
+      return;
+    }
+    
+    console.log("Document to reindex:", {
+      id: document.id,
+      file_path: document.file_path,
+      parser: document.parser,
+      parserModified: document.parserModified
+    });
+    
+    setSelectedDocument(document);
+    setShowReindexDialog(true);
+  };
+
+  const handleReindexConfirm = async () => {
+    if (!selectedDocument?.file_path) {
+      console.error("Cannot reindex - missing file_path");
+      return;
+    }
+
+    try {
+      console.log("Confirming reindex for document:", {
+        id: selectedDocument.id,
+        file_path: selectedDocument.file_path,
+        parser: selectedDocument.parser,
+        parserModified: selectedDocument.parserModified
+      });
+      
+      setIsReindexing(true);
+      await reindexDocument(selectedDocument.id, selectedDocument);
+      await fetchDocuments();
+      setShowReindexDialog(false);
+      setSelectedDocument(null);
+    } catch (error) {
+      console.error('Error reindexing document:', error);
+    } finally {
+      setIsReindexing(false);
+    }
+  };
+
+  const getReindexWarningContent = (document: DocumentType) => {
+    if (document.loaderModified && document.parserModified) {
+      return {
+        title: "Confirm Re-indexing",
+        description: "This will update both the loader and parser. Changing the parser will create a new markdown file. Are you sure you want to proceed?"
+      };
+    } else if (document.parserModified) {
+      return {
+        title: "Confirm Parser Change",
+        description: "Changing the parser will create a new markdown file. Are you sure you want to proceed?"
+      };
+    } else if (document.loaderModified) {
+      return {
+        title: "Confirm Loader Change",
+        description: "Do you want to update the document loader?"
+      };
+    }
+    return {
+      title: "Re-index Document",
+      description: "Are you sure you want to re-index this document?"
+    };
+  };
+
   const actions = (document: DocumentType) => (
+    console.log("DOCUMENT", document),
     <div className="flex gap-2">
-      {document.loaderModified && (
+      {(document.loaderModified || document.parserModified) && (
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => onReindex(document.id)}
+          onClick={() => handleReindexClick(document)}
           className="bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-700"
         >
           Re-index
@@ -132,6 +213,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
               <th className="text-left p-4 font-medium text-gray-500">Size</th>
               <th className="text-left p-4 font-medium text-gray-500">Uploaded Date</th>
               <th className="text-left p-4 font-medium text-gray-500">Loader</th>
+              <th className="text-left p-4 font-medium text-gray-500">Parser</th>
               <th className="text-right p-4 font-medium text-gray-500">Actions</th>
             </tr>
           </thead>
@@ -156,6 +238,17 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     {document.loader}
                   </div>
                 </td>
+                <td className={cn(
+                  "p-4 text-sm",
+                  document.parserModified && "text-red-500"
+                )}>
+                  <div className={cn(
+                    "text-sm",
+                    document.parserModified && "text-red-500"
+                  )}>
+                    {document.parser}
+                  </div>
+                </td>
                 <td className="p-4 text-right">
                   <div className="flex items-center justify-end gap-2">
                     {actions(document)}
@@ -172,6 +265,34 @@ const DocumentList: React.FC<DocumentListProps> = ({
         onClose={() => setIsUploadModalOpen(false)}
         onUpload={onUpload}
       />
+
+      <AlertDialog 
+        open={showReindexDialog} 
+        onOpenChange={setShowReindexDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selectedDocument && getReindexWarningContent(selectedDocument).title}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedDocument && getReindexWarningContent(selectedDocument).description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowReindexDialog(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleReindexConfirm}
+              className="bg-primary text-white hover:bg-primary/90"
+              disabled={isReindexing}
+            >
+              {isReindexing ? "Processing..." : "Proceed"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

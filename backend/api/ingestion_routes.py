@@ -95,7 +95,7 @@ async def get_document_content(document_id: str):
             content={"message": f"Error retrieving document: {str(e)}"}
         )
 
-@ingestion.get("/parsers")
+@ingestion.get("/parsers") #TODO: Remove this endpoint and use the one in parsing_routes.py
 async def get_parsers():
     """Get the list of parsers supported by the document ingestion service"""
     parser_service = ParserService()

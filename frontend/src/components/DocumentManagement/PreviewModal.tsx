@@ -27,11 +27,10 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   const [isEditingParser, setIsEditingParser] = useState(false);
   const [selectedLoader, setSelectedLoader] = useState(document?.loader);
   const [confirmedLoader, setConfirmedLoader] = useState(document?.loader);
+  const [selectedParser, setSelectedParser] = useState(document?.parser);
+  const [confirmedParser, setConfirmedParser] = useState(document?.parser);
   const [loaders, setLoaders] = useState<string[]>([]);
-  const [selectedParser, setSelectedParser] = useState(document?.parser || 'not needed');
-  const [confirmedParser, setConfirmedParser] = useState(document?.parser || 'not needed');
   const [parsers, setParsers] = useState<string[]>([]);
-  const [hasEdited, setHasEdited] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,14 +51,16 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   useEffect(() => {
     setSelectedLoader(document?.loader);
     setConfirmedLoader(document?.loader);
-    setSelectedParser(document?.parser || 'not needed');
-    setConfirmedParser(document?.parser || 'not needed');
-    setHasEdited(false);
+    setSelectedParser(document?.parser);
+    setConfirmedParser(document?.parser);
   }, [document]);
 
   const handleLoaderChange = (value: string) => {
     setSelectedLoader(value);
-    setHasEdited(true);
+  };
+
+  const handleParserChange = (value: string) => {
+    setSelectedParser(value);
   };
 
   const handleConfirmLoader = () => {
@@ -67,15 +68,12 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
     setIsEditingLoader(false);
   };
 
-  const handleParserChange = (value: string) => {
-    setSelectedParser(value);
-    setHasEdited(true);
-  };
-
   const handleConfirmParser = () => {
     setConfirmedParser(selectedParser);
     setIsEditingParser(false);
   };
+
+  const hasChanges = confirmedLoader !== document?.loader || confirmedParser !== document?.parser;
 
   const handleSave = () => {
     if (document) {
@@ -83,16 +81,13 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
         ...document,
         loader: confirmedLoader,
         parser: confirmedParser,
-        loaderModified: true,
-        parserModified: true
+        loaderModified: confirmedLoader !== document.loader || document.loaderModified,
+        parserModified: confirmedParser !== document.parser || document.parserModified
       };
       onUpdate(updatedDoc);
-      setHasEdited(false);
       onClose();
     }
   };
-
-  const showSaveButton = hasEdited && confirmedLoader !== document?.loader;
 
   const renderContent = () => {
     if (isLoading) {
@@ -127,7 +122,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
         <DialogHeader>
           <div className="flex justify-between items-center">
             <DialogTitle>Document Preview</DialogTitle>
-            {showSaveButton && (
+            {hasChanges && (
               <Button onClick={handleSave} className="px-6 mr-8">
                 Save Changes
               </Button>

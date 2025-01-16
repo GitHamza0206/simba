@@ -45,4 +45,5 @@ export async function handleChatStream(
     reader?.releaseLock();
     onComplete();
   }
-} 
+}
+

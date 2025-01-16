@@ -19,7 +19,7 @@ class MetadataType(BaseModel):
             "type": self.type,
             "size": self.size,
             "loader": self.loader,
-            "parser": self.parser if self.parser else "not needed",
+            "parser": self.parser or 'no parser',
             "uploadedAt": self.uploadedAt,
             "file_path": self.file_path
         }

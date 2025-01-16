@@ -127,6 +127,9 @@ export const ingestionApi = {
       uploadedAt: doc.metadata.uploadedAt || 'Unknown',
       content: doc.page_content || 'Unknown',
       loader: doc.metadata.loader || 'Unknown',
+      parser: doc.metadata.parser || 'no parser',
+      file_path: doc.metadata.file_path || 'none'
+      
     }));
   },
 
