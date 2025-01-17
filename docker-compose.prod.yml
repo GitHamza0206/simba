@@ -22,7 +22,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://172.16.20.40:8000
+      - VITE_API_URL=http://0.0.0.0:8000 #YOUR PRODUCTION SERVER IP
     depends_on:
       - backend
     restart: "no"

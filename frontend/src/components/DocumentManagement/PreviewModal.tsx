@@ -20,7 +20,6 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   document,
   onUpdate
 }) => {
-  console.log('Preview Document:', document);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isEditingLoader, setIsEditingLoader] = useState(false);

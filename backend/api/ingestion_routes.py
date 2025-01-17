@@ -1,6 +1,8 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException, Query
 from fastapi.responses import JSONResponse
 import base64
+import os
+from pathlib import Path
 
 from typing import List
 from services.ingestion_service.config import SUPPORTED_EXTENSIONS
@@ -9,6 +11,7 @@ from services.ingestion_service.file_handling import load_file_from_path
 from services.ingestion_service.types import IngestedDocument
 from services.parser_service import ParserService
 from services.vector_store_service import VectorStoreService
+from core.config import settings
 
 from langchain_core.documents import Document
 import logging
@@ -99,16 +102,74 @@ async def reindex_document(document_id: str):
     try:
         ingestion_service = DocumentIngestionService()
 
+        # Get the document
         document = ingestion_service.get_document(document_id)
+        if not document:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "detail": f"Document with ID {document_id} not found",
+                    "code": "DOCUMENT_NOT_FOUND"
+                }
+            )
 
+        # Get file path from metadata
         file_path = document.metadata.get('file_path')
-        file = load_file_from_path(file_path)
+        file_path = file_path.split('.')[0] + '.md'
 
-        ingestion_service.delete_ingested_document(document_id)
-        ingestion_service.ingest_document(file)
+        if not file_path:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": "Document metadata is missing file path",
+                    "code": "INVALID_METADATA"
+                }
+            )
+
+        # Convert to Path object and make it absolute
+        if isinstance(file_path, str):
+            file_path = settings.paths.base_dir / file_path
+
+        # Verify the file exists
+        try:
+            if file_path.exists():
+                file = UploadFile(
+                    file=open(file_path, 'rb'),
+                    filename=file_path.name
+                )
+            else:
+                return JSONResponse(
+                    status_code=404,
+                    content={
+                        "detail": f"File not found at {file_path}",
+                        "code": "FILE_NOT_FOUND"
+                    }
+                )
+
+            # Perform reindexing
+            ingestion_service.delete_ingested_document(document_id)
+            new_doc = ingestion_service.ingest_document(file)
+            
+            return new_doc
         
-        return {"message": "Document reindexed successfully"}
-        
+        except Exception as e:
+            logger.error(f"Error during reindexing process: {str(e)}")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "detail": "Failed to reindex document",
+                    "code": "REINDEX_FAILED",
+                    "error": str(e)
+                }
+            )
+            
     except Exception as e:
-        logger.error(f"Error reindexing document: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Unexpected error during reindex operation: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": "An unexpected error occurred",
+                "code": "INTERNAL_ERROR",
+                "error": str(e)
+            }
+        )

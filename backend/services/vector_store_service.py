@@ -7,6 +7,7 @@ from langchain.docstore.document import Document
 import logging
 import faiss
 from langchain_community.docstore.in_memory import InMemoryDocstore
+from typing import Optional
 
 
 logger = logging.getLogger(__name__)
@@ -28,10 +29,17 @@ class VectorStoreService:
     def save(self):
         self.store.save_local(settings.paths.faiss_index_dir)
 
-    def get_document(self, document_id: str) -> Document:
-        docstore = self.store.docstore
-        document = docstore.search(document_id)
-        return document
+    def get_document(self, document_id: str) -> Optional[Document]:
+        """Get a document by its ID"""
+        try:
+            docstore = self.store.docstore
+            document = docstore.search(document_id)
+            if isinstance(document, Document):
+                return document
+            return None
+        except Exception as e:
+            logger.error(f"Error retrieving document {document_id}: {str(e)}")
+            return None
     
     def update_document(self, document_id: str, newDocument: Document) -> bool:
         try:        

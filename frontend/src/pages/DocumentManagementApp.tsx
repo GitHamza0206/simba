@@ -8,6 +8,7 @@ import DocumentList from '@/components/DocumentManagement/DocumentList';
 import { DocumentType, DocumentStatsType } from '@/types/document';
 import { ingestionApi } from '@/lib/ingestion_api';
 import PreviewModal from '@/components/DocumentManagement/PreviewModal';
+import { reindexDocument } from '@/lib/parsing_api';
 
 interface DocumentManagementHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   stats: DocumentStatsType;
@@ -21,6 +22,7 @@ const DocumentManagementApp: React.FC = () => {
   const [previewContent, setPreviewContent] = useState<string>("");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState<string>("Loading...");
 
   // Fonction de chargement des documents
   const fetchDocuments = async () => {
@@ -184,8 +186,67 @@ const DocumentManagementApp: React.FC = () => {
   };
 
   const handleReindex = async (id: string) => {
-    // TODO: Implement reindex logic
-    console.log('Reindexing document:', id);
+    try {
+      setIsLoading(true);
+      setProgress(0);
+
+      // Get the current document
+      const doc = documents.find(d => d.id === id);
+      if (!doc) {
+        throw new Error("Document not found");
+      }
+
+      // Use the reindexDocument function from parsing_api
+      const reindexedDoc = await reindexDocument(
+        id, 
+        doc,
+        (status, progress) => {
+          setProgress(progress);
+          setLoadingStatus(status);
+          // Show toast for key progress points
+          if (progress === 100) {
+            toast({
+              title: "Success",
+              description: "Document reindexed successfully",
+            });
+          }
+        }
+      );
+
+      // Refresh documents list
+      await fetchDocuments();
+      
+      // Update the document in the list with the reindexed version
+      setDocuments(prevDocs => 
+        prevDocs.map(d => 
+          d.id === id ? reindexedDoc : d
+        )
+      );
+
+    } catch (error: unknown) {
+      console.error('Error reindexing document:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to reindex document";
+      
+      // Handle specific error cases
+      if (errorMessage.includes("not found")) {
+        // Document or file not found - remove it from the list
+        setDocuments(docs => docs.filter(doc => doc.id !== id));
+        toast({
+          variant: "destructive",
+          title: "Document Not Found",
+          description: "The document was not found and has been removed from the list",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: errorMessage,
+        });
+      }
+    } finally {
+      setIsLoading(false);
+      setProgress(0);
+    }
   };
 
   return (
@@ -194,7 +255,7 @@ const DocumentManagementApp: React.FC = () => {
         {isLoading && (
           <div className="fixed inset-0 bg-background/50 backdrop-blur-sm flex flex-col gap-4 items-center justify-center z-50">
             <Progress value={progress} className="w-[60%] max-w-md" />
-            <p className="text-sm text-muted-foreground">Loading documents... {progress}%</p>
+            <p className="text-sm text-muted-foreground">{loadingStatus} {progress}%</p>
           </div>
         )}
         <Card className="bg-white shadow-xl rounded-xl h-full flex flex-col">

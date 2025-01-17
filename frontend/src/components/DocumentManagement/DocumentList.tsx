@@ -31,6 +31,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { reindexDocument } from '@/lib/parsing_api';
+import { Progress } from "@/components/ui/progress"
+import { useToast } from "@/hooks/use-toast";
 
 interface DocumentListProps {
   documents: DocumentType[];
@@ -54,7 +56,10 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [showReindexDialog, setShowReindexDialog] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
+  const [reindexProgress, setReindexProgress] = useState(0);
+  const [progressStatus, setProgressStatus] = useState("");
   const [isReindexing, setIsReindexing] = useState(false);
+  const { toast } = useToast();
 
   const formatDate = (dateString: string) => {
     if (dateString === "Unknown") return dateString;
@@ -85,28 +90,33 @@ const DocumentList: React.FC<DocumentListProps> = ({
   };
 
   const handleReindexConfirm = async () => {
-    if (!selectedDocument?.file_path) {
-      console.error("Cannot reindex - missing file_path");
-      return;
-    }
-
+    if (!selectedDocument) return;
+    
+    setIsReindexing(true);
     try {
-      console.log("Confirming reindex for document:", {
-        id: selectedDocument.id,
-        file_path: selectedDocument.file_path,
-        parser: selectedDocument.parser,
-        parserModified: selectedDocument.parserModified
+      await reindexDocument(
+        selectedDocument.id, 
+        selectedDocument,
+        (status, progress) => {
+          setProgressStatus(status);
+          setReindexProgress(progress);
+        }
+      );
+      toast({
+        title: "Success",
+        description: "Document reindexed successfully",
       });
-      
-      setIsReindexing(true);
-      await reindexDocument(selectedDocument.id, selectedDocument);
-      await fetchDocuments();
-      setShowReindexDialog(false);
-      setSelectedDocument(null);
     } catch (error) {
-      console.error('Error reindexing document:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to reindex document",
+        variant: "destructive",
+      });
     } finally {
       setIsReindexing(false);
+      setShowReindexDialog(false);
+      setReindexProgress(0);
+      setProgressStatus("");
     }
   };
 
@@ -134,7 +144,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
   };
 
   const actions = (document: DocumentType) => (
-    console.log("DOCUMENT", document),
+
     <div className="flex gap-2">
       {(document.loaderModified || document.parserModified) && (
         <Button
@@ -279,8 +289,21 @@ const DocumentList: React.FC<DocumentListProps> = ({
               {selectedDocument && getReindexWarningContent(selectedDocument).description}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          
+          {isReindexing && (
+            <div className="space-y-2 my-4">
+              <div className="text-sm text-muted-foreground">
+                {progressStatus}
+              </div>
+              <Progress value={reindexProgress} className="w-full" />
+            </div>
+          )}
+          
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowReindexDialog(false)}>
+            <AlertDialogCancel 
+              onClick={() => setShowReindexDialog(false)}
+              disabled={isReindexing}
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction 

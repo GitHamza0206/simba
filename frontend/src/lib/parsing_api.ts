@@ -1,17 +1,25 @@
 import { config } from '@/config'
 import { DocumentType } from '@/types/document'
 
-export const reindexDocument = async (documentId: string, document: DocumentType) => {
+export const reindexDocument = async (
+  documentId: string, 
+  document: DocumentType,
+  onProgress?: (status: string, progress: number) => void
+) => {
   try {
+    // Start progress
+    onProgress?.("Starting reindex process...", 0);
+    
     console.log("Starting reindex with document:", {
       id: document.id,
-      document_id: document.document_id,
       file_path: document.file_path,
       parser: document.parser,
       parserModified: document.parserModified
     });
     
     if (document.parserModified) {
+      onProgress?.("Parsing document...", 25);
+      
       const requestData = {
         document_id: document.id,
         parser: document.parser
@@ -34,12 +42,12 @@ export const reindexDocument = async (documentId: string, document: DocumentType
 
       const parseResult = await parseResponse.json();
       console.log("Parse result:", parseResult);
-      
-    //   document.file_path = parseResult.parsed_document.file_path;
-    //   document.content = parseResult.parsed_document.content;
+      onProgress?.("Parsing completed", 50);
     }
 
     // Now proceed with regular reindexing
+    onProgress?.("Reindexing document...", 75);
+    
     const response = await fetch(`${config.apiUrl}/ingestion/${documentId}/reindex`, {
       method: 'POST',
       headers: {
@@ -57,8 +65,11 @@ export const reindexDocument = async (documentId: string, document: DocumentType
       throw new Error(`Failed to reindex document: ${JSON.stringify(errorData)}`);
     }
 
+    onProgress?.("Reindex completed", 100);
     return await response.json();
+    
   } catch (error) {
+    onProgress?.("Error occurred", 0);
     console.error('Error reindexing document:', error);
     throw error;
   }

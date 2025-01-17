@@ -89,13 +89,17 @@ class DocumentIngestionService:
             logger.error(f"Error ingesting document: {e}")
             raise e
         
-    def get_document(self, document_id: str) -> Document:
+    def get_document(self, document_id: str) -> Optional[Document]:
+        """Get a document by its ID"""
         try:
             document = self.vector_store.get_document(document_id)
+            if not document:
+                logger.warning(f"Document {document_id} not found in vector store")
+                return None
             return document
         except Exception as e:
-            logger.error(f"Error getting document {document_id}: {e}")
-            raise e
+            logger.error(f"Error retrieving document {document_id}: {str(e)}")
+            return None
 
     def delete_ingested_document(self, uid: str) -> int:
         try:
