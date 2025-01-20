@@ -7,7 +7,7 @@ def format_docs(docs):
 
 @tool()
 def retrieve(query: str):
-    """Retrieve information related to a query that is related to insurance only."""
+    """Retrieve information related to a question from the knowledge base."""
     store = VectorStoreService()
     retrieved_docs = store.search(query, k=2) #TODO : change k to config
     return format_docs(retrieved_docs)

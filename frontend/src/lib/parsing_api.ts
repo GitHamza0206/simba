@@ -54,9 +54,7 @@ export const reindexDocument = async (
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        loader: document.loader,
-        parser: document.parser,
-        file_path: document.file_path
+        document_id: document.id,
       })
     });
 
@@ -66,6 +64,7 @@ export const reindexDocument = async (
     }
 
     onProgress?.("Reindex completed", 100);
+    console.log("reindex response", response);
     return await response.json();
     
   } catch (error) {

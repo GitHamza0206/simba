@@ -23,7 +23,9 @@ class DocumentIngestionService:
     def __init__(self):
         self.vector_store = VectorStoreService()
 
-    def ingest_document(self, file: UploadFile) -> Document:
+    def ingest_document(self, file: UploadFile , 
+                        folder_path: str = settings.paths.upload_dir,
+                        store_locally: bool = True) -> Document:
         """
         Process and ingest documents into the vector store.
         
@@ -37,11 +39,10 @@ class DocumentIngestionService:
             logger.info(f"Starting ingestion of {file.filename}")
 
             # Create relative paths instead of absolute paths
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            folder_name = f"{timestamp}_{file.filename}".replace(".", "_")
-            relative_folder_path = Path(settings.paths.upload_dir) / folder_name
-            folder_path = settings.paths.base_dir / relative_folder_path
-            file_path = folder_path / file.filename
+           
+            folder_path = Path(folder_path)
+            
+
             
             file_extension = f".{file.filename.split('.')[-1].lower()}" 
             loader = SUPPORTED_EXTENSIONS[file_extension]
@@ -67,13 +68,14 @@ class DocumentIngestionService:
                     size=size_str,
                     loader=loader.__name__,
                     uploadedAt=datetime.now().isoformat(),
-                    file_path=str(settings.paths.base_dir / relative_folder_path / file.filename),
+                    file_path=str(folder_path / file.filename),
                     parser=None
                 )
                 document[0].metadata = metadata.dict()
 
                 # Pass the Path object for saving
-                save_file_locally(file, folder_path)
+                if store_locally:
+                    save_file_locally(file, folder_path)
 
                 # Add to vector store and get the document back
                 ingested_doc = self.vector_store.add_documents(document)[0]

@@ -9,6 +9,7 @@ import { DocumentType, DocumentStatsType } from '@/types/document';
 import { ingestionApi } from '@/lib/ingestion_api';
 import PreviewModal from '@/components/DocumentManagement/PreviewModal';
 import { reindexDocument } from '@/lib/parsing_api';
+import { folderApi } from '@/lib/folder_api';
 
 interface DocumentManagementHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   stats: DocumentStatsType;
@@ -24,52 +25,48 @@ const DocumentManagementApp: React.FC = () => {
   const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
   const [loadingStatus, setLoadingStatus] = useState<string>("Loading...");
 
-  // Fonction de chargement des documents
   const fetchDocuments = async () => {
+    setIsLoading(true);
     try {
-      const docs = await ingestionApi.getDocuments();
-      if (!docs || docs.length === 0) {
-        setDocuments([]);
-        return;
-      }
-      setDocuments(docs);
-    } catch (error: unknown) {
-      console.error('Error fetching documents:', error);
-      setDocuments([]);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to fetch documents",
-      });
-      // Start retry mechanism
-      retryFetchWithBackoff(1);
-    }
-  };
+      // Fetch both documents and folders
+      const [docsResponse, foldersResponse] = await Promise.all([
+        ingestionApi.getDocuments(),
+        folderApi.getFolders()
+      ]);
 
-  // Retry mechanism with exponential backoff
-  const retryFetchWithBackoff = async (attempt: number) => {
-    const maxAttempts = 5;
-    const baseDelay = 1000; // 1 second
-    
-    if (attempt > maxAttempts) return;
-    
-    const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), 10000); // Max 10 seconds
-    
-    setTimeout(async () => {
-      try {
-        const docs = await ingestionApi.getDocuments();
-        if (docs) {
-          setDocuments(docs);
-          toast({
-            title: "Success",
-            description: "Documents fetched successfully",
-          });
-        }
-      } catch (error: unknown) {
-        console.error(`Retry attempt ${attempt} failed:`, error);
-        retryFetchWithBackoff(attempt + 1);
-      }
-    }, delay);
+      // Convert folders to DocumentType format
+      const folderDocs: DocumentType[] = foldersResponse.map(folder => ({
+        id: folder.id,
+        name: folder.name,
+        type: 'folder',
+        size: '0',
+        uploadedAt: folder.created_at,
+        content: '',
+        loader: '',
+        parser: '',
+        file_path: folder.path,
+        is_folder: true
+      }));
+
+      // Combine and sort by name
+      const allItems = [...folderDocs, ...docsResponse].sort((a, b) => {
+        // Folders first, then sort by name
+        if (a.is_folder && !b.is_folder) return -1;
+        if (!a.is_folder && b.is_folder) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      setDocuments(allItems);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch documents and folders",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Chargement initial
@@ -267,7 +264,7 @@ const DocumentManagementApp: React.FC = () => {
             onSearch={handleSearch}
             onUpload={handleUpload}
             onPreview={handlePreview}
-            onReindex={handleReindex}
+            fetchDocuments={fetchDocuments}
           />
         </Card>
       </div>
