@@ -118,6 +118,8 @@ export const ingestionApi = {
     
     const data = await response.json();
     if (!data || Object.keys(data).length === 0) return [];
+
+    console.log(data);
     
     return Object.entries(data).map(([id, doc]: [string, any]) => ({
       id,
@@ -128,7 +130,7 @@ export const ingestionApi = {
       uploadedAt: doc.metadata.uploadedAt || 'Unknown',
       content: doc.page_content || 'Unknown',
       loader: doc.metadata.loader || 'Unknown',
-      parser: doc.metadata.parser || 'no parser',
+      parser: doc.metadata.parser || '-',
       file_path: doc.metadata.file_path || 'none',
 
     }));
@@ -162,6 +164,7 @@ export const ingestionApi = {
   },
 
   async getDocument(id: string): Promise<{ content: string; type: string }> {
+
     try {
       const response = await fetch(`${config.apiUrl}/document/${id}`, {
         method: 'GET',
@@ -186,4 +189,6 @@ export const ingestionApi = {
       throw error;
     }
   },
+
+  
 };

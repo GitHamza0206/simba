@@ -64,7 +64,7 @@ class ParserService:
                         document.metadata["parser"] = "markitdown"
                         f.close()
 
-                    return document
+                        return document
                 
                 else:
                     raise ValueError("Output file was not created")

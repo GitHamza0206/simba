@@ -18,7 +18,19 @@ class PathConfig(BaseModel):
     markdown_dir: Path = Field(default="markdown")
     faiss_index_dir: Path = Field(default="vector_stores/faiss_index")
     vector_store_dir: Path = Field(default="vector_stores")
-    upload_dir: Path = Field(default="uploads") 
+    upload_dir: Path = Field(default="uploads")
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Make sure all paths are relative to base_dir
+        self.markdown_dir = self.base_dir / self.markdown_dir
+        self.faiss_index_dir = self.base_dir / self.faiss_index_dir
+        self.vector_store_dir = self.base_dir / self.vector_store_dir
+        self.upload_dir = self.base_dir / self.upload_dir
+        
+        # Create directories if they don't exist
+        for path in [self.markdown_dir, self.faiss_index_dir, self.vector_store_dir, self.upload_dir]:
+            path.mkdir(parents=True, exist_ok=True)
 
 class LLMConfig(BaseModel):
     model_config = ConfigDict(protected_namespaces=())  

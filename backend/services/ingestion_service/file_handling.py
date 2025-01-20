@@ -64,7 +64,7 @@ def save_file_locally(file: UploadFile, folder_path: Path) -> Path:
         "file_path": str(file_path),
     }
     
-    metadata_path = folder_path / "metadata.json"
+    metadata_path = folder_path / f"{file.filename.split('.')[0]}.json"
     with open(metadata_path, "w", encoding="utf-8") as meta_file:
         json.dump(metadata, meta_file, indent=2, ensure_ascii=False)
 

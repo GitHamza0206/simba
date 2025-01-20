@@ -23,7 +23,9 @@ class DocumentIngestionService:
     def __init__(self):
         self.vector_store = VectorStoreService()
 
-    def ingest_document(self, file: UploadFile) -> Document:
+    def ingest_document(self, file: UploadFile , 
+                        folder_path: str = settings.paths.upload_dir,
+                        store_locally: bool = True) -> Document:
         """
         Process and ingest documents into the vector store.
         
@@ -37,11 +39,10 @@ class DocumentIngestionService:
             logger.info(f"Starting ingestion of {file.filename}")
 
             # Create relative paths instead of absolute paths
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            folder_name = f"{timestamp}_{file.filename}".replace(".", "_")
-            relative_folder_path = Path(settings.paths.upload_dir) / folder_name
-            folder_path = settings.paths.base_dir / relative_folder_path
-            file_path = folder_path / file.filename
+           
+            folder_path = Path(folder_path)
+            
+
             
             file_extension = f".{file.filename.split('.')[-1].lower()}" 
             loader = SUPPORTED_EXTENSIONS[file_extension]
@@ -67,13 +68,14 @@ class DocumentIngestionService:
                     size=size_str,
                     loader=loader.__name__,
                     uploadedAt=datetime.now().isoformat(),
-                    file_path=str(settings.paths.base_dir / relative_folder_path / file.filename),
+                    file_path=str(folder_path / file.filename),
                     parser=None
                 )
                 document[0].metadata = metadata.dict()
 
                 # Pass the Path object for saving
-                save_file_locally(file, folder_path)
+                if store_locally:
+                    save_file_locally(file, folder_path)
 
                 # Add to vector store and get the document back
                 ingested_doc = self.vector_store.add_documents(document)[0]
@@ -89,13 +91,17 @@ class DocumentIngestionService:
             logger.error(f"Error ingesting document: {e}")
             raise e
         
-    def get_document(self, document_id: str) -> Document:
+    def get_document(self, document_id: str) -> Optional[Document]:
+        """Get a document by its ID"""
         try:
             document = self.vector_store.get_document(document_id)
+            if not document:
+                logger.warning(f"Document {document_id} not found in vector store")
+                return None
             return document
         except Exception as e:
-            logger.error(f"Error getting document {document_id}: {e}")
-            raise e
+            logger.error(f"Error retrieving document {document_id}: {str(e)}")
+            return None
 
     def delete_ingested_document(self, uid: str) -> int:
         try:
