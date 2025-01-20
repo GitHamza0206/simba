@@ -60,6 +60,7 @@ class ParserService:
                     with open(output_path, 'r') as f:
                         content = f.read()
                         document.page_content = content
+                        document.metadata["file_name"] = os.path.basename(file_path)
                         document.metadata["file_path"] = output_path
                         document.metadata["parser"] = "markitdown"
                         f.close()

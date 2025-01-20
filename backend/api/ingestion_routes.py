@@ -11,6 +11,7 @@ from services.ingestion_service.config import SUPPORTED_EXTENSIONS
 from services.ingestion_service.document_ingestion_service import DocumentIngestionService
 from services.ingestion_service.file_handling import load_file_from_path
 from services.ingestion_service.types import IngestedDocument
+from services.ingestion_service.utils import check_file_exists
 from services.parser_service import ParserService
 from services.vector_store_service import VectorStoreService
 from core.config import settings
@@ -35,10 +36,12 @@ MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
 
 ingestion = APIRouter()
 
+
+
 @ingestion.delete("/ingestion")
 async def delete_ingestion_documents(uid: str)->dict :
     ingestion_service = DocumentIngestionService()
-    ingestion_service.delete_ingested_document(uid)
+    ingestion_service.delete_ingested_document(uid, delete_locally=True)
     return {"message": f"Document {uid} deleted successfully"}
 
 @ingestion.get("/ingestion")
@@ -107,7 +110,13 @@ async def ingest_document(
         if folder_path != "/":
             store_path = upload_dir / folder_path.strip("/")
 
-
+        #check if document already exists
+        if check_file_exists(store_path / file.filename):
+            return JSONResponse(
+                status_code=400,
+                content={"message": f"Document {file.filename} already exists in {store_path}"}
+            )
+        
         ingestion_service = DocumentIngestionService()
         result = ingestion_service.ingest_document(file, folder_path=store_path)
         return result
@@ -162,17 +171,13 @@ async def get_parsers():
     parsers = parser_service.get_parsers()
     return {"parsers": parsers}
 
-
-
-
-@ingestion.post("/ingestion/{document_id}/reindex")
-async def reindex_document(document_id: str, new_Document: Document):
+@ingestion.post("/ingestion/reindex")
+async def reindex_document(document_id: str, parser: str):
     """Reindex a document with new parser/loader settings"""
     try:
-        ingestion_service = DocumentIngestionService()
+        vector_store = VectorStoreService()
+        document = vector_store.get_document(document_id)
         # Get the document
-        document = new_Document
-        
         if not document:
             return JSONResponse(
                 status_code=404,
@@ -182,65 +187,31 @@ async def reindex_document(document_id: str, new_Document: Document):
                 }
             )
 
-        # Get file path from metadata
-        file_path = document.metadata.get('file_path')
-        file_path = file_path.split('.')[0] + '.md'
-
-        if not file_path:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "detail": "Document metadata is missing file path",
-                    "code": "INVALID_METADATA"
-                }
-            )
-
-        # Convert to Path object and make it absolute
-        if isinstance(file_path, str):
-            file_path = settings.paths.base_dir / file_path
-
-        # Verify the file exists
-        try:
-            if file_path.exists():
-                file = UploadFile(
-                    file=open(file_path, 'rb'),
-                    filename=file_path.name
-                )
-            else:
-                return JSONResponse(
-                    status_code=404,
-                    content={
-                        "detail": f"File not found at {file_path}",
-                        "code": "FILE_NOT_FOUND"
-                    }
-                )
-
-            # Perform reindexing
-            ingestion_service.delete_ingested_document(document_id)
-            new_doc = ingestion_service.ingest_document(file, store_locally=False)
-            new_doc.metadata["parser"] = document.metadata["parser"]
-            new_doc.metadata["loader"] = document.metadata["loader"]
-            new_doc.metadata["file_path"] = document.metadata["file_path"]
-            return new_doc
+        parser_service = ParserService()
+        parsed_document = parser_service.parse_document(document, parser)
         
-        except Exception as e:
-            logger.error(f"Error during reindexing process: {str(e)}")
+        if vector_store.update_document(document_id, parsed_document):
+            return parsed_document
+        else:
             return JSONResponse(
                 status_code=500,
-                content={
-                    "detail": "Failed to reindex document",
-                    "code": "REINDEX_FAILED",
-                    "error": str(e)
-                }
+                content={"message": "Failed to reindex document"}
             )
-            
+        
     except Exception as e:
-        logger.error(f"Unexpected error during reindex operation: {str(e)}")
+        logger.error(f"Error during reindexing process: {str(e)}")
         return JSONResponse(
             status_code=500,
             content={
-                "detail": "An unexpected error occurred",
-                "code": "INTERNAL_ERROR",
+                "detail": "Failed to reindex document",
+                "code": "REINDEX_FAILED",
                 "error": str(e)
             }
         )
+            
+@ingestion.get("/upload-directory")
+async def get_upload_directory():
+    """Get the upload directory path"""
+    return {
+        "path": str(settings.paths.upload_dir)
+    }

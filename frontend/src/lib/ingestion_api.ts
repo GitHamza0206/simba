@@ -190,5 +190,61 @@ export const ingestionApi = {
     }
   },
 
-  
+  async getUploadDirectory(): Promise<string> {
+    try {
+      const response = await fetch(`${config.apiUrl}/upload-directory`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch upload directory');
+      }
+
+      const data = await response.json();
+      return data.path;
+    } catch (error) {
+      console.error('Error fetching upload directory:', error);
+      throw error;
+    }
+  },
+
+  reindexDocument: async (
+    documentId: string, 
+    parser: string,
+    onProgress?: (status: string, progress: number) => void
+  ) => {
+    try {
+      onProgress?.("Starting reindex process...", 0);
+      
+      const response = await fetch(`${config.apiUrl}/ingestion/reindex?document_id=${documentId}&parser=${parser}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Reindex error response:', errorData);
+        if (errorData.detail) {
+          throw new Error(typeof errorData.detail === 'string' 
+            ? errorData.detail 
+            : JSON.stringify(errorData.detail));
+        }
+        throw new Error('Failed to reindex document');
+      }
+
+      const result = await response.json();
+      onProgress?.("Reindex completed", 100);
+      return result;
+      
+    } catch (error) {
+      onProgress?.("Error occurred", 0);
+      console.error('Error reindexing document:', error);
+      throw error;
+    }
+  }
 };

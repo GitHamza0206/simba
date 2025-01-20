@@ -29,7 +29,7 @@ def create_folder(folder_name: str, parent_path: str = "/") -> Folder:
         folder_name = "".join(c for c in folder_name if c.isalnum() or c in (' ', '-', '_'))
         
         # Create folder path
-        folder_path = settings.paths.uploads_dir / folder_name
+        folder_path = settings.paths.upload_dir / folder_name
         
         # Check if folder already exists
         if folder_path.exists():
@@ -62,7 +62,7 @@ def get_folders() -> List[Folder]:
     """Get all folders"""
     try:
         folders = []
-        base_path = settings.paths.uploads_dir
+        base_path = settings.paths.upload_dir
         
         # Only get immediate children folders
         for item in base_path.iterdir():
