@@ -97,6 +97,9 @@ async def move_to_folder_endpoint(move: FolderMove) -> dict:
             detail=f"Error moving document: {str(e)}"
         )
 
+
+
+
 @ingestion.post("/ingestion")
 async def ingest_document(
     file: UploadFile = File(...),
@@ -177,7 +180,6 @@ async def reindex_document(document_id: str, parser: str):
     try:
         vector_store = VectorStoreService()
         document = vector_store.get_document(document_id)
-        # Get the document
         if not document:
             return JSONResponse(
                 status_code=404,
