@@ -30,6 +30,9 @@ pdfminer-six = "^20240706"
 docling = "^2.15.1"
 langchain-docling = "^0.2.0"
 ipykernel = "^6.29.5"
+vllm = "^0.6.6.post1"
+ollama = "^0.4.6"
+langchain-ollama = "^0.2.2"
 
 
 

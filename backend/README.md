@@ -59,3 +59,36 @@ poetry shell
 
 
 
+# Using local models
+
+## ollama
+
+first you need to pull the model using ollama
+
+```bash
+ollama run llama3.1:8b # or any other model     
+```
+
+then you need to update the config.yaml file with the model name
+
+```yaml
+llm:
+  provider: "ollama"
+  model_name: "llama3.1:8b"
+```
+
+## vllm
+
+first you need to pull the model using vllm
+
+```bash
+vllm run meta-llama/Llama-3.1-8B-Instruct
+```
+
+then you need to update the config.yaml file with the model name
+
+```yaml
+llm:
+  provider: "vllm"
+  model_name: "meta-llama/Llama-3.1-8B-Instruct"
+```

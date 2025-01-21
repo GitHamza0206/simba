@@ -2,7 +2,8 @@ from functools import lru_cache
 from langchain_openai import ChatOpenAI
 from core.config import settings, LLMConfig
 from typing import Optional
-
+from langchain_ollama import ChatOllama
+from langchain_community.llms import VLLM
 
 
 @lru_cache()
@@ -27,32 +28,40 @@ def get_llm (LLMConfig: Optional[LLMConfig] = None):
             temperature=0.7
         ))
     """
-    if LLMConfig is not None:
-        return ChatOpenAI(
-            model_name=LLMConfig.model_name,
-            temperature=LLMConfig.temperature,
-            api_key=LLMConfig.api_key,
-            streaming=LLMConfig.streaming
-        )
-    else:
-        if settings.llm.provider == "openai":
-            try:
-                return ChatOpenAI(
-                    model_name=settings.llm.model_name,
-                    temperature=settings.llm.temperature,
-                    api_key=settings.llm.api_key,
-                    streaming=settings.llm.streaming
-                )
-            except Exception as e:
-                print(f"Error initializing LLM: {e}, openai is not supported")
-                raise e
     
-        elif settings.llm.provider == "anthropic":
-            return """ChatAnthropic(
-                model=settings.llm.model_name,
+    if settings.llm.provider == "openai":
+        try:
+            return ChatOpenAI(
+                model_name=settings.llm.model_name,
                 temperature=settings.llm.temperature,
                 api_key=settings.llm.api_key,
                 streaming=settings.llm.streaming
-            )"""
-    
+            )
+        except Exception as e:
+            print(f"Error initializing LLM: {e}, openai is not supported")
+            raise e
+        
+    elif settings.llm.provider == "ollama":
+        return ChatOllama(
+            model=settings.llm.model_name,
+            temperature=settings.llm.temperature,
+            streaming=settings.llm.streaming
+        )
+
+    elif settings.llm.provider == "vllm":
+        return VLLM(
+            model=settings.llm.model_name,
+            trust_remote_code=True,  # mandatory for hf models
+            temperature=settings.llm.temperature,
+            streaming=settings.llm.streaming
+        )
+
+    elif settings.llm.provider == "anthropic":
+        return """ChatAnthropic(
+            model=settings.llm.model_name,
+            temperature=settings.llm.temperature,
+            api_key=settings.llm.api_key,
+            streaming=settings.llm.streaming
+        )"""
+
     raise ValueError(f"Unsupported LLM provider: {settings.LLM.provider}")
