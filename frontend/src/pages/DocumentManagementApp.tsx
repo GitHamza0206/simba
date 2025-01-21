@@ -8,7 +8,7 @@ import DocumentList from '@/components/DocumentManagement/DocumentList';
 import { DocumentType, DocumentStatsType } from '@/types/document';
 import { ingestionApi } from '@/lib/ingestion_api';
 import PreviewModal from '@/components/DocumentManagement/PreviewModal';
-import { reindexDocument } from '@/lib/parsing_api';
+
 import { folderApi } from '@/lib/folder_api';
 
 interface DocumentManagementHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -109,7 +109,7 @@ const DocumentManagementApp: React.FC = () => {
   const stats: DocumentStatsType = {
     lastQueried: "2 hours ago",
     totalQueries: 145,
-    itemsIndexed: documents.length,
+    itemsIndexed: documents.filter(doc => !doc.is_folder).length,
     createdAt: "Apr 12, 2024"
   };
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { 
@@ -10,7 +10,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { DocumentType } from '@/types/document';
-import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder } from 'lucide-react';
+import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen } from 'lucide-react';
 import { Button } from '../ui/button';
 import { 
   DropdownMenu,
@@ -30,11 +30,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { reindexDocument } from '@/lib/parsing_api';
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast";
 import { CreateFolderDialog } from './CreateFolderDialog';
 import { folderApi } from '@/lib/folder_api';
+import { RotateCw } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { ingestionApi } from '@/lib/ingestion_api';
 
 interface DocumentListProps {
   documents: DocumentType[];
@@ -63,7 +70,21 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const [isReindexing, setIsReindexing] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
   const [currentPath, setCurrentPath] = useState('/');
+  const [uploadDir, setUploadDir] = useState<string>('');
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchUploadDir = async () => {
+      try {
+        const path = await ingestionApi.getUploadDirectory();
+        setUploadDir(path);
+      } catch (error) {
+        console.error('Failed to fetch upload directory:', error);
+      }
+    };
+
+    fetchUploadDir();
+  }, []);
 
   const formatDate = (dateString: string) => {
     if (dateString === "Unknown") return dateString;
@@ -111,9 +132,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
     
     setIsReindexing(true);
     try {
-      await reindexDocument(
+      await ingestionApi.reindexDocument(
         selectedDocument.id, 
-        selectedDocument,
+        selectedDocument.parser,
         (status, progress) => {
           setProgressStatus(status);
           setReindexProgress(progress);
@@ -123,6 +144,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
         title: "Success",
         description: "Document reindexed successfully",
       });
+      await fetchDocuments();
     } catch (error) {
       toast({
         title: "Error",
@@ -187,41 +209,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
-  const actions = (document: DocumentType) => (
-
-    <div className="flex gap-2">
-      {(document.loaderModified || document.parserModified) && (
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => handleReindexClick(document)}
-          className="bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-700"
-        >
-          Re-index
-        </Button>
-      )}
-
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => onPreview(document)}
-        title="Preview document"
-      >
-        <Eye className="h-4 w-4" />
-      </Button>
-      
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => onDelete(document.id)}
-        title="Delete document"
-        className="hover:bg-red-100 hover:text-red-600"
-      >
-        <Trash2 className="h-4 w-4 text-red-500" />
-      </Button>
-    </div>
-  );
-
   const handleCreateFolder = async (folderName: string) => {
     try {
       await folderApi.createFolder(folderName, currentPath);
@@ -242,163 +229,212 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const renderTableRow = (item: DocumentType) => {
     if (item.is_folder) {
       return (
-        <tr key={item.id} className="hover:bg-gray-50">
-          <td className="p-4">
+        <TableRow key={item.id} className="hover:bg-gray-50">
+          <TableCell className="p-4">
             <div className="flex items-center gap-2">
               <Folder className="h-4 w-4 text-blue-500" />
               <span>{item.name}</span>
             </div>
-          </td>
-          <td className="p-4" colSpan={3}></td>
-          <td className="p-4 text-right">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onDelete(item.id)}
-              title="Delete folder"
-              className="hover:bg-red-100 hover:text-red-600"
-            >
-              <Trash2 className="h-4 w-4 text-red-500" />
-            </Button>
-          </td>
-        </tr>
+          </TableCell>
+          <TableCell className="p-4">-</TableCell>
+          <TableCell className="p-4">-</TableCell>
+          <TableCell className="p-4">-</TableCell>
+          <TableCell className="p-4">-</TableCell>
+          <TableCell className="p-4 text-right">
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onDelete(item.id)}
+                title="Delete folder"
+                className="hover:bg-red-100 hover:text-red-600"
+              >
+                <Trash2 className="h-4 w-4 text-red-500" />
+              </Button>
+            </div>
+          </TableCell>
+        </TableRow>
       );
     }
 
     return (
-      <tr key={item.id} className="hover:bg-gray-50">
-        <td className="p-4">
+      <TableRow key={item.id} className="hover:bg-gray-50">
+        <TableCell className="p-4">
           <div className="flex items-center gap-2">
             {getFileIcon(item.type)}
             <span>{item.name}</span>
           </div>
-        </td>
-        <td className="p-4">{formatFileSize(item.size)}</td>
-        <td className="p-4">{formatDate(item.uploadedAt)}</td>
-        <td className="p-4">{item.loader}</td>
-        <td className="p-4">{item.parser}</td>
-        <td className="p-4 text-right">
-          {actions(item)}
-        </td>
-      </tr>
+        </TableCell>
+        <TableCell className="p-4">{formatFileSize(item.size)}</TableCell>
+        <TableCell className="p-4">{formatDate(item.uploadedAt)}</TableCell>
+        <TableCell className="p-4">{item.loader}</TableCell>
+        <TableCell className="p-4">{item.parser}</TableCell>
+        <TableCell className="p-4 text-right">
+          <div className="flex justify-end gap-2">
+            {(item.loaderModified || item.parserModified) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleReindexClick(item)}
+                className="bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-700"
+              >
+                Re-index
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onPreview(item)}
+              title="Preview document"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(item.id)}
+              title="Delete document"
+              className="hover:bg-red-100 hover:text-red-600"
+            >
+              <Trash2 className="h-4 w-4 text-red-500" />
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
     );
   };
 
   return (
-    <div className="flex-1 flex flex-col">
-      <div className="p-4 border-b flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
+    <div className="relative">
+      <CardContent>
+        <div className="flex items-center gap-4 mb-4">
+          <div className="flex-1 relative">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search documents..."
-              className="pl-10"
               onChange={(e) => onSearch(e.target.value)}
+              className="h-9 w-full pl-9"
             />
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Filter className="w-4 h-4 mr-2" />
-                File type
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem>PDF</DropdownMenuItem>
-              <DropdownMenuItem>Word</DropdownMenuItem>
-              <DropdownMenuItem>Text</DropdownMenuItem>
-              <DropdownMenuItem>Markdown</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            onClick={() => setShowCreateFolderDialog(true)}
-            variant="outline"
-            className="gap-2"
-          >
-            <FolderPlus className="w-4 h-4" />
-            New Folder
-          </Button>
-          <Button 
-            onClick={() => setIsUploadModalOpen(true)}
-            className="bg-primary hover:bg-primary/90"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Document
-          </Button>
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9"
+                    onClick={() => fetchDocuments()}
+                  >
+                    <RotateCw className="h-4 w-4 mr-2" />
+                    Sync DB
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Sync vector database</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={() => setShowCreateFolderDialog(true)}
+            >
+              <FolderPlus className="h-4 w-4 mr-2" />
+              New Folder
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              className="h-9"
+              onClick={() => setIsUploadModalOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Upload
+            </Button>
+          </div>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-auto">
-        <table className="w-full">
-          <thead className="sticky top-0 bg-white z-10">
-            <tr>
-              <th className="text-left p-4 font-medium text-gray-500">Name</th>
-              <th className="text-left p-4 font-medium text-gray-500">Size</th>
-              <th className="text-left p-4 font-medium text-gray-500">Created Date</th>
-              <th className="text-left p-4 font-medium text-gray-500">Loader</th>
-              <th className="text-left p-4 font-medium text-gray-500">Parser</th>
-              <th className="text-right p-4 font-medium text-gray-500">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {documents.map(renderTableRow)}
-          </tbody>
-        </table>
-      </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Size</TableHead>
+              <TableHead>Upload Date</TableHead>
+              <TableHead>Loader</TableHead>
+              <TableHead>Parser</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow className="h-8 text-xs border-b border-muted">
+              <TableCell colSpan={6}>
+                <div className="flex items-center text-muted-foreground">
+                  <FolderOpen className="h-3 w-3 mr-1" />
+                  <code className="text-[10px]">{uploadDir}</code>
+                </div>
+              </TableCell>
+            </TableRow>
+            
+            {documents.map((item) => renderTableRow(item))}
+          </TableBody>
+        </Table>
+        
+        <CreateFolderDialog
+          isOpen={showCreateFolderDialog}
+          onClose={() => setShowCreateFolderDialog(false)}
+          onCreateFolder={handleCreateFolder}
+          currentPath={currentPath}
+        />
 
-      <CreateFolderDialog
-        isOpen={showCreateFolderDialog}
-        onClose={() => setShowCreateFolderDialog(false)}
-        onCreateFolder={handleCreateFolder}
-        currentPath={currentPath}
-      />
+        <FileUploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onUpload={onUpload}
+        />
 
-      <FileUploadModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        onUpload={onUpload}
-      />
-
-      <AlertDialog 
-        open={showReindexDialog} 
-        onOpenChange={setShowReindexDialog}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {selectedDocument && getReindexWarningContent(selectedDocument).title}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {selectedDocument && getReindexWarningContent(selectedDocument).description}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          
-          {isReindexing && (
-            <div className="space-y-2 my-4">
-              <div className="text-sm text-muted-foreground">
-                {progressStatus}
+        <AlertDialog 
+          open={showReindexDialog} 
+          onOpenChange={setShowReindexDialog}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {selectedDocument && getReindexWarningContent(selectedDocument).title}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {selectedDocument && getReindexWarningContent(selectedDocument).description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            
+            {isReindexing && (
+              <div className="space-y-2 my-4">
+                <div className="text-sm text-muted-foreground">
+                  {progressStatus}
+                </div>
+                <Progress value={reindexProgress} className="w-full" />
               </div>
-              <Progress value={reindexProgress} className="w-full" />
-            </div>
-          )}
-          
-          <AlertDialogFooter>
-            <AlertDialogCancel 
-              onClick={() => setShowReindexDialog(false)}
-              disabled={isReindexing}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleReindexConfirm}
-              className="bg-primary text-white hover:bg-primary/90"
-              disabled={isReindexing}
-            >
-              {isReindexing ? "Processing..." : "Proceed"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            )}
+            
+            <AlertDialogFooter>
+              <AlertDialogCancel 
+                onClick={() => setShowReindexDialog(false)}
+                disabled={isReindexing}
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleReindexConfirm}
+                className="bg-primary text-white hover:bg-primary/90"
+                disabled={isReindexing}
+              >
+                {isReindexing ? "Processing..." : "Proceed"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </CardContent>
     </div>
   );
 };

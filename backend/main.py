@@ -31,6 +31,6 @@ setup_logging(level=logging.INFO)  # or logging.INFO for less verbose output
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    logger.info("Application starting...")
+    logger.info("Application starting...")  
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

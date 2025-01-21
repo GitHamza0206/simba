@@ -70,6 +70,13 @@ def save_file_locally(file: UploadFile, folder_path: Path) -> Path:
 
     return folder_path
 
+def delete_file_locally(file_path: Path):
+    """
+    Deletes the file from the local filesystem
+    """
+    if os.path.exists(file_path):
+        os.remove(file_path)    
+    return True
 
 def load_file_from_path(file_path: Path) -> UploadFile:
     """

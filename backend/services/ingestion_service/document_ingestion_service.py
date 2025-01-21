@@ -9,7 +9,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pydantic import BaseModel
 from fastapi import UploadFile
 
-from services.ingestion_service.file_handling import save_file_locally
+from services.ingestion_service.file_handling import delete_file_locally, save_file_locally
 from services.vector_store_service import VectorStoreService
 import tempfile
 
@@ -36,7 +36,7 @@ class DocumentIngestionService:
             Document: The ingested document
         """
         try:
-            logger.info(f"Starting ingestion of {file.filename}")
+            #logger.info(f"Starting ingestion of {file.filename}")
 
             # Create relative paths instead of absolute paths
            
@@ -103,12 +103,16 @@ class DocumentIngestionService:
             logger.error(f"Error retrieving document {document_id}: {str(e)}")
             return None
 
-    def delete_ingested_document(self, uid: str) -> int:
+    def delete_ingested_document(self, uid: str, delete_locally: bool = False) -> int:
         try:
+            
+            if delete_locally:
+                doc = self.vector_store.get_document(uid)   
+                delete_file_locally(Path(doc.metadata.get('file_path')))
+
             self.vector_store.delete_documents([uid])
-            count = self.vector_store.count_documents()
-            logger.info(f"Document {uid} deleted successfully")
-            return count
+
+            return {"message": f"Document {uid} deleted successfully"}
             
         except Exception as e:
             logger.error(f"Error deleting document {uid}: {e}")

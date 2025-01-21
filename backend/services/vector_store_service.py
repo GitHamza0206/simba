@@ -45,8 +45,8 @@ class VectorStoreService:
         try:        
             if newDocument:
                 newDocument.metadata["id"] = document_id
-                if self.add_documents([newDocument]):
-                    self.delete_documents([document_id])
+                self.delete_documents([document_id])
+                self.add_documents([newDocument])
             return True
         except Exception as e:
             logger.error(f"Error updating document {document_id}: {e}")
