@@ -33,6 +33,7 @@ ipykernel = "^6.29.5"
 vllm = "^0.6.6.post1"
 ollama = "^0.4.6"
 langchain-ollama = "^0.2.2"
+rq = "^2.1.0"
 
 
 

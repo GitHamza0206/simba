@@ -1,6 +1,6 @@
-# MigiBot Backend
+# Simba Backend
 
-This is the backend service for MigiBot, built with FastAPI and WebSocket support.
+This documentation is for Simba headless KMS 
 
 ## Setup
 

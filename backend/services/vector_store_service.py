@@ -64,6 +64,8 @@ class VectorStoreService:
                 all_documents.append(document)
         
         return all_documents
+    
+    
 
     def add_documents(self, documents: list[Document]) -> list[Document]:
         # Add documents to store

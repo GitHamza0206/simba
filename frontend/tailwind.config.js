@@ -58,7 +58,16 @@ export default {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			}
-  		}
+  		},
+  		animation: {
+  			"slide-in-from-top": "slide-in-from-top 0.2s ease-out",
+  		},
+  		keyframes: {
+  			"slide-in-from-top": {
+  				"0%": { transform: "translateY(-10%)", opacity: 0 },
+  				"100%": { transform: "translateY(0)", opacity: 1 },
+  			},
+  		},
   	}
   },
   plugins: [

@@ -1,12 +1,21 @@
 
-# MigiBot
+# Simba
 
-<a href="https://ibb.co/RHkRGcs"><img src="https://i.ibb.co/ryRDKHz/logo.jpg" alt="logo" border="0"></a>
+<!-- <a href="https://ibb.co/RHkRGcs"><img src="https://i.ibb.co/ryRDKHz/logo.jpg" alt="logo" border="0"></a> -->
 
-A Role-Based Retrieval Augmented Generation (RAG) System for Enterprise Information Management
+
+A Headless KMS (Knowledge management system) integrable with any RAG based system (GraphRAG, Agentic RAG, Adaptive RAG...)
 
 ## Overview
-Mig iBot is a RAG system that retrieves information based on user roles and policies, ensuring secure and contextual access to enterprise knowledge.
+It operates as a full stack app with backend made with python FastAPI and frontend made with Typescript React vite
+
+## Quick start 
+```
+pip install simba 
+simba run 
+```
+
+then navigate to <a>http:localhost:xxxx</a> to add knowledge base to simba 
 
 ## Project Structure
 
@@ -16,9 +25,9 @@ frontend/
 docker-compose.yml
 ```
 
-## Getting Started
+## Getting Started 
 
-first navigate to migibot directory
+first navigate to simba directory
 export your openai api key
 
 ```

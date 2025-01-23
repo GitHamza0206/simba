@@ -1,0 +1,29 @@
+Project Goal: Unified Knowledge Management and Q&A
+
+We’re building a Knowledge Management System (KMS) that brings together all of a user’s documents—both local files and files from cloud services (like Google Drive, SharePoint, or Dropbox)—into one place. The KMS will then let users chat with their documents by using a Large Language Model (LLM) to answer questions based on the content of those files.
+
+Key Points
+Centralized File Access
+
+Users can see their local files alongside their cloud-based files in one interface.
+Background Processing
+
+When a user uploads or syncs a file, our system automatically processes it in the background (extracting text, generating embeddings, etc.) so the user doesn’t have to wait.
+Semantic Search & “Chat”
+
+We break documents into smaller chunks, convert them into vector embeddings, and store those vectors in a database optimized for fast similarity search.
+When a user asks a question, we find the most relevant chunks and feed them to a language model to generate an answer.
+Redis & Worker Queues
+
+We use Redis to queue tasks (like file processing) and run them asynchronously so the main app remains responsive.
+FastAPI Backend
+
+The core of our system is a FastAPI server that handles file uploads, user requests, and communicates with Redis, the database, and the vector store.
+Why It Matters
+
+Users no longer need to open multiple apps or search through random folders. Everything is neatly organized, and they can ask questions directly to their files, getting fast, AI-powered answers.
+Intern’s Role
+Help Implement the File Processing Pipeline: from reading the files to generating embeddings.
+Work on the API Endpoints: to upload files, list folders, and handle chat requests.
+Improve Efficiency: by refining how background tasks are scheduled and tracked in Redis.
+Contribute to the User Interface: if interested, help make the UI more intuitive for browsing files and chatting with documents.

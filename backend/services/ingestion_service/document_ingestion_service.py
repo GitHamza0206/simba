@@ -2,6 +2,7 @@ import logging
 import io
 from pathlib import Path
 from typing import List, Optional
+import uuid
 from langchain.schema import Document
 from core.config import settings
 import os 
@@ -10,6 +11,7 @@ from pydantic import BaseModel
 from fastapi import UploadFile
 
 from services.ingestion_service.file_handling import delete_file_locally, save_file_locally
+from services.splitter import split_document
 from services.vector_store_service import VectorStoreService
 import tempfile
 
@@ -57,7 +59,7 @@ class DocumentIngestionService:
 
             try:
                 document = loader(temp_path).load()
-                
+              
                 # Format size in a human-readable format
                 size_in_mb = round(len(content) / (1024 * 1024), 2)
                 size_str = f"{size_in_mb} MB"
@@ -78,7 +80,7 @@ class DocumentIngestionService:
                     save_file_locally(file, folder_path)
 
                 # Add to vector store and get the document back
-                ingested_doc = self.vector_store.add_documents(document)[0]
+                ingested_doc = self.vector_store.add_documents(chunks)
                 
                 # Create and return IngestedDocument
                 return ingested_doc
@@ -117,7 +119,40 @@ class DocumentIngestionService:
         except Exception as e:
             logger.error(f"Error deleting document {uid}: {e}")
             raise e
+        
+    def get_ingested_documents_by_folder(self) -> dict:
+        documents_dict = {}
+        try:
+            uploads_dir = settings.paths.upload_dir
+            for root, _, files in os.walk(uploads_dir):
+                for file in files:
+                    file_extension = f".{file.split('.')[-1].lower()}" 
+                    if file.endswith(".md"):
+                        loader = SUPPORTED_EXTENSIONS[file_extension]
+                        doc_id = str(uuid.uuid4())
+                        file_path = os.path.join(root, file)
+                        document = loader(file_path).load()[0]
+                        documents_dict[doc_id] = IngestedDocument(
+                            id=doc_id,
+                            page_content=document.page_content,
+                            metadata=MetadataType(
+                                filename=file,
+                                type=file.split(".")[-1],
+                                size= "100 MB",
+                                loader=loader.__name__,
+                                uploadedAt=datetime.now().isoformat(),
+                                file_path=file_path,
+                                parser=None
+                            )
+                        )
 
+
+            return documents_dict
+
+        except Exception as e:
+            logger.error(f"Error getting ingested documents by folder: {e}")
+            raise e
+        
     def get_ingested_documents(self) -> dict:
         all_documents = self.vector_store.get_documents()
         documents_dict = {}
@@ -183,15 +218,14 @@ class DocumentIngestionService:
 
         md_files = []
 
-        for root, _, files in os.walk(settings.paths.markdown_dir):
-            folder_name = os.path.basename(root)
+        for root, _, files in os.walk(settings.paths.upload_dir):
             for file in files:
                 if file.endswith(".md"):
                     file_path = os.path.join(root, file)
-                    md_files.append((folder_name, file_path))
+                    md_files.append(file_path)
 
-        
-        docs = [SUPPORTED_EXTENSIONS[".md"](url[1]).load() for url in md_files]
+
+        docs = [SUPPORTED_EXTENSIONS[".md"](file_path).load() for file_path in md_files]
         # docs = [CustomMarkdownLoader(url[1]).load() for url in urls]
         docs_list = [item for sublist in docs for item in sublist]
 
@@ -200,8 +234,8 @@ class DocumentIngestionService:
         )
         
         doc_splits = text_splitter.split_documents(docs_list) #TODO Chunking strategy choose
-        
-        self.ingest_documents(docs_list)
+            
+        self.vector_store.add_documents(doc_splits)
         
         
 
