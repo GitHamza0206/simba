@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import uuid
 from datetime import datetime
+import asyncio
 
 from typing import List, Optional
 from services.ingestion_service.config import SUPPORTED_EXTENSIONS
@@ -36,12 +37,14 @@ MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
 
 ingestion = APIRouter()
 
+ingestion_service = DocumentIngestionService()
+
 # Document Management Routes
 # ------------------------
 
 @ingestion.post("/ingestion")
 async def ingest_document(
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     folder_path: str = Query(default="/", description="Folder path to store the document")
 ):
     """Ingest a document into the vector store"""
@@ -50,12 +53,22 @@ async def ingest_document(
         if folder_path != "/":
             store_path = store_path / folder_path.strip("/")
 
-        #we store the file in the folder
-        save_file_locally(file, store_path)
-        
-        ingestion_service = DocumentIngestionService()
-        return ingestion_service.ingest_document(file, folder_path=store_path)
+        # Process files concurrently using asyncio.gather
+        async def process_file(file):
+            await file.seek(0)
+            await save_file_locally(file, store_path)
+            await file.seek(0)
+            simba_doc = await ingestion_service.ingest_document(file)
+            return simba_doc
+
+        # Process all files concurrently
+        response = await asyncio.gather(*[process_file(file) for file in files])
+        # Insert into database
+        ingestion_service.database.insert_documents(response)
+        return response
+
     except Exception as e:
+        logger.error(f"Error in ingest_document: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @ingestion.get("/ingestion")
@@ -71,47 +84,7 @@ async def delete_ingestion_documents(uid: str) -> dict:
     ingestion_service.delete_ingested_document(uid, delete_locally=True)
     return {"message": f"Document {uid} deleted successfully"}
 
-# Folder Management Routes
-# -----------------------
 
-@ingestion.post("/folders")
-async def create_folder_endpoint(folder: FolderCreate) -> Folder:
-    """Create a new folder"""
-    return create_folder(folder.name, folder.parent_path)
-
-@ingestion.get("/folders")
-async def get_folders_endpoint() -> List[Folder]:
-    """Get all folders"""
-    return get_folders()
-
-@ingestion.delete("/folders/{folder_id}")
-async def delete_folder_endpoint(folder_id: str) -> dict:
-    """Delete a folder"""
-    delete_folder(folder_id)
-    return {"message": f"Folder {folder_id} deleted successfully"}
-
-@ingestion.post("/folders/move")
-async def move_to_folder_endpoint(move: FolderMove) -> dict:
-    """Move a document to a folder"""
-    try:
-        ingestion_service = DocumentIngestionService()
-        document = ingestion_service.get_document(move.document_id)
-        
-        if not document:
-            raise HTTPException(status_code=404, detail=f"Document {move.document_id} not found")
-        
-        new_path = move_to_folder(document.metadata['file_path'], move.folder_id)
-        
-        # Update document metadata and vector store
-        document.metadata.update({
-            'file_path': new_path,
-            'folder_id': move.folder_id
-        })
-        VectorStoreService().update_document(document)
-        
-        return {"message": "Document moved successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 # Document Processing Routes
 # ------------------------

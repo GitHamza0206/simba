@@ -4,12 +4,16 @@ from langchain_community.document_loaders import (
     UnstructuredPowerPointLoader,
     UnstructuredExcelLoader,
     UnstructuredWordDocumentLoader,
-    TextLoader
+    TextLoader,
+    PyMuPDFLoader,
+    PyPDFLoader,
+
 )
+
 
 SUPPORTED_EXTENSIONS = {
         ".md": UnstructuredMarkdownLoader,
-        ".pdf": UnstructuredPDFLoader,
+        ".pdf": PyPDFLoader,
         ".pptx": UnstructuredPowerPointLoader,
         ".xlsx": UnstructuredExcelLoader,
         ".docx": UnstructuredWordDocumentLoader,

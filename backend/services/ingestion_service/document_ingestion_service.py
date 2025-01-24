@@ -3,12 +3,15 @@ import io
 from pathlib import Path
 from typing import List, Optional
 import uuid
+from core.factories.database_factory import get_database
 from langchain.schema import Document
 from core.config import settings
 import os 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pydantic import BaseModel
 from fastapi import UploadFile
+import aiofiles
+import asyncio
 
 from services.ingestion_service.file_handling import delete_file_locally, save_file_locally
 from services.splitter import split_document
@@ -16,7 +19,7 @@ from services.vector_store_service import VectorStoreService
 import tempfile
 
 from datetime import datetime
-from services.ingestion_service.types import MetadataType, IngestedDocument
+from services.ingestion_service.types import MetadataType, IngestedDocument, SimbaDoc
 from services.ingestion_service.config import SUPPORTED_EXTENSIONS
 
 logger = logging.getLogger(__name__)
@@ -24,10 +27,9 @@ logger = logging.getLogger(__name__)
 class DocumentIngestionService:
     def __init__(self):
         self.vector_store = VectorStoreService()
+        self.database = get_database()
 
-    def ingest_document(self, file: UploadFile , 
-                        folder_path: str = settings.paths.upload_dir,
-                        store_locally: bool = True) -> Document:
+    async def ingest_document(self, file: UploadFile) -> Document:
         """
         Process and ingest documents into the vector store.
         
@@ -37,61 +39,51 @@ class DocumentIngestionService:
         Returns:
             Document: The ingested document
         """
+        
         try:
-            #logger.info(f"Starting ingestion of {file.filename}")
-
-            # Create relative paths instead of absolute paths
-           
-            folder_path = Path(folder_path)
-            
-
-            
+            folder_path = Path(settings.paths.upload_dir)
+            file_path = folder_path / file.filename
             file_extension = f".{file.filename.split('.')[-1].lower()}" 
             loader = SUPPORTED_EXTENSIONS[file_extension]
-
-            # Create a temporary file and save the uploaded content
-            with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
-                file.file.seek(0)
-                content = file.file.read()
-                temp_file.write(content)
-                temp_path = temp_file.name
-                file.file.seek(0)
-
-            try:
-                document = loader(temp_path).load()
-              
-                # Format size in a human-readable format
-                size_in_mb = round(len(content) / (1024 * 1024), 2)
-                size_str = f"{size_in_mb} MB"
+            
+            # Ensure file exists and is not empty
+            if not file_path.exists():
+                raise ValueError(f"File {file_path} does not exist")
                 
-                metadata = MetadataType(
-                    filename=file.filename,
-                    type=file_extension,
-                    size=size_str,
-                    loader=loader.__name__,
-                    uploadedAt=datetime.now().isoformat(),
-                    file_path=str(folder_path / file.filename),
-                    parser=None
-                )
-                document[0].metadata = metadata.dict()
-
-                # Pass the Path object for saving
-                if store_locally:
-                    save_file_locally(file, folder_path)
-
-                # Add to vector store and get the document back
-                ingested_doc = self.vector_store.add_documents(chunks)
+            if file_path.stat().st_size == 0:
+                raise ValueError(f"File {file_path} is empty")
+            
+            # Use asyncio.to_thread for synchronous loader
+            document = await asyncio.to_thread(lambda: loader(file_path=str(file_path)).load())
+            
+            # Use aiofiles for async file size check
+            async with aiofiles.open(file_path, 'rb') as f:
+                await f.seek(0, 2)  # Seek to end of file
+                file_size = await f.tell()  # Get current position (file size)
                 
-                # Create and return IngestedDocument
-                return ingested_doc
-
-            finally:
-                if os.path.exists(temp_path):
-                    os.unlink(temp_path)
-
+            size_str = f"{file_size / (1024 * 1024):.2f} MB"    
+            
+            metadata = MetadataType(
+                filename=file.filename,
+                type=file_extension,
+                page_number=len(document),
+                chunk_number=0,
+                enabled=False,
+                parsing_status="Unparsed",
+                size=size_str,
+                loader=loader.__name__,
+                uploadedAt=datetime.now().isoformat(),
+                file_path=str(file_path),
+                parser=None
+            )
+            
+   
+            return SimbaDoc.from_documents(id=str(uuid.uuid4()), documents=document, metadata=metadata)
+        
         except Exception as e:
             logger.error(f"Error ingesting document: {e}")
             raise e
+    
         
     def get_document(self, document_id: str) -> Optional[Document]:
         """Get a document by its ID"""

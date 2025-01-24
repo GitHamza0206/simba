@@ -9,13 +9,7 @@ A Headless KMS (Knowledge management system) integrable with any RAG based syste
 ## Overview
 It operates as a full stack app with backend made with python FastAPI and frontend made with Typescript React vite
 
-## Quick start 
-```
-pip install simba 
-simba run 
-```
 
-then navigate to <a>http:localhost:xxxx</a> to add knowledge base to simba 
 
 ## Project Structure
 
@@ -25,8 +19,19 @@ frontend/
 docker-compose.yml
 ```
 
-## Getting Started 
+navigate to backend directory to run the backend, refer to backend/README.md for more information
+navigate to frontend directory to run the frontend, refer to frontend/README.md for more information
 
+
+## Quick start 
+```
+pip install simba 
+simba run 
+```
+
+then navigate to <a>http:localhost:xxxx</a> to add knowledge base to simba 
+
+## Running in production
 first navigate to simba directory
 export your openai api key
 

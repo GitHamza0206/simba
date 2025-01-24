@@ -2,6 +2,7 @@ import os
 import json
 from pathlib import Path
 from datetime import datetime
+import aiofiles
 from fastapi import UploadFile, HTTPException
 from core.config import settings
 import io
@@ -19,57 +20,67 @@ MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
 # Ensure upload directory exists
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-def save_file_locally(file: UploadFile, folder_path: Path) -> Path:
-    """
-    Saves the uploaded file to a unique directory under UPLOAD_DIR 
-    and returns the path to the newly created directory.
-    """
-    # Ensure folder_path is a Path object
-    if isinstance(folder_path, str):
-        folder_path = Path(folder_path)
+# def save_file_locally(file: UploadFile, folder_path: Path) -> Path:
+#     """
+#     Saves the uploaded file to a unique directory under UPLOAD_DIR 
+#     and returns the path to the newly created directory.
+#     """
+#     # Ensure folder_path is a Path object
+#     if isinstance(folder_path, str):
+#         folder_path = Path(folder_path)
         
-    # Create the directory
-    folder_path.mkdir(exist_ok=True)
+#     # Create the directory
+#     folder_path.mkdir(exist_ok=True)
 
-    file_size = 0
-    file_path = folder_path / file.filename
+#     file_size = 0
+#     file_path = folder_path / file.filename
 
-    # Reset file pointer to beginning
-    file.file.seek(0)
+#     # Reset file pointer to beginning
+#     file.file.seek(0)
 
-    with open(file_path, "wb") as local_file:
-        content = file.file.read()
-        file_size = len(content)
-        if file_size > MAX_FILE_SIZE:
-            # Cleanup folder if file is too large
-            for item in folder_path.iterdir():
-                item.unlink()
-            folder_path.rmdir()
-            raise HTTPException(
-                status_code=400,
-                detail="File size exceeds maximum limit of 200MB"
-            )
-        local_file.write(content)
+#     with open(file_path, "wb") as local_file:
+#         content = file.file.read()
+#         file_size = len(content)
+#         if file_size > MAX_FILE_SIZE:
+#             # Cleanup folder if file is too large
+#             for item in folder_path.iterdir():
+#                 item.unlink()
+#             folder_path.rmdir()
+#             raise HTTPException(
+#                 status_code=400,
+#                 detail="File size exceeds maximum limit of 200MB"
+#             )
+#         local_file.write(content)
 
-    # Reset file pointer for potential future use
-    file.file.seek(0)
+#     # Reset file pointer for potential future use
+#     file.file.seek(0)
 
-    size_in_mb = round(file_size / (1024 * 1024), 2)
-    metadata = {
-        "filename": file.filename,
-        "saved_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "file_size_bytes": file_size,
-        "file_size_mb": size_in_mb,
-        "folder_path": str(folder_path),
-        "file_path": str(file_path),
-    }
+#     size_in_mb = round(file_size / (1024 * 1024), 2)
+#     metadata = {
+#         "filename": file.filename,
+#         "saved_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+#         "file_size_bytes": file_size,
+#         "file_size_mb": size_in_mb,
+#         "folder_path": str(folder_path),
+#         "file_path": str(file_path),
+#     }
     
-    metadata_path = folder_path / f"{file.filename.split('.')[0]}.json"
-    with open(metadata_path, "w", encoding="utf-8") as meta_file:
-        json.dump(metadata, meta_file, indent=2, ensure_ascii=False)
+#     metadata_path = folder_path / f"{file.filename.split('.')[0]}.json"
+#     with open(metadata_path, "w", encoding="utf-8") as meta_file:
+#         json.dump(metadata, meta_file, indent=2, ensure_ascii=False)
 
-    return folder_path
+#     return folder_path
 
+async def save_file_locally(file: UploadFile, store_path: Path) -> None:
+    """Save uploaded file to local storage asynchronously"""
+    store_path.mkdir(parents=True, exist_ok=True)
+    file_path = store_path / file.filename
+    
+    async with aiofiles.open(file_path, 'wb') as out_file:
+        content = await file.read()
+        await out_file.write(content)
+    
+    await file.seek(0)  #
 def delete_file_locally(file_path: Path):
     """
     Deletes the file from the local filesystem

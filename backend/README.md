@@ -1,12 +1,15 @@
 # Simba Backend
 
-This documentation is for Simba headless KMS 
+This documentation is for Simba headless KMS backend
+
+make sure to be in backend directory
 
 ## Setup
 
 1. Install dependencies:
 ```bash
 poetry install
+poetry shell
 ```
 
 2. Run the FastAPI server:
@@ -14,15 +17,6 @@ poetry install
 poetry run uvicorn main:app --reload
 ```
 
-#TODO:
-Add libheif to docker 
-
-
-## API Endpoints
-
-- 'GET /': Root endpoint, returns a hello world message
-- 'GET /routes': Lists all available routes
-- 'WS /ws/stream': WebSocket endpoint for real-time communication
 
 ## Development
 
@@ -30,7 +24,13 @@ This project uses Poetry for dependency management and requires Python >=3.11,< 
 
 ## Environment Variables
 
-Create a '.env' file in the root directory with your configuration.
+```
+cp .env.example .env
+```
+
+or Create a '.env' file in the root directory with your configuration.
+
+
 
 for unstructured , run the following command:
 

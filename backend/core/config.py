@@ -63,6 +63,10 @@ class ChunkingConfig(BaseModel):
     chunk_size: int = 500
     chunk_overlap: int = 50
 
+class DatabaseConfig(BaseModel):
+    provider: str = "litedb"  # or "sqlite"
+    additional_params: Dict[str, Any] = Field(default_factory=dict)
+
 class Settings(BaseModel):
     project: ProjectConfig = Field(default_factory=ProjectConfig)
     paths: PathConfig = Field(default_factory=PathConfig)
@@ -70,6 +74,7 @@ class Settings(BaseModel):
     embeddings: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
     vector_store: VectorStoreConfig = Field(default_factory=VectorStoreConfig)
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
 
     @classmethod
     def load_from_yaml(cls, config_path: Optional[Path] = None) -> 'Settings':
