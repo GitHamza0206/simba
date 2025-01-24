@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 import json
+from langchain.schema import Document
 
 class MetadataType(BaseModel):
     filename: str
@@ -48,5 +49,8 @@ class IngestedDocument(BaseModel):
             page_content=data["page_content"],
             metadata=MetadataType(**data["metadata"])
         )
+    
+    def to_document(self):
+        return Document(page_content=self.page_content, metadata=self.metadata.dict())
 
 

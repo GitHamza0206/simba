@@ -28,7 +28,6 @@ const DocumentManagementApp: React.FC = () => {
   const fetchDocuments = async () => {
     setIsLoading(true);
     try {
-      // Fetch both documents and folders
       const [docsResponse, foldersResponse] = await Promise.all([
         ingestionApi.getDocuments(),
         folderApi.getFolders()
@@ -50,7 +49,6 @@ const DocumentManagementApp: React.FC = () => {
 
       // Combine and sort by name
       const allItems = [...folderDocs, ...docsResponse].sort((a, b) => {
-        // Folders first, then sort by name
         if (a.is_folder && !b.is_folder) return -1;
         if (!a.is_folder && b.is_folder) return 1;
         return a.name.localeCompare(b.name);
@@ -69,42 +67,10 @@ const DocumentManagementApp: React.FC = () => {
     }
   };
 
-  // Chargement initial
+  // Only fetch on mount
   useEffect(() => {
     fetchDocuments();
-  }, []); // Suppression de la dépendance toast
-
-  // Rafraîchissement périodique
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      if (!isLoading) {
-        fetchDocuments();
-      }
-    }, 30000); // Rafraîchir toutes les 30 secondes
-
-    return () => clearInterval(intervalId);
-  }, [isLoading]);
-
-  // Simuler la progression pendant le chargement
-  useEffect(() => {
-    if (isLoading) {
-      setProgress(0);
-      const timer = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(timer);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 200);
-
-      return () => {
-        clearInterval(timer);
-        setProgress(100); // Mettre à 100% quand le chargement est terminé
-      };
-    }
-  }, [isLoading]);
+  }, []);
 
   const stats: DocumentStatsType = {
     lastQueried: "2 hours ago",

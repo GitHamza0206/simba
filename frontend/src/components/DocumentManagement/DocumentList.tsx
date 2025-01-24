@@ -10,7 +10,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { DocumentType } from '@/types/document';
-import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen } from 'lucide-react';
+import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { 
   DropdownMenu,
@@ -42,6 +42,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { ingestionApi } from '@/lib/ingestion_api';
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 
 interface DocumentListProps {
   documents: DocumentType[];
@@ -97,18 +100,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
     });
   };
 
-  const formatFileSize = (size: string) => {
-    // Remove any existing 'MB' suffix first
-    const cleanSize = size.replace(/\s*MB\s*/gi, '');
-    
-    // Convert to number
-    const bytes = parseFloat(cleanSize);
-    if (isNaN(bytes)) return '0 MB';
-    
-    // Convert to MB with more precision (4 decimal places)
-    const mb = bytes / (1024 * 1024);
-    return `${mb.toFixed(2)} MB`;
-  };
 
   const handleReindexClick = (document: DocumentType) => {
     if (!document.file_path) {
@@ -226,97 +217,18 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
-  const renderTableRow = (item: DocumentType) => {
-    if (item.is_folder) {
-      return (
-        <TableRow key={item.id} className="hover:bg-gray-50">
-          <TableCell className="p-4">
-            <div className="flex items-center gap-2">
-              <Folder className="h-4 w-4 text-blue-500" />
-              <span>{item.name}</span>
-            </div>
-          </TableCell>
-          <TableCell className="p-4">-</TableCell>
-          <TableCell className="p-4">-</TableCell>
-          <TableCell className="p-4">-</TableCell>
-          <TableCell className="p-4">-</TableCell>
-          <TableCell className="p-4 text-right">
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onDelete(item.id)}
-                title="Delete folder"
-                className="hover:bg-red-100 hover:text-red-600"
-              >
-                <Trash2 className="h-4 w-4 text-red-500" />
-              </Button>
-            </div>
-          </TableCell>
-        </TableRow>
-      );
-    }
-
-    return (
-      <TableRow key={item.id} className="hover:bg-gray-50">
-        <TableCell className="p-4">
-          <div className="flex items-center gap-2">
-            {getFileIcon(item.type)}
-            <span>{item.name}</span>
-          </div>
-        </TableCell>
-        <TableCell className="p-4">{formatFileSize(item.size)}</TableCell>
-        <TableCell className="p-4">{formatDate(item.uploadedAt)}</TableCell>
-        <TableCell className="p-4">{item.loader}</TableCell>
-        <TableCell className="p-4">{item.parser}</TableCell>
-        <TableCell className="p-4 text-right">
-          <div className="flex justify-end gap-2">
-            {(item.loaderModified || item.parserModified) && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => handleReindexClick(item)}
-                className="bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-700"
-              >
-                Re-index
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onPreview(item)}
-              title="Preview document"
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onDelete(item.id)}
-              title="Delete document"
-              className="hover:bg-red-100 hover:text-red-600"
-            >
-              <Trash2 className="h-4 w-4 text-red-500" />
-            </Button>
-          </div>
-        </TableCell>
-      </TableRow>
-    );
-  };
-
   return (
     <div className="relative">
       <CardContent>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex-1 relative">
-            <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
             <Input
               placeholder="Search documents..."
+              className="h-9 w-[200px]"
               onChange={(e) => onSearch(e.target.value)}
-              className="h-9 w-full pl-9"
             />
           </div>
-          <div className="flex items-center space-x-2 flex-shrink-0">
+          <div className="flex items-center gap-2">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -324,26 +236,20 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     variant="outline"
                     size="sm"
                     className="h-9"
-                    onClick={() => fetchDocuments()}
+                    onClick={fetchDocuments}
                   >
-                    <RotateCw className="h-4 w-4 mr-2" />
-                    Sync DB
+                    <RefreshCcw className={cn(
+                      "h-4 w-4 mr-2",
+                      isLoading && "animate-spin"
+                    )} />
+                    Refresh
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Sync vector database</p>
+                  <p>Refresh document list</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9"
-              onClick={() => setShowCreateFolderDialog(true)}
-            >
-              <FolderPlus className="h-4 w-4 mr-2" />
-              New Folder
-            </Button>
             <Button
               variant="default"
               size="sm"
@@ -359,12 +265,15 @@ const DocumentList: React.FC<DocumentListProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[30px]">
+                <Checkbox />
+              </TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Size</TableHead>
+              <TableHead>Chunk Number</TableHead>
               <TableHead>Upload Date</TableHead>
-              <TableHead>Loader</TableHead>
-              <TableHead>Parser</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>Enable</TableHead>
+              <TableHead>Parsing Status</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -377,7 +286,61 @@ const DocumentList: React.FC<DocumentListProps> = ({
               </TableCell>
             </TableRow>
             
-            {documents.map((item) => renderTableRow(item))}
+            {documents.map((item) => (
+              <TableRow key={item.id} className="hover:bg-gray-50">
+                <TableCell>
+                  <Checkbox />
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {getFileIcon(item.type)}
+                    <span>{item.name}</span>
+                  </div>
+                </TableCell>
+                <TableCell>{item.chunk_number || 0}</TableCell>
+                <TableCell>{formatDate(item.uploadedAt)}</TableCell>
+                <TableCell>
+                  <Switch
+                    checked={item.enabled}
+                    onCheckedChange={(checked) => {
+                      console.log(`Toggle ${item.id} to ${checked}`);
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
+                      item.parsing_status === 'SUCCESS' ? 'success' :
+                      item.parsing_status === 'CANCEL' ? 'warning' :
+                      item.parsing_status === 'FAILED' ? 'destructive' :
+                      'default'
+                    }
+                  >
+                    {item.parsing_status || 'PENDING'}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onPreview(item)}
+                      className="h-8 w-8"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDelete(item.id)}
+                      className="h-8 w-8 hover:bg-red-100 hover:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
         
