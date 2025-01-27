@@ -1,14 +1,14 @@
 import io
 from langgraph.graph import END, StateGraph, START
 from langgraph.checkpoint.memory import MemorySaver
-from services.chatbots.demo.state import State
+from .state import State
 from langgraph.prebuilt import ToolNode, tools_condition
-from services.chatbots.demo.tools.retrieve_tool import retrieve
+from .tools.retrieve_tool import retrieve
 
 #===========================================
 # Import nodes
-from services.chatbots.demo.nodes.assistant_node import assistant
-from services.chatbots.demo.nodes.generate_node import generate
+from .nodes.assistant_node import assistant
+from .nodes.generate_node import generate
 #===========================================
 
 workflow = StateGraph(State)

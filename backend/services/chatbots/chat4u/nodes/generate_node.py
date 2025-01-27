@@ -1,4 +1,4 @@
-from services.agentic_worflow_service.chains.generate_chain import generate_chain
+from ..chains.generate_chain import generate_chain
 import time
 
 def generate(state):

@@ -1,6 +1,6 @@
 
 from core.factories.llm_factory import get_llm
-from services.agentic_worflow_service.tools.retrieve_tool import retrieve
+from ..tools.retrieve_tool import retrieve
 from langchain_core.output_parsers import StrOutputParser
 
 llm  = get_llm()

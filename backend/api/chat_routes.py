@@ -1,8 +1,8 @@
 
 import json
 from fastapi import APIRouter,Body
-from services.chatbots.demo.state import State
-from services.chatbots.demo.graph import graph
+from services.chatbots.chat4u.state import State
+from services.chatbots.chat4u.graph import graph
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 

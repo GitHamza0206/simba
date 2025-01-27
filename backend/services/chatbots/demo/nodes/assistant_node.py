@@ -1,4 +1,4 @@
-from services.chatbots.demo.chains.assistant_chain import assistant_chain
+from ..chains.assistant_chain import assistant_chain
 
 def assistant(state):
 

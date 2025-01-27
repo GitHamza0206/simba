@@ -1,4 +1,4 @@
-from services.agentic_worflow_service.chains.assistant_chain import assistant_chain
+from ..chains.assistant_chain import assistant_chain
 
 def assistant(state):
 
