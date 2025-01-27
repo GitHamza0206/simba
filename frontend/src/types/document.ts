@@ -1,31 +1,20 @@
-export interface DocumentType {
+export interface SimbaDoc {
   id: string;
-  content: string;
-  name: string;
-  type: string;
-  size: string;
-  loader: string;
-  parser: string;
-  uploadedAt: string; 
+  documents: Document[];
+  metadata: Metadata;
+}
+
+export interface Metadata {
   file_path: string;
   folder_path?: string;
   is_folder?: boolean;
-
-  loaderModified?: boolean;
-  parserModified?: boolean;
+  enabled?: boolean;
+  uploadedAt?: string;
 }
 
-export interface DocumentStatsType {
-  lastQueried: string;
-  totalQueries: number;
-  itemsIndexed: number;
-  createdAt: string;
-}
-
-export interface FolderType {
+export interface Document {
   id: string;
-  name: string;
-  path: string;
-  created_at: string;
-  parent_folder?: string;
-} 
+  content: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metadata: Record<string, any>;
+}

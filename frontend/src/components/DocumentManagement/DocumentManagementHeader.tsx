@@ -15,7 +15,7 @@ const DocumentManagementHeader: React.FC<DocumentManagementHeaderProps> = ({
   return (
     <CardHeader>
       <div className="flex items-center justify-between">
-        <CardTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 py-2">Document Management</CardTitle>
+        <CardTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 py-2">Knowledge Management System</CardTitle>
         
       </div>
       <DocumentStats 

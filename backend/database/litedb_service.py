@@ -2,9 +2,8 @@ import sqlite3
 import json
 from pathlib import Path
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, cast
 from core.config import settings
-from database.base import DocumentDatabase
 from services.ingestion_service.types import SimbaDoc
 
 logger = logging.getLogger(__name__)
@@ -83,19 +82,24 @@ class LiteDocumentDB():
             logger.error(f"Failed to get all documents: {e}")
             return []
 
-    def delete_document(self, document_id: str) -> bool:
-        """Delete a document by ID"""
+    def delete_documents(self, document_ids: List[str]) -> bool:
+        """Delete documents by IDs"""
         try:
             cursor = self.conn.cursor()
-            cursor.execute('DELETE FROM documents WHERE id = ?', (document_id,))
+            # Create placeholders for the IN clause
+            placeholders = ','.join(['?' for _ in document_ids])
+            cursor.execute(
+                f'DELETE FROM documents WHERE id IN ({placeholders})', 
+                document_ids
+            )
             self.conn.commit()
             return cursor.rowcount > 0
         except Exception as e:
             self.conn.rollback()
-            logger.error(f"Failed to delete document {document_id}: {e}")
+            logger.error(f"Failed to delete documents {document_ids}: {e}")
             return False
 
-    def update_document(self, document_id: str, updates: Dict[str, Any]) -> bool:
+    def update_document(self, document_id: str, newDocument: SimbaDoc) -> bool:
         """Update a document by ID"""
         try:
             # Get existing document
@@ -105,7 +109,7 @@ class LiteDocumentDB():
                 
             # Update document
             doc_dict = doc.dict()
-            doc_dict.update(updates)
+            doc_dict.update(newDocument.dict()) 
             
             cursor = self.conn.cursor()
             cursor.execute(
@@ -118,6 +122,19 @@ class LiteDocumentDB():
             self.conn.rollback()
             logger.error(f"Failed to update document {document_id}: {e}")
             return False
+
+    def clear_database(self):
+        """Clear the database"""
+        try:
+            self.conn.execute('DELETE FROM documents')
+            self.conn.commit()
+            logger.info("Database cleared") 
+            return True
+        except Exception as e:
+            logger.error(f"Failed to clear database: {e}")
+            return e
+        
+
 
 if __name__ == "__main__":
     db = LiteDocumentDB()
@@ -146,5 +163,11 @@ if __name__ == "__main__":
     # ]
     
     # Insert and test
- 
-    print("All documents:", db.get_all_documents()) 
+    alldocs = db.get_all_documents()
+    for doc in alldocs:
+        simbadoc = cast(SimbaDoc, doc)
+        print(simbadoc.id)
+
+        print(simbadoc.metadata)
+        break
+    #print("All documents:", alldocs) 

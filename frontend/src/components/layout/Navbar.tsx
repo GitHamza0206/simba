@@ -12,7 +12,7 @@ export function Navbar() {
     <div className="border-b w-full">
       <div className="flex h-16 items-center justify-between px-4 w-full">
         <div className="flex items-center">
-          <span className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Artific</span>
+          <span className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Simba</span>
         </div>
 
         <div className="flex items-center space-x-4">

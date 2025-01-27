@@ -7,7 +7,7 @@ from langchain.docstore.document import Document
 import logging
 import faiss
 from langchain_community.docstore.in_memory import InMemoryDocstore
-from typing import Optional
+from typing import Optional, Union
 
 
 logger = logging.getLogger(__name__)
@@ -67,10 +67,16 @@ class VectorStoreService:
     
     
 
-    def add_documents(self, documents: list[Document]) -> list[Document]:
+    def add_documents(self, documents: list[Document]) -> Union[list[Document], bool]:
         # Add documents to store
         try:
-            print(f"Adding {len(documents)} documents to store")
+            for doc in documents:
+                if self.chunk_in_store(doc.id):
+                    print(f"Document {doc.id} already in store")
+                    return False
+                else:
+                    print(f"Adding {doc.id} to store")
+            
             self.store.add_documents(documents)
             self.save()
             return documents
@@ -94,6 +100,31 @@ class VectorStoreService:
         except Exception as e:
             logger.error(f"Error deleting documents {uids}: {e}")
             raise e
+        
+    def clear_store(self):
+        docstore = self.store.docstore
+        index_to_docstore_id = self.store.index_to_docstore_id
+        try:
+            if len(index_to_docstore_id) == 0:
+                raise ValueError("Store is already empty")
+            # Retrieve all documents
+            doc_ids = []
+            for index, doc_id in index_to_docstore_id.items():
+                document = docstore.search(doc_id)
+                if document:
+                    doc_ids.append(doc_id)
+            
+            return self.delete_documents(doc_ids)
+        except Exception as e:
+            logger.error(f"Error clearing store: {e}")
+            raise e
+
+
+    
+    def chunk_in_store(self, chunk_id: str) -> bool:
+        index_to_docstore_id = self.store.index_to_docstore_id
+        return chunk_id in index_to_docstore_id.values()
+    
 
     def search(self, query, **kwargs):
         # Search for similar documents

@@ -19,7 +19,7 @@ from services.vector_store_service import VectorStoreService
 import tempfile
 
 from datetime import datetime
-from services.ingestion_service.types import MetadataType, IngestedDocument, SimbaDoc
+from services.ingestion_service.types import MetadataType, SimbaDoc
 from services.ingestion_service.config import SUPPORTED_EXTENSIONS
 
 logger = logging.getLogger(__name__)
@@ -56,6 +56,9 @@ class DocumentIngestionService:
             # Use asyncio.to_thread for synchronous loader
             document = await asyncio.to_thread(lambda: loader(file_path=str(file_path)).load())
             
+            # Set id for each Document in the list
+            for doc in document:
+                doc.id = str(uuid.uuid4())
             # Use aiofiles for async file size check
             async with aiofiles.open(file_path, 'rb') as f:
                 await f.seek(0, 2)  # Seek to end of file
@@ -145,49 +148,17 @@ class DocumentIngestionService:
             logger.error(f"Error getting ingested documents by folder: {e}")
             raise e
         
-    def get_ingested_documents(self) -> dict:
-        all_documents = self.vector_store.get_documents()
-        documents_dict = {}
-        
-        for doc in all_documents:
-            try:
-                # Format size as string if it's a number
-                size = doc.metadata.get('size', 'unknown')
-                if isinstance(size, (int, float)):
-                    size_in_mb = round(size / (1024 * 1024), 2)
-                    size = f"{size_in_mb} MB"
+    
 
-                # Set default metadata values
-                default_metadata = {
-                    'filename': os.path.basename(doc.metadata.get('filename', 'unknown')),
-                    'size': size,
-                    'type': doc.metadata.get('type', 'unknown'),
-                    'loader': doc.metadata.get('loader', 'unknown'),
-                    'parser': doc.metadata.get('parser', 'not needed'),
-                    'uploadedAt': doc.metadata.get('uploadedAt', datetime.now().isoformat()),
-                    'file_path': doc.metadata.get('file_path', doc.metadata.get('filename', 'unknown'))
-                }
-
-                # Create metadata object
-                metadata = MetadataType(**default_metadata)
-
-                documents_dict[doc.id] = IngestedDocument(
-                    id=doc.id,
-                    page_content=doc.page_content,
-                    metadata=metadata
-                )
-            except Exception as e:
-                logger.error(f"Error processing document {doc.id}: {e}")
-                continue
-        
-        return documents_dict
-
-    def update_document(self, document_id: str, newDocument: Document):
+    def update_document(self, simbadoc: SimbaDoc, args: dict):
         try:
-            self.vector_store.update_document(document_id, newDocument)
-            logger.info(f"Document {document_id} updated successfully")
+            for key, value in args.items():
+                setattr(simbadoc.metadata, key, value)
+
+            self.vector_store.update_document(simbadoc.id, simbadoc)
+            logger.info(f"Document {simbadoc.id} updated successfully")
         except Exception as e:
-            logger.error(f"Error updating document {document_id}: {e}")
+            logger.error(f"Error updating document {simbadoc.id}: {e}")
             raise e
 
 

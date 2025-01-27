@@ -5,6 +5,7 @@ from pathlib import Path
 import shlex
 from pydantic import BaseModel
 from langchain.schema import Document
+from services.ingestion_service.types import SimbaDoc
 from services.vector_store_service import VectorStoreService
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,9 @@ class ParserService:
     def get_parsers(self):
         return self.SUPPORTED_PARSERS
 
-    def parse_document(self, document: Document, parser: str)-> Document:
-        file_path = document.metadata.get('file_path')
+    def parse_document(self, document: SimbaDoc, parser: str)-> SimbaDoc:
+        file_path = document.metadata.file_path
+
         if parser == "markitdown":
             try:
                 logger.info(f"Starting to parse document: {file_path}")

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, cast
 import json
 from langchain.schema import Document
 from pydantic import Field
@@ -34,44 +34,17 @@ class MetadataType(BaseModel):
             "file_path": self.file_path
         }
 
-class IngestedDocument(BaseModel):
-    id: str
-    page_content: str
-    metadata: MetadataType
 
-    def dict(self, *args, **kwargs):
-        return {
-            "id": self.id,
-            "page_content": self.page_content,
-            "metadata": self.metadata.dict()
-        }
-
-    def json(self, *args, **kwargs):
-        """Convert the document to a JSON string"""
-        return json.dumps(self.dict())
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        """Create an IngestedDocument from a dictionary"""
-        return cls(
-            id=data["id"],
-            page_content=data["page_content"],
-            metadata=MetadataType(**data["metadata"])
-        )
-    
-    def to_document(self):
-        return Document(page_content=self.page_content, metadata=self.metadata.dict())
 
 class SimbaDoc(BaseModel):
     id: str
     documents: List[Document]
     metadata: MetadataType
     
-    def to_documents(self) -> List[Document]:
-        """Convert SimbaDoc to a list of Documents with shared metadata"""
-        for doc in self.documents:
-            doc.metadata.update(self.metadata.dict())
-        return self.documents
+    @classmethod
+    def to_langchain_document(cls):
+        """Convert SimbaDoc to a list of Langchain documents"""
+        return cls.documents
     
     @classmethod
     def from_documents(cls, id: str, documents: List[Document], metadata: MetadataType) -> "SimbaDoc":

@@ -12,5 +12,6 @@ def test_document_loading_from_folder():
     print(documents_dict)
 
 
+
 if __name__ == "__main__":
     test_embedding_from_folder()

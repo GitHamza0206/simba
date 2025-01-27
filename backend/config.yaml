@@ -33,3 +33,6 @@ vector_store:
 chunking:
   chunk_size: 500
   chunk_overlap: 50
+
+retrieval:
+  k: 5

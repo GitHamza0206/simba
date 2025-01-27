@@ -25,52 +25,7 @@ const DocumentManagementApp: React.FC = () => {
   const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
   const [loadingStatus, setLoadingStatus] = useState<string>("Loading...");
 
-  const fetchDocuments = async () => {
-    setIsLoading(true);
-    try {
-      const [docsResponse, foldersResponse] = await Promise.all([
-        ingestionApi.getDocuments(),
-        folderApi.getFolders()
-      ]);
-
-      // Convert folders to DocumentType format
-      const folderDocs: DocumentType[] = foldersResponse.map(folder => ({
-        id: folder.id,
-        name: folder.name,
-        type: 'folder',
-        size: '0',
-        uploadedAt: folder.created_at,
-        content: '',
-        loader: '',
-        parser: '',
-        file_path: folder.path,
-        is_folder: true
-      }));
-
-      // Combine and sort by name
-      const allItems = [...folderDocs, ...docsResponse].sort((a, b) => {
-        if (a.is_folder && !b.is_folder) return -1;
-        if (!a.is_folder && b.is_folder) return 1;
-        return a.name.localeCompare(b.name);
-      });
-
-      setDocuments(allItems);
-    } catch (error) {
-      console.error('Error fetching documents:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch documents and folders",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Only fetch on mount
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
+  
 
   const stats: DocumentStatsType = {
     lastQueried: "2 hours ago",
@@ -79,46 +34,28 @@ const DocumentManagementApp: React.FC = () => {
     createdAt: "Apr 12, 2024"
   };
 
-  const handleUpload = async (files: FileList) => {
-    if (files.length === 0) return;
-    if (files.length > 5) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Maximum 5 files allowed at once",
-      });
-      return;
-    }
+  
 
+  const fetchDocuments = async () => {
     setIsLoading(true);
     try {
-      const file = files[0];
-      if (documents.some(doc => doc.name === file.name)) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "A file with this name already exists",
-        });
-        return;
-      }
-
-      await ingestionApi.uploadDocument(file);
-      await fetchDocuments(); // Utiliser la fonction de chargement existante
-
-      toast({
-        title: "Success",
-        description: "File uploaded successfully",
-      });
-    } catch (error: any) {
+      const docs = await ingestionApi.getDocuments();
+      setDocuments(docs);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message || "Upload failed. Please try again.",
+        description: "Failed to fetch documents"
       });
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Fetch documents when component mounts
+  useEffect(() => {
+    fetchDocuments();
+  }, []); // Empty dependency array means this runs once on mount
 
   const handleDelete = async (id: string) => {
     try {
@@ -148,68 +85,59 @@ const DocumentManagementApp: React.FC = () => {
     setSelectedDocument(document);
   };
 
-  const handleReindex = async (id: string) => {
+
+  const handleUpload = async (files: FileList) => {
+    // Early validation
+    if (files.length === 0) return;
+
+    setIsLoading(true);
+    setProgress(0);
+    setLoadingStatus("Preparing files...");
+
     try {
-      setIsLoading(true);
-      setProgress(0);
+      // Convert FileList to array for our API
+      const fileArray = Array.from(files);
+      
+      // Upload files using ingestion API
+      setLoadingStatus("Uploading files...");
+      const uploadedDocs = await ingestionApi.uploadDocuments(fileArray);
+      
+      // Update progress after upload
+      setProgress(50);
+      setLoadingStatus("Processing documents...");
 
-      // Get the current document
-      const doc = documents.find(d => d.id === id);
-      if (!doc) {
-        throw new Error("Document not found");
-      }
-
-      // Use the reindexDocument function from parsing_api
-      const reindexedDoc = await reindexDocument(
-        id, 
-        doc,
-        (status, progress) => {
-          setProgress(progress);
-          setLoadingStatus(status);
-          // Show toast for key progress points
-          if (progress === 100) {
-            toast({
-              title: "Success",
-              description: "Document reindexed successfully",
-            });
-          }
-        }
-      );
-
-      // Refresh documents list
+      // Wait a bit to show processing state
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Refresh document list
       await fetchDocuments();
       
-      // Update the document in the list with the reindexed version
-      setDocuments(prevDocs => 
-        prevDocs.map(d => 
-          d.id === id ? reindexedDoc : d
-        )
-      );
+      // Show success message with count
+      toast({
+        title: "Success",
+        description: `${uploadedDocs.length} ${uploadedDocs.length === 1 ? 'file' : 'files'} uploaded successfully`,
+      });
 
-    } catch (error: unknown) {
-      console.error('Error reindexing document:', error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to reindex document";
-      
-      // Handle specific error cases
-      if (errorMessage.includes("not found")) {
-        // Document or file not found - remove it from the list
-        setDocuments(docs => docs.filter(doc => doc.id !== id));
-        toast({
-          variant: "destructive",
-          title: "Document Not Found",
-          description: "The document was not found and has been removed from the list",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: errorMessage,
-        });
-      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: error.message || "Failed to upload files. Please try again.",
+      });
     } finally {
       setIsLoading(false);
       setProgress(0);
+      setLoadingStatus("");
     }
+  };
+
+  const handleDocumentUpdate = (updatedDoc: DocumentType) => {
+    setDocuments(prevDocs => 
+      prevDocs.map(doc => 
+        doc.id === updatedDoc.id ? updatedDoc : doc
+      )
+    );
   };
 
   return (
@@ -231,6 +159,7 @@ const DocumentManagementApp: React.FC = () => {
             onUpload={handleUpload}
             onPreview={handlePreview}
             fetchDocuments={fetchDocuments}
+            onDocumentUpdate={handleDocumentUpdate}
           />
         </Card>
       </div>

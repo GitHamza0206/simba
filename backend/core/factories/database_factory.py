@@ -1,7 +1,6 @@
 from functools import lru_cache
 from enum import Enum
 from typing import Optional
-from database.base import DocumentDatabase
 from database.sqlite_service import SQLiteDocumentDB
 from database.litedb_service import LiteDocumentDB
 from core.config import settings
@@ -21,7 +20,7 @@ SUPPORTED_DATABASES = {
 DEFAULT_DATABASE = DatabaseType.LITEDB
 
 @lru_cache()
-def get_database(db_type: Optional[str] = None) -> DocumentDatabase:
+def get_database(db_type: Optional[str] = None) :
     """
     Factory function to get database instance
     Args:

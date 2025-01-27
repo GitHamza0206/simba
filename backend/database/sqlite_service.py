@@ -4,7 +4,6 @@ from pathlib import Path
 import logging
 from typing import Dict, List, Optional, Any
 from core.config import settings
-from database.base import DocumentDatabase
 from services.ingestion_service.types import SimbaDoc
 
 logger = logging.getLogger(__name__)
@@ -36,7 +35,7 @@ class DocumentModel():
             metadata=doc.metadata.dict()
         )
 
-class SQLiteDocumentDB(DocumentDatabase):
+class SQLiteDocumentDB():
     _instance = None
 
     def __new__(cls):

@@ -1,5 +1,5 @@
 import { config } from '@/config';
-import { DocumentType } from '@/types/document';
+import { SimbaDoc } from '@/types/document';
 
 const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
 const ALLOWED_FILE_TYPES = [
@@ -10,241 +10,103 @@ const ALLOWED_FILE_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ];
 
-interface ValidationResult {
-  isValid: boolean;
-  error?: string;
-}
+class IngestionApi {
+  private baseUrl = config.apiUrl;
 
-interface IngestionResponse {
-  message: string;
-}
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      ...options,
+      headers: {
+        'Accept': 'application/json',
+        ...options.headers,
+      }
+    });
 
-interface GetDocumentsResponse {
-  message: string;
-  documents: Record<string, DocumentType>;
-}
-
-export const ingestionApi = {
-  validateFile: (file: File): ValidationResult => {
-    if (!file) return { isValid: false, error: "No file selected" };
-    
-    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-      return { isValid: false, error: "File type not supported" };
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Request failed');
     }
 
-    if (file.size === 0) {
-      return { isValid: false, error: "File is empty" };
-    }
+    return response.json();
+  }
 
-    if (file.size > MAX_FILE_SIZE) {
-      return { isValid: false, error: "File size exceeds 200MB limit" };
-    }
-
-    return { isValid: true };
-  },
-
-  uploadDocument: async (file: File, onProgress?: (progress: number) => void): Promise<IngestionResponse> => {
-    const validation = ingestionApi.validateFile(file);
-    if (!validation.isValid) {
-      throw new Error(validation.error);
+  async uploadDocuments(
+    files: File[], 
+  ): Promise<SimbaDoc[]> {
+    // Validate all files
+    for (const file of files) {
+      if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+        throw new Error(`File type not supported for ${file.name}`);
+      }
+      if (file.size === 0 || file.size > MAX_FILE_SIZE) {
+        throw new Error(`Invalid file size for ${file.name}`);
+      }
     }
 
     const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      const response = await fetch(`${config.apiUrl}/ingestion`, {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || 'Upload failed');
-      }
-
-      return response.json();
-    } catch (error:any) {
-      if (error.name === 'AbortError') {
-        throw new Error('Upload timeout - please try again');
-      }
-      throw error;
-    }
-  },
-
-  getLoaders: async (): Promise<string[]> => {
-    const response = await fetch(`${config.apiUrl}/loaders`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      }
+    // Add each file to formData with the same field name
+    files.forEach(file => {
+      formData.append('files', file);
     });
-    if (!response.ok) {
-      throw new Error('Failed to fetch loaders');
-    }
-    return response.json(); 
-  },  
 
-  getParsers: async (): Promise<{ parsers: string[] }> => {
-    const response = await fetch(`${config.apiUrl}/parsers`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      }
-    });
-    if (!response.ok) {
-      throw new Error('Failed to fetch parsers');
-    }
-    return response.json();
-  },
 
-  getDocuments: async (): Promise<DocumentType[]> => {
-    const response = await fetch(`${config.apiUrl}/ingestion`, {
-      cache: 'no-cache',
-      headers: {
-        'Accept': 'application/json'
-      }
+    return this.request('/ingestion', {
+      method: 'POST',
+      body: formData,
     });
+  }
+
+  // Helper method for single file upload
+  async uploadDocument(
+    file: File, 
+  ): Promise<SimbaDoc[]> {
+    return this.uploadDocuments([file]);
+  }
+
+  async getDocuments(): Promise<SimbaDoc[]> {
+    const response = await this.request<Record<string, SimbaDoc>>('/ingestion');
     
-    if (!response.ok) {
-      throw new Error('Failed to fetch documents');
+    if (!response || Object.keys(response).length === 0) {
+      return [];
     }
     
-    const data = await response.json();
-    if (!data || Object.keys(data).length === 0) return [];
+    return Object.values(response);
+  }
 
-    console.log(data);
-    
-    return Object.entries(data).map(([id, doc]: [string, any]) => ({
-      id,
-      document_id: doc.id,
-      name: doc.metadata.filename || 'Unknown',
-      type: doc.metadata.type || 'Unknown',
-      size: (doc.metadata.size || 0) + " MB",
-      uploadedAt: doc.metadata.uploadedAt || 'Unknown',
-      content: doc.page_content || 'Unknown',
-      loader: doc.metadata.loader || 'Unknown',
-      parser: doc.metadata.parser || '-',
-      file_path: doc.metadata.file_path || 'none',
+  async getDocument(id: string): Promise<SimbaDoc> {
+    return this.request(`/ingestion/${id}`);
+  }
 
-    }));
-  },
-
-  deleteDocument: async (uid: string): Promise<IngestionResponse> => {
-    // Demander confirmation à l'utilisateur
+  async deleteDocument(id: string): Promise<void> {
     const isConfirmed = window.confirm('Are you sure you want to delete this document?');
-    
     if (!isConfirmed) {
       throw new Error('Delete cancelled by user');
     }
 
-    try {
-      const response = await fetch(`${config.apiUrl}/ingestion?uid=${uid}`, {
-        method: 'DELETE',
-        headers: {
-          'accept': 'application/json'
-        }
-      });
+    await this.request('/ingestion', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([id])
+    });
+  }
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || 'Delete failed');
-      }
+  async getLoaders(): Promise<string[]> {
+    const response = await this.request<{ loaders: string[] }>('/loaders');
+    return response.loaders;
+  }
 
-      return response.json();
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to delete document');
-    }
-  },
-
-  async getDocument(id: string): Promise<{ content: string; type: string }> {
-
-    try {
-      const response = await fetch(`${config.apiUrl}/document/${id}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch document');
-      }
-
-      const data = await response.json();
-      
-      // Handle both PDF and text content
-      return {
-        content: data.content,
-        type: data.type || 'text'
-      };
-    } catch (error) {
-      console.error('Error fetching document:', error);
-      throw error;
-    }
-  },
+  async getParsers(): Promise<string[]> {
+    const response = await this.request<{ parsers: string[] }>('/parsers');
+    return response.parsers;
+  }
 
   async getUploadDirectory(): Promise<string> {
-    try {
-      const response = await fetch(`${config.apiUrl}/upload-directory`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch upload directory');
-      }
-
-      const data = await response.json();
-      return data.path;
-    } catch (error) {
-      console.error('Error fetching upload directory:', error);
-      throw error;
-    }
-  },
-
-  reindexDocument: async (
-    documentId: string, 
-    parser: string,
-    onProgress?: (status: string, progress: number) => void
-  ) => {
-    try {
-      onProgress?.("Starting reindex process...", 0);
-      
-      const response = await fetch(`${config.apiUrl}/ingestion/reindex?document_id=${documentId}&parser=${parser}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Reindex error response:', errorData);
-        if (errorData.detail) {
-          throw new Error(typeof errorData.detail === 'string' 
-            ? errorData.detail 
-            : JSON.stringify(errorData.detail));
-        }
-        throw new Error('Failed to reindex document');
-      }
-
-      const result = await response.json();
-      onProgress?.("Reindex completed", 100);
-      return result;
-      
-    } catch (error) {
-      onProgress?.("Error occurred", 0);
-      console.error('Error reindexing document:', error);
-      throw error;
-    }
+    const response = await this.request<{ path: string }>('/upload-directory');
+    return response.path;
   }
-};
+}
+
+// Export a single instance
+export const ingestionApi = new IngestionApi();

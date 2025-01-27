@@ -1,5 +1,4 @@
 import { config } from '@/config'
-import { Message } from '@/types/chat'
 
 export async function sendMessage(message: string): Promise<Response> {
   try {

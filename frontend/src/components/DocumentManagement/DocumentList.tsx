@@ -10,7 +10,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { DocumentType } from '@/types/document';
-import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw } from 'lucide-react';
+import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play } from 'lucide-react';
 import { Button } from '../ui/button';
 import { 
   DropdownMenu,
@@ -45,15 +45,19 @@ import { ingestionApi } from '@/lib/ingestion_api';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { SimbaDoc } from '@/types/document';
+import { Metadata } from '@/types/document';
+import { embeddingApi } from '@/lib/embedding_api';
 
 interface DocumentListProps {
-  documents: DocumentType[];
+  documents: SimbaDoc[];
   isLoading: boolean;
   onDelete: (id: string) => void;
   onSearch: (query: string) => void;
   onUpload: (files: FileList) => void;
-  onPreview: (document: DocumentType) => void;
+  onPreview: (document: SimbaDoc) => void;
   fetchDocuments: () => Promise<void>;
+  onDocumentUpdate: (document: SimbaDoc) => void;
 }
 
 const DocumentList: React.FC<DocumentListProps> = ({
@@ -64,10 +68,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
   onUpload,
   onPreview,
   fetchDocuments,
+  onDocumentUpdate,
 }) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [showReindexDialog, setShowReindexDialog] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<SimbaDoc | null>(null);
   const [reindexProgress, setReindexProgress] = useState(0);
   const [progressStatus, setProgressStatus] = useState("");
   const [isReindexing, setIsReindexing] = useState(false);
@@ -75,19 +80,15 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const [currentPath, setCurrentPath] = useState('/');
   const [uploadDir, setUploadDir] = useState<string>('');
   const { toast } = useToast();
+  const [enabledDocuments, setEnabledDocuments] = useState<Set<string>>(
+    new Set(documents.filter(doc => doc.metadata.enabled).map(doc => doc.id))
+  );
 
   useEffect(() => {
-    const fetchUploadDir = async () => {
-      try {
-        const path = await ingestionApi.getUploadDirectory();
-        setUploadDir(path);
-      } catch (error) {
-        console.error('Failed to fetch upload directory:', error);
-      }
-    };
-
-    fetchUploadDir();
-  }, []);
+    setEnabledDocuments(
+      new Set(documents.filter(doc => doc.metadata.enabled).map(doc => doc.id))
+    );
+  }, [documents]);
 
   const formatDate = (dateString: string) => {
     if (dateString === "Unknown") return dateString;
@@ -96,22 +97,23 @@ const DocumentList: React.FC<DocumentListProps> = ({
     return date.toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
-
-  const handleReindexClick = (document: DocumentType) => {
-    if (!document.file_path) {
+  const handleReindexClick = (document: SimbaDoc) => {
+    if (!document.metadata.file_path) {
       console.error("Document missing file_path:", document);
       return;
     }
     
     console.log("Document to reindex:", {
       id: document.id,
-      file_path: document.file_path,
-      parser: document.parser,
-      parserModified: document.parserModified
+      file_path: document.metadata.file_path,
+      parser: document.metadata.parser,
+      parserModified: document.metadata.parserModified
     });
     
     setSelectedDocument(document);
@@ -125,7 +127,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
     try {
       await ingestionApi.reindexDocument(
         selectedDocument.id, 
-        selectedDocument.parser,
+        selectedDocument.metadata.parser,
         (status, progress) => {
           setProgressStatus(status);
           setReindexProgress(progress);
@@ -150,18 +152,18 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
-  const getReindexWarningContent = (document: DocumentType) => {
-    if (document.loaderModified && document.parserModified) {
+  const getReindexWarningContent = (document: SimbaDoc) => {
+    if (document.metadata.loaderModified && document.metadata.parserModified) {
       return {
         title: "Confirm Re-indexing",
         description: "This will update both the loader and parser. Changing the parser will create a new markdown file. Are you sure you want to proceed?"
       };
-    } else if (document.parserModified) {
+    } else if (document.metadata.parserModified) {
       return {
         title: "Confirm Parser Change",
         description: "Changing the parser will create a new markdown file. Are you sure you want to proceed?"
       };
-    } else if (document.loaderModified) {
+    } else if (document.metadata.loaderModified) {
       return {
         title: "Confirm Loader Change",
         description: "Do you want to update the document loader?"
@@ -173,30 +175,31 @@ const DocumentList: React.FC<DocumentListProps> = ({
     };
   };
 
-  const getFileIcon = (fileType: string) => {
-    const type = fileType.toLowerCase();
+  const getFileIcon = (metadata: Metadata) => {
+    if (metadata.is_folder) return Folder;
     
-    switch (type) {
-      case '.pdf':
-        return <FileText className="h-4 w-4 text-blue-500" />;
-      case '.xlsx':
-      case '.xls':
-      case '.csv':
-        return <FileSpreadsheet className="h-4 w-4 text-green-500" />;
-      case '.md':
-      case '.markdown':
-        return <FileCode className="h-4 w-4 text-purple-500" />;
-      case '.docx':
-      case '.doc':
-        return <FileText className="h-4 w-4 text-blue-400" />;
-      case '.txt':
-        return <FileText className="h-4 w-4 text-gray-500" />;
-      case '.jpg':
-      case '.jpeg':
-      case '.png':
-        return <FileImage className="h-4 w-4 text-orange-500" />;
+    const extension = metadata.file_path.split('.').pop()?.toLowerCase();
+    switch (extension) {
+      case 'pdf':
+        return FileText;
+      case 'xlsx':
+      case 'xls':
+      case 'csv':
+        return FileSpreadsheet;
+      case 'md':
+      case 'markdown':
+        return FileCode;
+      case 'docx':
+      case 'doc':
+        return FileText;
+      case 'txt':
+        return FileText;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return FileImage;
       default:
-        return <File className="h-4 w-4 text-gray-500" />;
+        return File;
     }
   };
 
@@ -213,6 +216,81 @@ const DocumentList: React.FC<DocumentListProps> = ({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create folder",
         variant: "destructive",
+      });
+    }
+  };
+
+  const enableDocument = async (doc: SimbaDoc, checked: boolean) => {
+    try {
+      if (checked) {
+        // Add to embeddings
+        await embeddingApi.embedd_document(doc.id);
+        setEnabledDocuments(prev => {
+          const next = new Set(prev);
+          next.add(doc.id);
+          return next;
+        });
+        // Update the document in the documents array
+        const updatedDoc = { ...doc, metadata: { ...doc.metadata, enabled: true }};
+        onDocumentUpdate(updatedDoc);
+        toast({
+          title: "Document embedded",
+          description: `Document embedded successfully.`
+        });
+      } else {
+        // Remove from embeddings
+        await embeddingApi.delete_document(doc.id);
+        setEnabledDocuments(prev => {
+          const next = new Set(prev);
+          next.delete(doc.id);
+          return next;
+        });
+        // Update the document in the documents array
+        const updatedDoc = { ...doc, metadata: { ...doc.metadata, enabled: false }};
+        onDocumentUpdate(updatedDoc);
+        toast({
+          title: "Document removed",
+          description: "Document removed from embeddings successfully"
+        });
+      }
+    } catch (error) {
+      // Reset the switch state on error
+      setEnabledDocuments(prev => {
+        const next = new Set(prev);
+        checked ? next.delete(doc.id) : next.add(doc.id);
+        return next;
+      });
+      toast({
+        title: "Error",
+        description: error instanceof Error 
+          ? error.message 
+          : `Failed to ${checked ? 'embed' : 'remove'} document`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteEmbedding = async (docIds: string[]) => {
+    try {
+      await embeddingApi.delete_document(docIds);
+      setEnabledDocuments(prev => {
+        const next = new Set(prev);
+        docIds.forEach(id => next.delete(id));
+        return next;
+      });
+      toast({
+        title: "Success",
+        description: docIds.length > 1 
+          ? "Document embeddings deleted successfully" 
+          : "Document embedding deleted successfully"
+      });
+      await fetchDocuments();
+    } catch (error) {
+      console.error('Error deleting embeddings:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete document embeddings",
+        variant: "destructive"
       });
     }
   };
@@ -286,37 +364,37 @@ const DocumentList: React.FC<DocumentListProps> = ({
               </TableCell>
             </TableRow>
             
-            {documents.map((item) => (
-              <TableRow key={item.id} className="hover:bg-gray-50">
+            {documents.map((doc) => (
+              <TableRow key={doc.id} className="hover:bg-gray-50">
                 <TableCell>
                   <Checkbox />
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {getFileIcon(item.type)}
-                    <span>{item.name}</span>
+                    {React.createElement(getFileIcon(doc.metadata))}
+                    <span>{doc.metadata.file_path.split('/').pop()}</span>
                   </div>
                 </TableCell>
-                <TableCell>{item.chunk_number || 0}</TableCell>
-                <TableCell>{formatDate(item.uploadedAt)}</TableCell>
+                <TableCell>
+                  {doc.metadata.enabled ? doc.documents.length : 0}
+                </TableCell>
+                <TableCell>{formatDate(doc.metadata.uploadedAt || "Unknown")}</TableCell>
                 <TableCell>
                   <Switch
-                    checked={item.enabled}
-                    onCheckedChange={(checked) => {
-                      console.log(`Toggle ${item.id} to ${checked}`);
-                    }}
+                    checked={enabledDocuments.has(doc.id)}
+                    onCheckedChange={(checked) => enableDocument(doc, checked)}
                   />
                 </TableCell>
                 <TableCell>
                   <Badge
                     variant={
-                      item.parsing_status === 'SUCCESS' ? 'success' :
-                      item.parsing_status === 'CANCEL' ? 'warning' :
-                      item.parsing_status === 'FAILED' ? 'destructive' :
+                      doc.metadata.parsing_status === 'SUCCESS' ? 'success' :
+                      doc.metadata.parsing_status === 'CANCEL' ? 'warning' :
+                      doc.metadata.parsing_status === 'FAILED' ? 'destructive' :
                       'default'
                     }
                   >
-                    {item.parsing_status || 'PENDING'}
+                    {doc.metadata.parsing_status || 'PENDING'}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -324,7 +402,15 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => onPreview(item)}
+                      onClick={() => handleParseClick(doc)}
+                      className="h-8 w-8"
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onPreview(doc)}
                       className="h-8 w-8"
                     >
                       <Eye className="h-4 w-4" />
@@ -332,7 +418,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => onDelete(item.id)}
+                      onClick={() => onDelete(doc.id)}
                       className="h-8 w-8 hover:bg-red-100 hover:text-red-600"
                     >
                       <Trash2 className="h-4 w-4 text-red-500" />

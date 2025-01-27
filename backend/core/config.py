@@ -63,6 +63,10 @@ class ChunkingConfig(BaseModel):
     chunk_size: int = 500
     chunk_overlap: int = 50
 
+class RetrievalConfig(BaseModel):
+    k: int = 5
+
+
 class DatabaseConfig(BaseModel):
     provider: str = "litedb"  # or "sqlite"
     additional_params: Dict[str, Any] = Field(default_factory=dict)
@@ -74,6 +78,7 @@ class Settings(BaseModel):
     embeddings: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
     vector_store: VectorStoreConfig = Field(default_factory=VectorStoreConfig)
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
+    retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
 
     @classmethod
