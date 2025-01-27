@@ -36,6 +36,7 @@ langchain-ollama = "^0.2.2"
 rq = "^2.1.0"
 pymupdf = "^1.25.2"
 tinydb = "^4.8.2"
+langchain-milvus = "^0.1.8"
 
 
 

@@ -13,13 +13,13 @@ def split_document(documents: List[Document]) -> List[Document]:
         List[Document]: A list of smaller Document chunks.
     """
     # Initialize the text splitter
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)  # TODO: Make these parameters configurable
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=400)  # TODO: Make these parameters configurable
     
-    # Ensure the input is a Document object
-    if not isinstance(documents, List[Document]):
-        raise ValueError("Input must be a LangChain Document object.")
+    # Check if input is a list and contains Document objects
+    if not isinstance(documents, list) or not all(isinstance(doc, Document) for doc in documents):
+        raise ValueError("Input must be a list of LangChain Document objects")
     
-    # Split the document's page_content into chunks
-    chunks = text_splitter.split_documents(documents)  # Pass a list containing the Document object
+    # Split the documents into chunks
+    chunks = text_splitter.split_documents(documents)
     
     return chunks

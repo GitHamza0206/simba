@@ -13,16 +13,16 @@ paths:
   vector_store_dir: "vector_stores"
 
 llm:
-  provider: "ollama"
-  model_name: "llama3.1:8b"
+  provider: "openai"
+  model_name: "gpt-4o"
   temperature: 0.0
   max_tokens: null
   streaming: true
   additional_params: {}
 
 embedding:
-  provider: "ollama"
-  model_name: "nomic-embed-text:latest"
+  provider: "openai"
+  model_name: "text-embedding-3-small"
   additional_params: {}
 
 vector_store:
@@ -31,8 +31,8 @@ vector_store:
   additional_params: {}
 
 chunking:
-  chunk_size: 500
-  chunk_overlap: 50
+  chunk_size: 512
+  chunk_overlap: 200
 
 retrieval:
   k: 5

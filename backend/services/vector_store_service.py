@@ -7,7 +7,7 @@ from langchain.docstore.document import Document
 import logging
 import faiss
 from langchain_community.docstore.in_memory import InMemoryDocstore
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 
 logger = logging.getLogger(__name__)
@@ -67,8 +67,8 @@ class VectorStoreService:
     
     
 
-    def add_documents(self, documents: list[Document]) -> Union[list[Document], bool]:
-        # Add documents to store
+    def add_documents(self, documents: List[str]) -> bool:
+        """Add documents with proper synchronization"""
         try:
             for doc in documents:
                 if self.chunk_in_store(doc.id):
@@ -79,11 +79,10 @@ class VectorStoreService:
             
             self.store.add_documents(documents)
             self.save()
-            return documents
+            return True
         except Exception as e:
             logger.error(f"Error adding documents: {e}")
-            return False
-        
+            raise e
 
     def count_documents(self):
         """Count documents in store."""
@@ -92,29 +91,63 @@ class VectorStoreService:
         # For other vector stores that support len()
         return len(self.store)
 
-    def delete_documents(self, uids: list[str]):
-        # Delete documents from store
+    def delete_documents(self, uids: list[str]) -> bool:
+        """Delete documents and verify deletion"""
         try:
-            self.store.delete(uids)
+            # Store initial counts for verification
+            initial_count = self.count_documents()
+            print(f"Initial document count: {initial_count}")
+            
+            # Check which documents actually exist
+            existing_uids = [uid for uid in uids if self.chunk_in_store(uid)]
+            missing_uids = set(uids) - set(existing_uids)
+            
+            if missing_uids:
+                logger.warning(f"Documents not found in store: {missing_uids}")
+                # Print current store contents for debugging
+                logger.debug(f"Current store IDs: {list(self.store.index_to_docstore_id.values())}")
+            
+            if not existing_uids:
+                logger.warning("No valid documents to delete")
+                return True
+            
+            # Delete existing documents
+            self.store.delete(existing_uids)
             self.save()
+            
+            # Verify deletion
+            final_count = self.count_documents()
+            all_deleted = all(not self.chunk_in_store(uid) for uid in existing_uids)
+            is_sync = self.verify_store_sync()
+            
+            logger.info(f"Deleted {len(existing_uids)} documents. Final count: {final_count}")
+            return all_deleted and is_sync
+            
         except Exception as e:
-            logger.error(f"Error deleting documents {uids}: {e}")
+            logger.error(f"Error deleting documents: {e}")
             raise e
         
     def clear_store(self):
-        docstore = self.store.docstore
-        index_to_docstore_id = self.store.index_to_docstore_id
+        """Clear all documents and reset the FAISS index"""
         try:
-            if len(index_to_docstore_id) == 0:
-                raise ValueError("Store is already empty")
-            # Retrieve all documents
-            doc_ids = []
-            for index, doc_id in index_to_docstore_id.items():
-                document = docstore.search(doc_id)
-                if document:
-                    doc_ids.append(doc_id)
+            # Get embedding dimension from existing index or create new
+            if hasattr(self.store, 'index') and self.store.index is not None:
+                dim = self.store.index.d
+            else:
+                dim = len(self.embeddings.embed_query("test"))
+
+            # Reset FAISS index
+            self.store.index = faiss.IndexFlatL2(dim)
             
-            return self.delete_documents(doc_ids)
+            # Clear document store
+            self.store.docstore._dict.clear()
+            self.store.index_to_docstore_id.clear()
+            
+            # Save empty state
+            self.save()
+            logger.info("Vector store cleared successfully")
+            return True
+            
         except Exception as e:
             logger.error(f"Error clearing store: {e}")
             raise e
@@ -172,6 +205,37 @@ class VectorStoreService:
         )
         store.save_local(settings.paths.faiss_index_dir)
         return store
+
+    def verify_store_sync(self) -> bool:
+        """
+        Verify synchronization between FAISS index and document store
+        Returns: bool indicating if stores are in sync
+        """
+        try:
+            # Get counts
+            faiss_count = self.store.index.ntotal
+            docstore_count = len(self.store.docstore._dict)
+            index_map_count = len(self.store.index_to_docstore_id)
+            
+            # Check all counts match
+            counts_match = (faiss_count == docstore_count == index_map_count)
+            
+            # Verify all mapped IDs exist in docstore
+            ids_exist = all(
+                self.store.docstore._dict.get(doc_id) is not None 
+                for doc_id in self.store.index_to_docstore_id.values()
+            )
+            
+            if not counts_match:
+                print(f"Count mismatch: FAISS={faiss_count}, "
+                            f"Docstore={docstore_count}, "
+                            f"Index Map={index_map_count}")
+            
+            return counts_match and ids_exist
+
+        except Exception as e:
+            logger.error(f"Error verifying store sync: {e}")
+            return False
 
 def usage():
     store = VectorStoreService()

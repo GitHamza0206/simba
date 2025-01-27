@@ -33,9 +33,10 @@ async def embed_document(doc_id: str):
     try:
         simbadoc: SimbaDoc = db.get_document(doc_id)
         langchain_documents = simbadoc.documents
-           
+        splits = split_document(langchain_documents)
+        
         try:
-            store.add_documents(langchain_documents)
+            store.add_documents(splits)
             #we need to update the document in the database to enable it
             simbadoc.metadata.enabled = True
             db.update_document(doc_id, simbadoc)
