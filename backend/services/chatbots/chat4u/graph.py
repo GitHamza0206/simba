@@ -2,12 +2,12 @@ import io
 from langgraph.graph import END, StateGraph, START
 from langgraph.checkpoint.memory import MemorySaver
 from .state import State
-from langgraph.prebuilt import ToolNode, tools_condition
-from .tools.retrieve_tool import retrieve
+
 
 #===========================================
 # Import nodes
-from .nodes.assistant_node import assistant
+from .nodes.retrieve_node import retrieve
+from .nodes.grade_node import grade
 from .nodes.generate_node import generate
 #===========================================
 
@@ -17,35 +17,24 @@ memory = MemorySaver()
 
 #===========================================
 # Define the nodes
-workflow.add_node("assistant", assistant)
-retrieve_node = ToolNode([retrieve])
-workflow.add_node("retrieve", retrieve_node)
+workflow.add_node("retrieve", retrieve)
+workflow.add_node("grade", grade)
 workflow.add_node("generate", generate)
 
 #===========================================
 
 #===========================================
 #define the edges
-workflow.add_edge(START, "assistant")
-workflow.add_conditional_edges(
-    "assistant",
-    tools_condition,
-    {
-        "tools":"retrieve",
-        END: END,
-    },
-
-)
-
-
-workflow.add_edge("retrieve", "generate")
+workflow.add_edge(START, "retrieve")
+workflow.add_edge("retrieve", "grade")
+workflow.add_edge("grade", "generate")
 workflow.add_edge("generate", END)
 
 
 #===========================================
 
 
-def save_graph(workflow):
+def show_graph(workflow):
     from PIL import Image
     import io
     import matplotlib.pyplot as plt
@@ -63,4 +52,4 @@ graph = workflow.compile()
 if __name__ == "__main__":
 
     print(graph.invoke({"messages": "what is insurance?"}))
-    save_graph(graph)
+    show_graph(graph)

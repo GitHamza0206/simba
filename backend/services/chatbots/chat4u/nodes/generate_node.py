@@ -1,32 +1,19 @@
 from ..chains.generate_chain import generate_chain
-import time
-
+    
 def generate(state):
     """
     Generate answer
 
     Args:
-        state (messages): The current state
+        state (dict): The current graph state
 
     Returns:
-         dict: The updated state with re-phrased question
+        state (dict): New key added to state, generation, that contains LLM generation
     """
-    
     print("---GENERATE---")
-    messages = state["messages"]
-    question = messages[0].content
-    last_message = messages[-1]
+    question = state["question"]
+    documents = state["documents"]
 
-    docs = last_message.content
-    
-    try:
-        # Run with timeout
-        response = generate_chain.invoke(
-            {"context": docs, "question": question},
-            config={"timeout": 60}  # 60 seconds timeout
-        )
-        return {"messages": [response]}
-    
-    except Exception as e:
-        print(f"Unexpected error occurred: {str(e)}")
-        return {"messages": [{"content": "I apologize, but I encountered an error while processing your request. Please try again."}]}
+    # RAG generation
+    generation = generate_chain.invoke({"context": documents, "question": question})
+    return {"documents": documents, "question": question, "generation": generation}
