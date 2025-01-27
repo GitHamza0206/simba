@@ -1,8 +1,8 @@
 
 import json
 from fastapi import APIRouter,Body
-from services.agentic_worflow_service.state import State
-from services.agentic_worflow_service.graph import graph
+from services.chatbots.demo.state import State
+from services.chatbots.demo.graph import graph
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 
