@@ -11,7 +11,7 @@ import asyncio
 from typing import List, Optional, cast
 from services.ingestion_service.document_ingestion_service import DocumentIngestionService
 from services.ingestion_service.file_handling import load_file_from_path, save_file_locally
-from services.ingestion_service.types import  SimbaDoc
+from models.simbadoc import SimbaDoc
 from services.ingestion_service.utils import check_file_exists
 from services.parser_service import ParserService
 from services.vector_store_service import VectorStoreService
@@ -32,6 +32,7 @@ from services.ingestion_service.folder_handling import (
 )
 
 from services.loader import Loader
+from services.ingestion_service.document_ingestion_service import DocumentIngestionService
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ ingestion = APIRouter()
 ingestion_service = DocumentIngestionService()
 db = get_database()
 loader = Loader()
+kms = DocumentIngestionService()
 
 # Document Management Routes
 # ------------------------
@@ -78,11 +80,15 @@ async def ingest_document(
 @ingestion.get("/ingestion")
 async def get_ingestion_documents():
     """Get all ingested documents grouped by folder"""
+    db.refresh()
+    kms.sync_with_store()
+    db.refresh()
     return db.get_all_documents()
 
 @ingestion.get("/ingestion/{uid}")
 async def get_document(uid: str):
     """Get a document by ID"""
+    kms.sync_with_store()
     return db.get_document(uid)
 
 
@@ -90,6 +96,7 @@ async def get_document(uid: str):
 async def delete_document(uids: List[str]):
     """Delete a document by ID"""
     db.delete_documents(uids)
+    kms.sync_with_store()
     return {"message": f"Documents {uids} deleted successfully"}
 
 

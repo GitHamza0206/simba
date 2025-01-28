@@ -1,26 +1,22 @@
 import logging
-import io
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 import uuid
 from core.factories.database_factory import get_database
 from langchain.schema import Document
 from core.config import settings
-import os 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from pydantic import BaseModel
 from fastapi import UploadFile
 import aiofiles
-import asyncio
 
-from services.ingestion_service.file_handling import delete_file_locally, save_file_locally
+from services.ingestion_service.file_handling import delete_file_locally
 
 from services.vector_store_service import VectorStoreService
-import tempfile
 from services.splitter import Splitter
 from datetime import datetime
-from services.ingestion_service.types import MetadataType, SimbaDoc
 from services.loader import Loader
+from models.simbadoc import SimbaDoc, MetadataType
+
+
 logger = logging.getLogger(__name__)
 
 class DocumentIngestionService:
@@ -29,6 +25,7 @@ class DocumentIngestionService:
         self.database = get_database()
         self.loader = Loader()
         self.splitter = Splitter()
+
     async def ingest_document(self, file: UploadFile) -> Document:
         """
         Process and ingest documents into the vector store.
@@ -56,7 +53,7 @@ class DocumentIngestionService:
 
             # Use asyncio.to_thread for synchronous loader
             document = await self.loader.aload(file_path=str(file_path))
-            document = self.splitter.split_document(document)
+            document = self.splitter.split_document(document) #split document into chunks
             # Set id for each Document in the list
             for doc in document:
                 doc.id = str(uuid.uuid4())
@@ -145,17 +142,30 @@ class DocumentIngestionService:
                     any(chunk.id == store_doc.id for chunk in simba_doc.documents)
                     for store_doc in store_documents
                 )
+
+                #we check that all chunks that are in the kms are in the db 
+                kms_chunks_id = [chunk.id for chunk in simba_doc.documents]
+                store_chunks_id = [chunk.id for chunk in store_documents]
+                print(f"KMS chunks: {kms_chunks_id}")
+                print(f"Store chunks: {store_chunks_id}")
+
+                # #check if all chunks are in store
+                # if all(chunk_id in store_chunks_id for chunk_id in kms_chunks_id):
+                #     print(f"All chunks for document {simba_doc.id} found in store")
+                # else:
+                #     print(f"Not all chunks for document {simba_doc.id} found in store")
+
                 
-                if docs_found and not simba_doc.metadata.enabled:
-                    # Document chunks exist in store but not enabled - enable it
-                    logger.info(f"Document {simba_doc.id} found in store but disabled. Enabling.")
-                    simba_doc.metadata.enabled = True
-                    self.database.update_document(simba_doc.id, simba_doc)
-                elif not docs_found and simba_doc.metadata.enabled:
-                    # Document chunks don't exist in store but is enabled - disable it
-                    logger.warning(f"Document {simba_doc.id} not found in store but enabled. Disabling.")
-                    simba_doc.metadata.enabled = False
-                    self.database.update_document(simba_doc.id, simba_doc)
+                # if docs_found and not simba_doc.metadata.enabled:
+                #     # Document chunks exist in store but not enabled - enable it
+                #     logger.info(f"Document {simba_doc.id} found in store but disabled. Enabling.")
+                #     simba_doc.metadata.enabled = True
+                #     self.database.update_document(simba_doc.id, simba_doc)
+                # elif not docs_found and simba_doc.metadata.enabled:
+                #     # Document chunks don't exist in store but is enabled - disable it
+                #     logger.warning(f"Document {simba_doc.id} not found in store but enabled. Disabling.")
+                #     simba_doc.metadata.enabled = False
+                #     self.database.update_document(simba_doc.id, simba_doc)
             
             logger.info("Store synchronization completed")
             return True
@@ -165,7 +175,7 @@ class DocumentIngestionService:
             raise e
 
 if __name__ == "__main__":
-    document_ingestion_service = DocumentIngestionService()
+    kms = DocumentIngestionService()
     #document_ingestion_service.sync_with_store()
 
 

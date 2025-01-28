@@ -4,7 +4,8 @@ from pathlib import Path
 import logging
 from typing import Dict, List, Optional, Any, cast
 from core.config import settings
-from services.ingestion_service.types import SimbaDoc
+from models.simbadoc import SimbaDoc
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class LiteDocumentDB():
     def _initialize(self):
         """Initialize the database"""
         try:
-            db_path = Path(settings.paths.upload_dir) / "documents.db"
+            db_path = Path(settings.paths.upload_dir) / "documents.db" #TODO: make this configurable
             self.conn = sqlite3.connect(str(db_path))
             # Enable JSON serialization
             self.conn.row_factory = sqlite3.Row
@@ -102,26 +103,36 @@ class LiteDocumentDB():
     def update_document(self, document_id: str, newDocument: SimbaDoc) -> bool:
         """Update a document by ID"""
         try:
-            # Get existing document
-            doc = self.get_document(document_id)
-            if not doc:
-                return False
-                
-            # Update document
-            doc_dict = doc.dict()
-            doc_dict.update(newDocument.dict()) 
-            
             cursor = self.conn.cursor()
+            
+            # Convert directly to JSON, preserving all fields
+            doc_json = newDocument.model_dump_json()
+            
             cursor.execute(
                 'UPDATE documents SET data = ? WHERE id = ?',
-                (json.dumps(doc_dict), document_id)
+                (doc_json, document_id)
             )
+            
+            # Force commit
             self.conn.commit()
-            return cursor.rowcount > 0
+            
+            # Verify update
+            if cursor.rowcount == 0:
+                logger.warning(f"No document found with ID {document_id}")
+                return False
+            
+            logger.info(f"Document {document_id} updated successfully")
+            return True
+            
         except Exception as e:
             self.conn.rollback()
             logger.error(f"Failed to update document {document_id}: {e}")
-            return False
+            raise e  # Re-raise to ensure we know about failures
+
+    def refresh(self):
+        """Refresh the database"""
+        self.conn.commit()
+
 
     def clear_database(self):
         """Clear the database"""
@@ -139,8 +150,7 @@ class LiteDocumentDB():
 if __name__ == "__main__":
     db = LiteDocumentDB()
     from langchain_core.documents import Document
-    from services.ingestion_service.types import MetadataType
-    
+    from models.simbadoc import SimbaDoc
     # # Test single document
     # doc1 = SimbaDoc(
     #     id='1',

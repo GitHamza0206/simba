@@ -2,7 +2,8 @@ from typing import List, cast
 from core.factories.database_factory import get_database
 from fastapi import APIRouter, HTTPException
 from services.ingestion_service.document_ingestion_service import DocumentIngestionService
-from services.ingestion_service.types import SimbaDoc
+from models.simbadoc import SimbaDoc
+
 from services.splitter import Splitter
 from services.vector_store_service import VectorStoreService
 
@@ -36,7 +37,6 @@ async def embed_document(doc_id: str):
     try:
         simbadoc: SimbaDoc = db.get_document(doc_id)
         langchain_documents = simbadoc.documents
-        #splits = splitter.split_document(langchain_documents) #Note: split is done in the ingestion service
 
         try:
             store.add_documents(langchain_documents)
@@ -50,6 +50,7 @@ async def embed_document(doc_id: str):
             if "Tried to add ids that already exist" in str(ve):
                 return langchain_documents  # Return success response
             raise ve  # Re-raise if it's a different ValueError
+        
         return langchain_documents
 
     except Exception as e:
@@ -82,8 +83,6 @@ async def delete_document(doc_id: str):
         simbadoc: SimbaDoc = db.get_document(doc_id)
         docs_ids = [doc.id for doc in simbadoc.documents]
         store.delete_documents(docs_ids)
-        simbadoc.metadata.enabled = False
-        db.update_document(doc_id, simbadoc)  
         kms.sync_with_store()  
         
         return {"message": "Documents deleted"}

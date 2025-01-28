@@ -1,11 +1,13 @@
 from typing import cast
 from fastapi import APIRouter
 from core.factories.database_factory import get_database
-from services.ingestion_service.types import SimbaDoc
+from models.simbadoc import SimbaDoc
+from services.ingestion_service.document_ingestion_service import DocumentIngestionService
 
 database_route   = APIRouter()
 
 db = get_database()
+kms = DocumentIngestionService()
 
 @database_route.get("/database/info")
 async def get_database_info():
@@ -13,6 +15,7 @@ async def get_database_info():
 
 @database_route.get("/database/documents")
 async def get_database_documents():
+    kms.sync_with_store()
     return db.get_all_documents()
 
 @database_route.get("/database/langchain_documents")

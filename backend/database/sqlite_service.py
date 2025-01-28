@@ -4,7 +4,8 @@ from pathlib import Path
 import logging
 from typing import Dict, List, Optional, Any
 from core.config import settings
-from services.ingestion_service.types import SimbaDoc
+from models.simbadoc import SimbaDoc
+
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +132,7 @@ class SQLiteDocumentDB():
 if __name__ == "__main__":
     db = SQLiteDocumentDB()
     from langchain_core.documents import Document
-    from services.ingestion_service.types import MetadataType
+    from models.simbadoc import SimbaDoc, MetadataType
     
     # Test single document
     doc1 = SimbaDoc(
