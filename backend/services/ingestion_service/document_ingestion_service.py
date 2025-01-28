@@ -17,7 +17,7 @@ from services.ingestion_service.file_handling import delete_file_locally, save_f
 
 from services.vector_store_service import VectorStoreService
 import tempfile
-
+from services.splitter import Splitter
 from datetime import datetime
 from services.ingestion_service.types import MetadataType, SimbaDoc
 from services.loader import Loader
@@ -28,7 +28,7 @@ class DocumentIngestionService:
         self.vector_store = VectorStoreService()
         self.database = get_database()
         self.loader = Loader()
-
+        self.splitter = Splitter()
     async def ingest_document(self, file: UploadFile) -> Document:
         """
         Process and ingest documents into the vector store.
@@ -56,10 +56,12 @@ class DocumentIngestionService:
 
             # Use asyncio.to_thread for synchronous loader
             document = await self.loader.aload(file_path=str(file_path))
-            
+            document = self.splitter.split_document(document)
             # Set id for each Document in the list
             for doc in document:
                 doc.id = str(uuid.uuid4())
+
+            
             # Use aiofiles for async file size check
             async with aiofiles.open(file_path, 'rb') as f:
                 await f.seek(0, 2)  # Seek to end of file
@@ -134,34 +136,29 @@ class DocumentIngestionService:
     def sync_with_store(self):
         """Sync embedding status with vector store"""
         try:
-            store_documents: List[Document] = self.vector_store.get_documents()
-            db_docs: List[SimbaDoc] = self.database.get_all_documents()
+            store_documents = self.vector_store.get_documents()
+            db_docs = self.database.get_all_documents()
             
             for simba_doc in db_docs:
-                if simba_doc.metadata.enabled:
-                    # Check if simba_doc's documents exist in store
-                    docs_found = any(
-                        store_doc.metadata.get('doc_id') == simba_doc.id 
-                        for store_doc in store_documents
-                    )
-                    
-                    if not docs_found:
-                        logger.warning(f"Documents for SimbaDoc {simba_doc.id} not found in store. Disabling.")
-                        simba_doc.metadata.enabled = False
-                        self.database.update_document(simba_doc.id, simba_doc)
+                # Check if any of simba_doc's chunks exist in store
+                docs_found = any(
+                    any(chunk.id == store_doc.id for chunk in simba_doc.documents)
+                    for store_doc in store_documents
+                )
                 
-                else:
-                    docs_found = any(
-                        store_doc.metadata.get('doc_id') == simba_doc.id 
-                        for store_doc in store_documents
-                    )
-                    
-                    if docs_found:
-                        logger.info(f"Documents for SimbaDoc {simba_doc.id} found in store. Enabling.")
-                        simba_doc.metadata.enabled = True
-                        self.database.update_document(simba_doc.id, simba_doc)
+                if docs_found and not simba_doc.metadata.enabled:
+                    # Document chunks exist in store but not enabled - enable it
+                    logger.info(f"Document {simba_doc.id} found in store but disabled. Enabling.")
+                    simba_doc.metadata.enabled = True
+                    self.database.update_document(simba_doc.id, simba_doc)
+                elif not docs_found and simba_doc.metadata.enabled:
+                    # Document chunks don't exist in store but is enabled - disable it
+                    logger.warning(f"Document {simba_doc.id} not found in store but enabled. Disabling.")
+                    simba_doc.metadata.enabled = False
+                    self.database.update_document(simba_doc.id, simba_doc)
             
             logger.info("Store synchronization completed")
+            return True
             
         except Exception as e:
             logger.error(f"Error syncing with store: {e}")

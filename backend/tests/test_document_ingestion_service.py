@@ -36,9 +36,10 @@ def test_sync_with_store_enabled_doc_not_in_store(ingestion_service):
     ingestion_service.sync_with_store()
     
     # Assert
-    ingestion_service.database.update.assert_called_once_with(
+    mock_simba_doc.metadata.enabled = False
+    ingestion_service.database.update_document.assert_called_once_with(
         "test_id", 
-        mock_simba_doc  # Pass the entire updated SimbaDoc
+        mock_simba_doc
     )
 
 def test_sync_with_store_disabled_doc_in_store(ingestion_service):
@@ -63,9 +64,10 @@ def test_sync_with_store_disabled_doc_in_store(ingestion_service):
     ingestion_service.sync_with_store()
     
     # Assert
-    ingestion_service.database.update.assert_called_once_with(
+    mock_simba_doc.metadata.enabled = True
+    ingestion_service.database.update_document.assert_called_once_with(
         "test_id", 
-        mock_simba_doc  # Pass the entire updated SimbaDoc
+        mock_simba_doc
     )
 
 def test_sync_with_store_no_changes_needed(ingestion_service):
@@ -90,4 +92,14 @@ def test_sync_with_store_no_changes_needed(ingestion_service):
     ingestion_service.sync_with_store()
     
     # Assert
-    ingestion_service.database.update.assert_not_called() 
+    ingestion_service.database.update_document.assert_not_called()
+
+def test_sync_with_store_error_handling(ingestion_service):
+    """Test error handling during sync"""
+    # Setup
+    ingestion_service.database.get_all_documents.side_effect = Exception("Database error")
+    
+    # Execute & Assert
+    with pytest.raises(Exception) as exc_info:
+        ingestion_service.sync_with_store()
+    assert str(exc_info.value) == "Database error" 

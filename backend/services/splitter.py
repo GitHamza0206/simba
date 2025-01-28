@@ -7,7 +7,7 @@ from langchain_experimental.text_splitter import SemanticChunker
 class Splitter:
     def __init__(self):
 
-        self.strategy = "semantic_chunking" # TODO: Make this configurable
+        self.strategy = "recursive_character" # TODO: Make this configurable
 
     
     def split_document(self, documents: List[Document]) -> List[Document]:

@@ -36,13 +36,15 @@ async def embed_document(doc_id: str):
     try:
         simbadoc: SimbaDoc = db.get_document(doc_id)
         langchain_documents = simbadoc.documents
-        splits = splitter.split_document(langchain_documents)
+        #splits = splitter.split_document(langchain_documents) #Note: split is done in the ingestion service
 
         try:
-            store.add_documents(splits)
+            store.add_documents(langchain_documents)
             #we need to update the document in the database to enable it
             simbadoc.metadata.enabled = True
             db.update_document(doc_id, simbadoc)
+            kms.sync_with_store()
+
         except ValueError as ve:
             # If the error is about existing IDs, consider it a success
             if "Tried to add ids that already exist" in str(ve):
@@ -57,6 +59,7 @@ async def embed_document(doc_id: str):
 async def get_embedded_documents():
     try:
         docs = store.get_documents()
+        kms.sync_with_store()
         return docs
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -66,6 +69,7 @@ async def delete_document_chunk(chunk_ids: List[str]):
     """Delete a list of document chunks"""
     try:
         store.delete_documents(chunk_ids)
+        kms.sync_with_store()
         return {"message": "Document chunk deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -79,7 +83,9 @@ async def delete_document(doc_id: str):
         docs_ids = [doc.id for doc in simbadoc.documents]
         store.delete_documents(docs_ids)
         simbadoc.metadata.enabled = False
-        db.update_document(doc_id, simbadoc)    
+        db.update_document(doc_id, simbadoc)  
+        kms.sync_with_store()  
+        
         return {"message": "Documents deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

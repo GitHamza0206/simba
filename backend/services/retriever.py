@@ -11,17 +11,16 @@ class Retriever:
 
     def as_ensemble_retriever(self):
         documents = self.store.get_documents()
-        if len(documents) == 0:
-            return self.store.as_retriever()
         
+        self.store.save()
+
         retriever = self.store.as_retriever(
-            search_type="similarity_score_threshold",
+            search_type="similarity",
             search_kwargs = {
-                "score_threshold": 0.7,
                 "k": 5
             }
         )
-        keyword_retriever  = BM25Retriever.from_documents(
+        keyword_retriever = BM25Retriever.from_documents(
             documents,
             preprocess_func=lambda text: text.lower()  # Simple preprocessing
         )

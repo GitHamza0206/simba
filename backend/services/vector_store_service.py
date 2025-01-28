@@ -96,35 +96,13 @@ class VectorStoreService:
     def delete_documents(self, uids: list[str]) -> bool:
         """Delete documents and verify deletion"""
         try:
-            # Store initial counts for verification
-            initial_count = self.count_documents()
-            print(f"Initial document count: {initial_count}")
             
-            # Check which documents actually exist
-            existing_uids = [uid for uid in uids if self.chunk_in_store(uid)]
-            missing_uids = set(uids) - set(existing_uids)
             
-            if missing_uids:
-                logger.warning(f"Documents not found in store: {missing_uids}")
-                # Print current store contents for debugging
-                logger.debug(f"Current store IDs: {list(self.store.index_to_docstore_id.values())}")
+            self.store.delete(uids)
+            self.save() 
+            self.verify_store_sync()
             
-            if not existing_uids:
-                logger.warning("No valid documents to delete")
-                return True
-            
-            # Delete existing documents
-            self.store.delete(existing_uids)
-            self.save()
-            
-            # Verify deletion
-            final_count = self.count_documents()
-            all_deleted = all(not self.chunk_in_store(uid) for uid in existing_uids)
-            is_sync = self.verify_store_sync()
-            
-            logger.info(f"Deleted {len(existing_uids)} documents. Final count: {final_count}")
-            return all_deleted and is_sync
-            
+            return True
         except Exception as e:
             logger.error(f"Error deleting documents: {e}")
             raise e
@@ -195,7 +173,6 @@ class VectorStoreService:
                 index=index,
                 docstore= InMemoryDocstore(),
                 index_to_docstore_id={},
-                index_type="IVF",
             )
             store.save_local(settings.paths.faiss_index_dir)
         return store
