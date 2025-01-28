@@ -131,12 +131,44 @@ class DocumentIngestionService:
             logger.error(f"Error updating document {simbadoc.id}: {e}")
             raise e
 
-
-   
-        
-        
+    def sync_with_store(self):
+        """Sync embedding status with vector store"""
+        try:
+            store_documents: List[Document] = self.vector_store.get_documents()
+            db_docs: List[SimbaDoc] = self.database.get_all_documents()
+            
+            for simba_doc in db_docs:
+                if simba_doc.metadata.enabled:
+                    # Check if simba_doc's documents exist in store
+                    docs_found = any(
+                        store_doc.metadata.get('doc_id') == simba_doc.id 
+                        for store_doc in store_documents
+                    )
+                    
+                    if not docs_found:
+                        logger.warning(f"Documents for SimbaDoc {simba_doc.id} not found in store. Disabling.")
+                        simba_doc.metadata.enabled = False
+                        self.database.update_document(simba_doc.id, simba_doc)
+                
+                else:
+                    docs_found = any(
+                        store_doc.metadata.get('doc_id') == simba_doc.id 
+                        for store_doc in store_documents
+                    )
+                    
+                    if docs_found:
+                        logger.info(f"Documents for SimbaDoc {simba_doc.id} found in store. Enabling.")
+                        simba_doc.metadata.enabled = True
+                        self.database.update_document(simba_doc.id, simba_doc)
+            
+            logger.info("Store synchronization completed")
+            
+        except Exception as e:
+            logger.error(f"Error syncing with store: {e}")
+            raise e
 
 if __name__ == "__main__":
     document_ingestion_service = DocumentIngestionService()
+    #document_ingestion_service.sync_with_store()
 
 

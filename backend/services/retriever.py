@@ -11,7 +11,9 @@ class Retriever:
 
     def as_ensemble_retriever(self):
         documents = self.store.get_documents()
-
+        if len(documents) == 0:
+            return self.store.as_retriever()
+        
         retriever = self.store.as_retriever(
             search_type="similarity_score_threshold",
             search_kwargs = {

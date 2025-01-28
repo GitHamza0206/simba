@@ -69,7 +69,7 @@ class VectorStoreService:
     
     
 
-    def add_documents(self, documents: List[str]) -> bool:
+    def add_documents(self, documents: List[Document]) -> bool:
         """Add documents with proper synchronization"""
         try:
             for doc in documents:

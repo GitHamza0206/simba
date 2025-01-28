@@ -51,4 +51,4 @@ class Splitter:
             breakpoint_threshold_type="percentile",
             breakpoint_threshold_amount=0.8
         )
-        return splitter.create_documents(documents)
+        return splitter.create_documents(documents[0].page_content)

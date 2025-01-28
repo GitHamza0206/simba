@@ -1,6 +1,7 @@
 from typing import List, cast
 from core.factories.database_factory import get_database
 from fastapi import APIRouter, HTTPException
+from services.ingestion_service.document_ingestion_service import DocumentIngestionService
 from services.ingestion_service.types import SimbaDoc
 from services.splitter import Splitter
 from services.vector_store_service import VectorStoreService
@@ -10,6 +11,8 @@ embedding_route = APIRouter()
 db = get_database()
 store = VectorStoreService()
 splitter = Splitter()
+kms = DocumentIngestionService()
+
 @embedding_route.post('/embed/documents')
 async def embed_documents():
     try:    
@@ -84,4 +87,5 @@ async def delete_document(doc_id: str):
 @embedding_route.post("/embed/clear_store")
 async def clear_store():
     store.clear_store()
+    kms.sync_with_store()
     return {"message": "Store cleared"}

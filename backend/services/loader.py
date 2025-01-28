@@ -21,7 +21,7 @@ class Loader:
     def __init__(self):
         self.SUPPORTED_EXTENSIONS = {
             ".md": UnstructuredMarkdownLoader,
-            ".pdf": PyPDFLoader,
+            ".pdf": UnstructuredPDFLoader,
             ".pptx": UnstructuredPowerPointLoader,
             ".xlsx": UnstructuredExcelLoader,
             ".docx": UnstructuredWordDocumentLoader,

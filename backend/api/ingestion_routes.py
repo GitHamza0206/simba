@@ -9,7 +9,6 @@ from datetime import datetime
 import asyncio
 
 from typing import List, Optional, cast
-from services.ingestion_service.config import SUPPORTED_EXTENSIONS
 from services.ingestion_service.document_ingestion_service import DocumentIngestionService
 from services.ingestion_service.file_handling import load_file_from_path, save_file_locally
 from services.ingestion_service.types import  SimbaDoc
@@ -32,6 +31,8 @@ from services.ingestion_service.folder_handling import (
     Folder
 )
 
+from services.loader import Loader
+
 logger = logging.getLogger(__name__)
 
 MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
@@ -40,6 +41,7 @@ ingestion = APIRouter()
 
 ingestion_service = DocumentIngestionService()
 db = get_database()
+loader = Loader()
 
 # Document Management Routes
 # ------------------------
@@ -97,7 +99,7 @@ async def delete_document(uids: List[str]):
 @ingestion.get("/loaders")
 async def get_loaders():
     """Get supported document loaders"""
-    return {"loaders": [loader.__name__ for loader in SUPPORTED_EXTENSIONS.values()]}
+    return {"loaders": [l.__name__ for l in loader.SUPPORTED_EXTENSIONS.values()]}
 
 @ingestion.get("/parsers")
 async def get_parsers():
