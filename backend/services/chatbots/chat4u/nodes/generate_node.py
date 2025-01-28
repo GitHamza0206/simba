@@ -16,4 +16,4 @@ def generate(state):
 
     # RAG generation
     generation = generate_chain.invoke({"context": documents, "question": question})
-    return {"documents": documents, "question": question, "generation": generation}
+    return {"docume nts": documents, "question": question, "generation": generation}

@@ -1,9 +1,7 @@
-from services.vector_store_service import VectorStoreService
+from services.retriever import Retriever
 
-store = VectorStoreService()
-retriever = store.as_retriever(
-    search_kwargs={"k": 4}
-)
+retriever = Retriever()
+ensemble_retriever = retriever.as_ensemble_retriever()
 
 def retrieve(state):
     """
@@ -19,7 +17,7 @@ def retrieve(state):
         print("---RETRIEVE---")
         question = state["question"]
         # Retrieval with error handling
-        documents = retriever.invoke(question)
+        documents = ensemble_retriever.invoke(question)
         print(f"Retrieved {len(documents)} documents")
         
         return {"documents": documents, "question": question}

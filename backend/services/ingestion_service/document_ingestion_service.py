@@ -14,20 +14,20 @@ import aiofiles
 import asyncio
 
 from services.ingestion_service.file_handling import delete_file_locally, save_file_locally
-from services.splitter import split_document
+
 from services.vector_store_service import VectorStoreService
 import tempfile
 
 from datetime import datetime
 from services.ingestion_service.types import MetadataType, SimbaDoc
-from services.ingestion_service.config import SUPPORTED_EXTENSIONS
-
+from services.loader import Loader
 logger = logging.getLogger(__name__)
 
 class DocumentIngestionService:
     def __init__(self):
         self.vector_store = VectorStoreService()
         self.database = get_database()
+        self.loader = Loader()
 
     async def ingest_document(self, file: UploadFile) -> Document:
         """
@@ -44,7 +44,7 @@ class DocumentIngestionService:
             folder_path = Path(settings.paths.upload_dir)
             file_path = folder_path / file.filename
             file_extension = f".{file.filename.split('.')[-1].lower()}" 
-            loader = SUPPORTED_EXTENSIONS[file_extension]
+
             
             # Ensure file exists and is not empty
             if not file_path.exists():
@@ -53,8 +53,9 @@ class DocumentIngestionService:
             if file_path.stat().st_size == 0:
                 raise ValueError(f"File {file_path} is empty")
             
+
             # Use asyncio.to_thread for synchronous loader
-            document = await asyncio.to_thread(lambda: loader(file_path=str(file_path)).load())
+            document = await self.loader.aload(file_path=str(file_path))
             
             # Set id for each Document in the list
             for doc in document:
@@ -74,7 +75,7 @@ class DocumentIngestionService:
                 enabled=False,
                 parsing_status="Unparsed",
                 size=size_str,
-                loader=loader.__name__,
+                loader=self.loader.__name__,
                 uploadedAt=datetime.now().isoformat(),
                 file_path=str(file_path),
                 parser=None
@@ -115,38 +116,7 @@ class DocumentIngestionService:
             logger.error(f"Error deleting document {uid}: {e}")
             raise e
         
-    def get_ingested_documents_by_folder(self) -> dict:
-        documents_dict = {}
-        try:
-            uploads_dir = settings.paths.upload_dir
-            for root, _, files in os.walk(uploads_dir):
-                for file in files:
-                    file_extension = f".{file.split('.')[-1].lower()}" 
-                    if file.endswith(".md"):
-                        loader = SUPPORTED_EXTENSIONS[file_extension]
-                        doc_id = str(uuid.uuid4())
-                        file_path = os.path.join(root, file)
-                        document = loader(file_path).load()[0]
-                        documents_dict[doc_id] = IngestedDocument(
-                            id=doc_id,
-                            page_content=document.page_content,
-                            metadata=MetadataType(
-                                filename=file,
-                                type=file.split(".")[-1],
-                                size= "100 MB",
-                                loader=loader.__name__,
-                                uploadedAt=datetime.now().isoformat(),
-                                file_path=file_path,
-                                parser=None
-                            )
-                        )
-
-
-            return documents_dict
-
-        except Exception as e:
-            logger.error(f"Error getting ingested documents by folder: {e}")
-            raise e
+    
         
     
 
@@ -162,43 +132,7 @@ class DocumentIngestionService:
             raise e
 
 
-    def ingest_markdowns_from_dir(self):
-        """
-        Ingest all documents from a directory.
-        
-        Args:
-            directory: Path to directory containing documents
-            
-        Returns:
-            int: Number of documents ingested
-        """
-        # Implementation for directory processing
-    
-        """
-        Retrieve all .md files from a given folder, including subfolders.
-        Returns a list of tuples containing the folder name and file path for each .md file.
-        """
-
-        md_files = []
-
-        for root, _, files in os.walk(settings.paths.upload_dir):
-            for file in files:
-                if file.endswith(".md"):
-                    file_path = os.path.join(root, file)
-                    md_files.append(file_path)
-
-
-        docs = [SUPPORTED_EXTENSIONS[".md"](file_path).load() for file_path in md_files]
-        # docs = [CustomMarkdownLoader(url[1]).load() for url in urls]
-        docs_list = [item for sublist in docs for item in sublist]
-
-        text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-            chunk_size=settings.chunking.chunk_size, chunk_overlap=settings.chunking.chunk_overlap
-        )
-        
-        doc_splits = text_splitter.split_documents(docs_list) #TODO Chunking strategy choose
-            
-        self.vector_store.add_documents(doc_splits)
+   
         
         
 

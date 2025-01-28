@@ -2,14 +2,14 @@ from typing import List, cast
 from core.factories.database_factory import get_database
 from fastapi import APIRouter, HTTPException
 from services.ingestion_service.types import SimbaDoc
-from services.splitter import split_document
+from services.splitter import Splitter
 from services.vector_store_service import VectorStoreService
 
 embedding_route = APIRouter()
 
 db = get_database()
 store = VectorStoreService()
-
+splitter = Splitter()
 @embedding_route.post('/embed/documents')
 async def embed_documents():
     try:    
@@ -33,8 +33,8 @@ async def embed_document(doc_id: str):
     try:
         simbadoc: SimbaDoc = db.get_document(doc_id)
         langchain_documents = simbadoc.documents
-        splits = split_document(langchain_documents)
-        
+        splits = splitter.split_document(langchain_documents)
+
         try:
             store.add_documents(splits)
             #we need to update the document in the database to enable it

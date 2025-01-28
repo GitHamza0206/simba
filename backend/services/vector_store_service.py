@@ -8,7 +8,8 @@ import logging
 import faiss
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from typing import Optional, Union, List
-
+from langchain_community.retrievers import BM25Retriever
+from langchain.retrievers import EnsembleRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class VectorStoreService:
             self.store = self._initialize_faiss()
         elif settings.vector_store.provider == "chroma":
             self.store = self._initialize_chroma()
+
     
     def as_retriever(self, **kwargs) :
         return self.store.as_retriever(**kwargs)
@@ -180,6 +182,7 @@ class VectorStoreService:
             store = FAISS.load_local(
                 settings.paths.faiss_index_dir,
                 self.embeddings, 
+                
                 allow_dangerous_deserialization=True
             )
         else:
@@ -191,7 +194,8 @@ class VectorStoreService:
                 embedding_function=self.embeddings,
                 index=index,
                 docstore= InMemoryDocstore(),
-                index_to_docstore_id={}
+                index_to_docstore_id={},
+                index_type="IVF",
             )
             store.save_local(settings.paths.faiss_index_dir)
         return store
