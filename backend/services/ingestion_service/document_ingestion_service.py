@@ -136,28 +136,29 @@ class DocumentIngestionService:
     def sync_with_store(self):
         """Sync embedding status with vector store"""
         try:
-            store_documents = self.vector_store.get_documents()
+            # Get all documents from database
             db_docs = self.database.get_all_documents()
             
             for simba_doc in db_docs:
-                # Check if any of simba_doc's chunks exist in store
-                docs_found = any(
-                    any(chunk.id == store_doc.id for chunk in simba_doc.documents)
-                    for store_doc in store_documents
+                # Check if ANY chunks of this document exist in vector store
+                chunks_exist = any(
+                    self.vector_store.chunk_in_store(chunk.id) 
+                    for chunk in simba_doc.documents
                 )
                 
-                if docs_found and not simba_doc.metadata.enabled:
-                    # Document chunks exist in store but not enabled - enable it
-                    logger.info(f"Document {simba_doc.id} found in store but disabled. Enabling.")
-                    simba_doc.metadata.enabled = True
-                    self.database.update_document(simba_doc.id, simba_doc)
-                elif not docs_found and simba_doc.metadata.enabled:
-                    # Document chunks don't exist in store but is enabled - disable it
-                    logger.warning(f"Document {simba_doc.id} not found in store but enabled. Disabling.")
-                    simba_doc.metadata.enabled = False
-                    self.database.update_document(simba_doc.id, simba_doc)
+                # Only update if there's a mismatch AND we're not in the middle of embedding
+                if chunks_exist != simba_doc.metadata.enabled:
+                    # Double check the chunks are really there or not there
+                    double_check = any(
+                        self.vector_store.get_document(chunk.id) is not None
+                        for chunk in simba_doc.documents
+                    )
+                    
+                    if double_check == chunks_exist:  # Only update if both checks agree
+                        simba_doc.metadata.enabled = chunks_exist
+                        self.database.update_document(simba_doc.id, simba_doc)
+                        logger.info(f"Document {simba_doc.id} {'enabled' if chunks_exist else 'disabled'}")
             
-            logger.info("Store synchronization completed")
             return True
             
         except Exception as e:

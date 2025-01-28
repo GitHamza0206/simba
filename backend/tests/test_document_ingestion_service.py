@@ -6,7 +6,10 @@ from services.ingestion_service.types import SimbaDoc, MetadataType
 
 @pytest.fixture
 def mock_vector_store():
-    return Mock()
+    mock = Mock()
+    # Set up chunk_in_store method
+    mock.chunk_in_store = Mock()
+    return mock
 
 @pytest.fixture
 def mock_database():
@@ -19,79 +22,78 @@ def ingestion_service(mock_vector_store, mock_database):
     service.database = mock_database
     return service
 
-def test_sync_with_store_enabled_doc_not_in_store(ingestion_service):
-    """Test when enabled SimbaDoc is not found in store"""
+def test_sync_with_store_enable_document(ingestion_service):
+    """Test enabling document when chunks exist in store"""
     # Setup
-    metadata = MetadataType(enabled=True)
-    mock_simba_doc = SimbaDoc(
-        id="test_id",
-        documents=[Document(page_content="test")],
+    chunk1 = Document(page_content="test1", metadata={})
+    chunk1.id = "chunk1"
+    chunk2 = Document(page_content="test2", metadata={})
+    chunk2.id = "chunk2"
+    
+    metadata = MetadataType(enabled=False)  # Start disabled
+    simba_doc = SimbaDoc(
+        id="doc1",
+        documents=[chunk1, chunk2],
         metadata=metadata
     )
     
-    ingestion_service.database.get_all_documents.return_value = [mock_simba_doc]
-    ingestion_service.vector_store.get_documents.return_value = []
+    # Configure mocks
+    ingestion_service.database.get_all_documents.return_value = [simba_doc]
+    ingestion_service.vector_store.chunk_in_store.side_effect = lambda x: True  # Chunks exist
     
     # Execute
     ingestion_service.sync_with_store()
     
     # Assert
-    mock_simba_doc.metadata.enabled = False
-    ingestion_service.database.update_document.assert_called_once_with(
-        "test_id", 
-        mock_simba_doc
-    )
+    assert simba_doc.metadata.enabled == True
+    ingestion_service.database.update_document.assert_called_once_with("doc1", simba_doc)
 
-def test_sync_with_store_disabled_doc_in_store(ingestion_service):
-    """Test when disabled SimbaDoc is found in store"""
+def test_sync_with_store_disable_document(ingestion_service):
+    """Test disabling document when chunks don't exist in store"""
     # Setup
-    metadata = MetadataType(enabled=False)
-    mock_simba_doc = SimbaDoc(
-        id="test_id",
-        documents=[Document(page_content="test")],
+    chunk1 = Document(page_content="test1", metadata={})
+    chunk1.id = "chunk1"
+    
+    metadata = MetadataType(enabled=True)  # Start enabled
+    simba_doc = SimbaDoc(
+        id="doc1",
+        documents=[chunk1],
         metadata=metadata
     )
     
-    store_doc = Document(
-        page_content="test",
-        metadata={"doc_id": "test_id"}
-    )
-    
-    ingestion_service.database.get_all_documents.return_value = [mock_simba_doc]
-    ingestion_service.vector_store.get_documents.return_value = [store_doc]
+    # Configure mocks
+    ingestion_service.database.get_all_documents.return_value = [simba_doc]
+    ingestion_service.vector_store.chunk_in_store.side_effect = lambda x: False  # Chunks don't exist
     
     # Execute
     ingestion_service.sync_with_store()
     
     # Assert
-    mock_simba_doc.metadata.enabled = True
-    ingestion_service.database.update_document.assert_called_once_with(
-        "test_id", 
-        mock_simba_doc
-    )
+    assert simba_doc.metadata.enabled == False
+    ingestion_service.database.update_document.assert_called_once_with("doc1", simba_doc)
 
-def test_sync_with_store_no_changes_needed(ingestion_service):
-    """Test when documents are already in sync"""
+def test_sync_with_store_no_change_needed(ingestion_service):
+    """Test no update when store state matches enabled status"""
     # Setup
+    chunk1 = Document(page_content="test1", metadata={})
+    chunk1.id = "chunk1"
+    
     metadata = MetadataType(enabled=True)
-    mock_simba_doc = SimbaDoc(
-        id="test_id",
-        documents=[Document(page_content="test")],
+    simba_doc = SimbaDoc(
+        id="doc1",
+        documents=[chunk1],
         metadata=metadata
     )
     
-    store_doc = Document(
-        page_content="test",
-        metadata={"doc_id": "test_id"}
-    )
-    
-    ingestion_service.database.get_all_documents.return_value = [mock_simba_doc]
-    ingestion_service.vector_store.get_documents.return_value = [store_doc]
+    # Configure mocks
+    ingestion_service.database.get_all_documents.return_value = [simba_doc]
+    ingestion_service.vector_store.chunk_in_store.side_effect = lambda x: True  # Matches enabled status
     
     # Execute
     ingestion_service.sync_with_store()
     
     # Assert
+    assert simba_doc.metadata.enabled == True
     ingestion_service.database.update_document.assert_not_called()
 
 def test_sync_with_store_error_handling(ingestion_service):
