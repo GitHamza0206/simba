@@ -133,7 +133,7 @@ class DocumentIngestionService:
     def sync_with_store(self):
         """Sync embedding status with vector store"""
         try:
-            store_documents = self.vector_store.get_documents()
+            # Get all documents from database
             db_docs = self.database.get_all_documents()
 
             # Get IDs for comparison
