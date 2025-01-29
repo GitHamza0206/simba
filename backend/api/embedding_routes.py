@@ -5,12 +5,12 @@ from services.ingestion_service.document_ingestion_service import DocumentIngest
 from models.simbadoc import SimbaDoc
 
 from services.splitter import Splitter
-from services.vector_store_service import VectorStoreService
+from core.factories.vector_store_factory import VectorStoreFactory
 
 embedding_route = APIRouter()
 
 db = get_database()
-store = VectorStoreService()
+store = VectorStoreFactory.get_vector_store()
 splitter = Splitter()
 kms = DocumentIngestionService()
 

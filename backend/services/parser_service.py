@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from langchain.schema import Document
 from models.simbadoc import SimbaDoc
 
-from services.vector_store_service import VectorStoreService
 logger = logging.getLogger(__name__)
 
 from langchain_docling import DoclingLoader

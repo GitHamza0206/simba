@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 from langchain.schema import Document
-from services.vector_store_service import VectorStoreService
+from core.factories.vector_store_factory import VectorStoreFactory
 import uuid
 import os
 import shutil
@@ -22,7 +22,7 @@ def clean_vector_store():
 
 @pytest.fixture
 def vector_store():
-    return VectorStoreService()
+    return VectorStoreFactory.get_vector_store()
 
 def test_delete_documents_success(vector_store):
     """Test successful document deletion"""

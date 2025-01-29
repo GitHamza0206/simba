@@ -1,8 +1,8 @@
 from langchain_core.tools import tool
-from services.vector_store_service import VectorStoreService
+from core.factories.vector_store_factory import VectorStoreFactory
 from core.config import settings
 
-store = VectorStoreService()
+store = VectorStoreFactory.get_vector_store()
 
 # Post-processing
 def format_docs(docs):

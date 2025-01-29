@@ -1,10 +1,10 @@
-from services.vector_store_service import VectorStoreService
+from core.factories.vector_store_factory import VectorStoreFactory
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
 
 class Retriever:
     def __init__(self):
-        self.store = VectorStoreService()
+        self.store = VectorStoreFactory.get_vector_store()
 
     def as_retriever(self, **kwargs):
         return self.store.as_retriever(**kwargs)

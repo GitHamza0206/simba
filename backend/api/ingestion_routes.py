@@ -14,7 +14,7 @@ from services.ingestion_service.file_handling import load_file_from_path, save_f
 from models.simbadoc import SimbaDoc
 from services.ingestion_service.utils import check_file_exists
 from services.parser_service import ParserService
-from services.vector_store_service import VectorStoreService
+from core.factories.vector_store_factory import VectorStoreFactory
 from core.config import settings
 
 from langchain_core.documents import Document
@@ -44,7 +44,7 @@ ingestion_service = DocumentIngestionService()
 db = get_database()
 loader = Loader()
 kms = DocumentIngestionService()
-store = VectorStoreService()
+store = VectorStoreFactory.get_vector_store()
 
 # Document Management Routes
 # ------------------------

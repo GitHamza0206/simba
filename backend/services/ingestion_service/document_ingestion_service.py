@@ -10,18 +10,18 @@ import aiofiles
 
 from services.ingestion_service.file_handling import delete_file_locally
 
-from services.vector_store_service import VectorStoreService
 from services.splitter import Splitter
 from datetime import datetime
 from services.loader import Loader
 from models.simbadoc import SimbaDoc, MetadataType
+from core.factories.vector_store_factory import VectorStoreFactory
 
 
 logger = logging.getLogger(__name__)
 
 class DocumentIngestionService:
     def __init__(self):
-        self.vector_store = VectorStoreService()
+        self.vector_store = VectorStoreFactory.get_vector_store()
         self.database = get_database()
         self.loader = Loader()
         self.splitter = Splitter()

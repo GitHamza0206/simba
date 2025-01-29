@@ -1,6 +1,8 @@
 from services.retriever import Retriever
 
+retriever = Retriever()
 
+ensemble_retriever = retriever.as_retriever()
 
 
 def retrieve(state):
@@ -17,8 +19,6 @@ def retrieve(state):
         print("---RETRIEVE---")
         question = state["question"]
         # Retrieval with error handling
-        retriever = Retriever()
-        ensemble_retriever = retriever.as_ensemble_retriever()
         documents = ensemble_retriever.invoke(question)
         print(f"Retrieved {len(documents)} documents")
         

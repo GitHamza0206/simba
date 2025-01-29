@@ -2,7 +2,6 @@ from core.factories.database_factory import get_database
 from fastapi import APIRouter, HTTPException
 from models.simbadoc import SimbaDoc
 
-from services.vector_store_service import VectorStoreService
 from services.parser_service import ParserService
 from pydantic import BaseModel
 import logging
