@@ -26,8 +26,9 @@ workflow.add_node("generate", generate)
 #===========================================
 #define the edges
 workflow.add_edge(START, "retrieve")
-workflow.add_edge("retrieve", "grade")
-workflow.add_edge("grade", "generate")
+#workflow.add_edge("retrieve", "grade")
+#workflow.add_edge("grade", "generate")
+workflow.add_edge("retrieve" , "generate")
 workflow.add_edge("generate", END)
 
 
