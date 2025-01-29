@@ -44,6 +44,7 @@ ingestion_service = DocumentIngestionService()
 db = get_database()
 loader = Loader()
 kms = DocumentIngestionService()
+store = VectorStoreService()
 
 # Document Management Routes
 # ------------------------
@@ -76,28 +77,57 @@ async def ingest_document(
     except Exception as e:
         logger.error(f"Error in ingest_document: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+@ingestion.put("/ingestion/update_document")
+async def update_document(doc_id: str, new_simbadoc: SimbaDoc):
+    """Update a document"""
+    try:    
+        
+        # Update the document in the database
+        success = db.update_document(doc_id, new_simbadoc)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
+        
+        return new_simbadoc
+    except Exception as e:
+        logger.error(f"Error in update_document: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @ingestion.get("/ingestion")
 async def get_ingestion_documents():
-    """Get all ingested documents grouped by folder"""
-    db.refresh()
-    kms.sync_with_store()
-    db.refresh()
-    return db.get_all_documents()
+    """Get all ingested documents"""
+    # Ensure database is in a fresh state
+    documents = db.get_all_documents()
+    return documents
 
 @ingestion.get("/ingestion/{uid}")
 async def get_document(uid: str):
     """Get a document by ID"""
-    kms.sync_with_store()
-    return db.get_document(uid)
+    # Ensure database is in a fresh state
+    document = db.get_document(uid)
+    if not document:
+        raise HTTPException(status_code=404, detail=f"Document {uid} not found")
+    return document
 
 
 @ingestion.delete("/ingestion")
 async def delete_document(uids: List[str]):
     """Delete a document by ID"""
-    db.delete_documents(uids)
-    kms.sync_with_store()
-    return {"message": f"Documents {uids} deleted successfully"}
+    try:    
+        # Delete documents from vector store
+        for uid in uids:
+            simbadoc = db.get_document(uid)
+            if simbadoc.metadata.enabled:
+                store.delete_documents([doc.id for doc in simbadoc.documents])
+                
+        # Delete documents from database
+        db.delete_documents(uids)
+
+        #kms.sync_with_store()
+        return {"message": f"Documents {uids} deleted successfully"}
+    except Exception as e:
+        logger.error(f"Error in delete_document: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Utility Routes

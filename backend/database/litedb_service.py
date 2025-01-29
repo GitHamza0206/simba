@@ -60,22 +60,41 @@ class LiteDocumentDB():
     def get_document(self, document_id: str) -> Optional[SimbaDoc]:
         """Retrieve a document by ID"""
         try:
+            # Ensure fresh connection state
+            self.refresh()
+            
             cursor = self.conn.cursor()
+            # First log the actual query for debugging
+            logger.info(f"Fetching document with ID: {document_id}")
+            
             result = cursor.execute(
                 'SELECT data FROM documents WHERE id = ?', 
                 (document_id,)
             ).fetchone()
             
             if result:
-                return SimbaDoc(**json.loads(result[0]))
-            return None
+                logger.info(f"Document found with ID: {document_id}")
+                try:
+                    doc_data = json.loads(result[0])
+                    return SimbaDoc(**doc_data)
+                except json.JSONDecodeError as je:
+                    logger.error(f"Failed to parse document data for ID {document_id}: {je}")
+                    return None
+            else:
+                logger.warning(f"No document found with ID: {document_id}")
+                return None
+                
         except Exception as e:
             logger.error(f"Failed to get document {document_id}: {e}")
+            # Re-initialize connection on error
+            self._initialize()
             return None
 
     def get_all_documents(self) -> List[SimbaDoc]:
         """Retrieve all documents"""
         try:
+
+            
             cursor = self.conn.cursor()
             results = cursor.execute('SELECT data FROM documents').fetchall()
             return [SimbaDoc(**json.loads(row[0])) for row in results]
@@ -105,9 +124,20 @@ class LiteDocumentDB():
         try:
             cursor = self.conn.cursor()
             
-            # Convert directly to JSON, preserving all fields
+            # First check if document exists
+            existing = cursor.execute(
+                'SELECT 1 FROM documents WHERE id = ?',
+                (document_id,)
+            ).fetchone()
+            
+            if not existing:
+                logger.warning(f"No document found with ID {document_id}")
+                return False
+            
+            # Convert document to JSON, preserving all fields
             doc_json = newDocument.model_dump_json()
             
+            # Update the document
             cursor.execute(
                 'UPDATE documents SET data = ? WHERE id = ?',
                 (doc_json, document_id)
@@ -116,23 +146,17 @@ class LiteDocumentDB():
             # Force commit
             self.conn.commit()
             
-            # Verify update
-            if cursor.rowcount == 0:
-                logger.warning(f"No document found with ID {document_id}")
-                return False
-            
             logger.info(f"Document {document_id} updated successfully")
             return True
             
         except Exception as e:
             self.conn.rollback()
             logger.error(f"Failed to update document {document_id}: {e}")
-            raise e  # Re-raise to ensure we know about failures
+            raise e
 
     def refresh(self):
-        """Refresh the database"""
-        self.conn.commit()
-
+        """Refresh the database connection and commit any pending changes"""
+        pass
 
     def clear_database(self):
         """Clear the database"""

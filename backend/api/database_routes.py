@@ -15,7 +15,7 @@ async def get_database_info():
 
 @database_route.get("/database/documents")
 async def get_database_documents():
-    kms.sync_with_store()
+    #kms.sync_with_store()
     return db.get_all_documents()
 
 @database_route.get("/database/langchain_documents")
