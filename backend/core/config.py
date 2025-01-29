@@ -4,12 +4,15 @@ from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 import yaml
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 
 class ProjectConfig(BaseModel):
-    name: str = "MigiBot"
+    name: str = "Simba"
     version: str = "1.0.0"
     api_version: str = "/api/v1"
 
@@ -52,6 +55,8 @@ class EmbeddingConfig(BaseModel):
 
     provider: str = "openai"
     model_name: str = "text-embedding-3-small"
+    device: str = "cpu"
+    
     additional_params: Dict[str, Any] = Field(default_factory=dict)
 
 class VectorStoreConfig(BaseModel):
@@ -75,7 +80,7 @@ class Settings(BaseModel):
     project: ProjectConfig = Field(default_factory=ProjectConfig)
     paths: PathConfig = Field(default_factory=PathConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
-    embeddings: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
+    embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
     vector_store: VectorStoreConfig = Field(default_factory=VectorStoreConfig)
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
@@ -87,43 +92,40 @@ class Settings(BaseModel):
         # Set base_dir first
         base_dir = Path(__file__).resolve().parent.parent
         
-        # Start with default settings
-        settings = cls()
-        settings.paths.base_dir = base_dir  # Ensure base_dir is set
-        
         # If no config path provided, use default
         if config_path is None:
             config_path = base_dir / 'config.yaml'
 
-        # If config file exists, update defaults with file values
+        # Load YAML configuration
+        config_data = {}
         if config_path.exists():
             with open(config_path, 'r') as f:
                 config_data = yaml.safe_load(f) or {}
+                logger.info(f"Loaded configuration from {config_path}")
                 
-            # Ensure paths.base_dir is set before updating
-            if 'paths' in config_data:
-                config_data['paths']['base_dir'] = str(base_dir)
-            
-            # Update settings with YAML data
-            settings_dict = settings.model_dump()
-            cls._deep_update(settings_dict, config_data)
-            settings = cls(**settings_dict)
-
+                # Handle the embedding/embeddings field name difference
+                if 'embedding' in config_data:
+                    config_data['embedding'] = config_data['embedding']
+                
+                logger.debug(f"Configuration data: {config_data}")
+        else:
+            logger.warning(f"No configuration file found at {config_path}, using defaults")
+        
+        # Ensure paths.base_dir is set
+        if 'paths' in config_data:
+            config_data['paths']['base_dir'] = str(base_dir)
+        
+        # Create settings instance with YAML data
+        settings = cls(**config_data)
+        
         # Set derived paths
+        settings.paths.base_dir = base_dir
         settings.paths.markdown_dir = settings.paths.base_dir / settings.paths.markdown_dir
         settings.paths.faiss_index_dir = settings.paths.base_dir / settings.paths.faiss_index_dir
         settings.paths.vector_store_dir = settings.paths.base_dir / settings.paths.vector_store_dir
+        settings.paths.upload_dir = settings.paths.base_dir / settings.paths.upload_dir
 
         return settings
-
-    @staticmethod
-    def _deep_update(dict1: dict, dict2: dict) -> None:
-        """Deep update dictionary, preserving nested structures."""
-        for k, v in dict2.items():
-            if k in dict1 and isinstance(dict1[k], dict) and isinstance(v, dict):
-                Settings._deep_update(dict1[k], v)
-            else:
-                dict1[k] = v
 
 # Create global settings instance
 try:

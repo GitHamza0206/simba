@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Optional
 from langchain.schema.embeddings import Embeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.embeddings import (
     HuggingFaceEmbeddings,
@@ -46,8 +47,8 @@ def get_embeddings(
     #TODO: integrate litellm 
     
     # Use settings if not explicitly provided
-    provider = provider or settings.embeddings.provider
-    model_name = model_name or settings.embeddings.model_name
+    provider = provider or settings.embedding.provider
+    model_name = model_name or settings.embedding.model_name
 
     if provider not in SUPPORTED_PROVIDERS:
         raise ValueError(
@@ -59,15 +60,15 @@ def get_embeddings(
         if provider == "openai":
             return OpenAIEmbeddings(
                 model=model_name,
-                **settings.embeddings.additional_params,
+                **settings.embedding.additional_params,
                 **kwargs
             )
 
         elif provider == "huggingface":
             return HuggingFaceEmbeddings(
-                model_name=model_name or "sentence-transformers/all-mpnet-base-v2",
-                model_kwargs={"device": "cuda" if kwargs.get("use_gpu") else "cpu"},
-                **settings.embeddings.additional_params,
+                model_name=model_name,
+                model_kwargs={"device": settings.embedding.device},
+                **settings.embedding.additional_params,
                 **kwargs
             )
 
@@ -76,14 +77,21 @@ def get_embeddings(
                 model_name=model_name or "BAAI/bge-large-en",
                 model_kwargs={"device": "cuda" if kwargs.get("use_gpu") else "cpu"},
                 encode_kwargs={"normalize_embeddings": True},
-                **settings.embeddings.additional_params,
+                **settings.embedding.additional_params,
+                **kwargs
+            )
+
+        elif provider == "ollama":
+            return OllamaEmbeddings(
+                model_name=model_name or "nomic-embed-text",
+                **settings.embedding.additional_params,
                 **kwargs
             )
 
         elif provider == "cohere":
             return CohereEmbeddings(
                 model=model_name or "embed-english-v3.0",
-                **settings.embeddings.additional_params,
+                **settings.embedding.additional_params,
                 **kwargs
             )
 

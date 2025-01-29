@@ -2,7 +2,7 @@
 #TODO: connect to config.py
 
 project:
-  name: "MigiBot"
+  name: "Simba"
   version: "1.0.0"
   api_version: "/api/v1"
 
@@ -20,9 +20,10 @@ llm:
   streaming: true
   additional_params: {}
 
-embedding:
-  provider: "openai"
-  model_name: "text-embedding-3-small"
+embeddings:
+  provider: "huggingface"
+  model_name: "BAAI/llm-embedder"
+  device: "mps"
   additional_params: {}
 
 vector_store:

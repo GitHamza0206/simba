@@ -39,6 +39,8 @@ tinydb = "^4.8.2"
 langchain-milvus = "^0.1.8"
 rank-bm25 = "^0.2.2"
 langchain-experimental = "^0.3.4"
+sentence-transformers = "^3.4.1"
+langchain-huggingface = "^0.1.2"
 
 
 
