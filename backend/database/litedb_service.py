@@ -4,7 +4,8 @@ from pathlib import Path
 import logging
 from typing import Dict, List, Optional, Any, cast
 from core.config import settings
-from services.ingestion_service.types import SimbaDoc
+from models.simbadoc import SimbaDoc
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class LiteDocumentDB():
     def _initialize(self):
         """Initialize the database"""
         try:
-            db_path = Path(settings.paths.upload_dir) / "documents.db"
+            db_path = Path(settings.paths.upload_dir) / "documents.db" #TODO: make this configurable
             self.conn = sqlite3.connect(str(db_path))
             # Enable JSON serialization
             self.conn.row_factory = sqlite3.Row
@@ -59,22 +60,41 @@ class LiteDocumentDB():
     def get_document(self, document_id: str) -> Optional[SimbaDoc]:
         """Retrieve a document by ID"""
         try:
+            # Ensure fresh connection state
+            self.refresh()
+            
             cursor = self.conn.cursor()
+            # First log the actual query for debugging
+            logger.info(f"Fetching document with ID: {document_id}")
+            
             result = cursor.execute(
                 'SELECT data FROM documents WHERE id = ?', 
                 (document_id,)
             ).fetchone()
             
             if result:
-                return SimbaDoc(**json.loads(result[0]))
-            return None
+                logger.info(f"Document found with ID: {document_id}")
+                try:
+                    doc_data = json.loads(result[0])
+                    return SimbaDoc(**doc_data)
+                except json.JSONDecodeError as je:
+                    logger.error(f"Failed to parse document data for ID {document_id}: {je}")
+                    return None
+            else:
+                logger.warning(f"No document found with ID: {document_id}")
+                return None
+                
         except Exception as e:
             logger.error(f"Failed to get document {document_id}: {e}")
+            # Re-initialize connection on error
+            self._initialize()
             return None
 
     def get_all_documents(self) -> List[SimbaDoc]:
         """Retrieve all documents"""
         try:
+
+            
             cursor = self.conn.cursor()
             results = cursor.execute('SELECT data FROM documents').fetchall()
             return [SimbaDoc(**json.loads(row[0])) for row in results]
@@ -102,26 +122,41 @@ class LiteDocumentDB():
     def update_document(self, document_id: str, newDocument: SimbaDoc) -> bool:
         """Update a document by ID"""
         try:
-            # Get existing document
-            doc = self.get_document(document_id)
-            if not doc:
-                return False
-                
-            # Update document
-            doc_dict = doc.dict()
-            doc_dict.update(newDocument.dict()) 
-            
             cursor = self.conn.cursor()
+            
+            # First check if document exists
+            existing = cursor.execute(
+                'SELECT 1 FROM documents WHERE id = ?',
+                (document_id,)
+            ).fetchone()
+            
+            if not existing:
+                logger.warning(f"No document found with ID {document_id}")
+                return False
+            
+            # Convert document to JSON, preserving all fields
+            doc_json = newDocument.model_dump_json()
+            
+            # Update the document
             cursor.execute(
                 'UPDATE documents SET data = ? WHERE id = ?',
-                (json.dumps(doc_dict), document_id)
+                (doc_json, document_id)
             )
+            
+            # Force commit
             self.conn.commit()
-            return cursor.rowcount > 0
+            
+            logger.info(f"Document {document_id} updated successfully")
+            return True
+            
         except Exception as e:
             self.conn.rollback()
             logger.error(f"Failed to update document {document_id}: {e}")
-            return False
+            raise e
+
+    def refresh(self):
+        """Refresh the database connection and commit any pending changes"""
+        pass
 
     def clear_database(self):
         """Clear the database"""
@@ -139,8 +174,7 @@ class LiteDocumentDB():
 if __name__ == "__main__":
     db = LiteDocumentDB()
     from langchain_core.documents import Document
-    from services.ingestion_service.types import MetadataType
-    
+    from models.simbadoc import SimbaDoc
     # # Test single document
     # doc1 = SimbaDoc(
     #     id='1',

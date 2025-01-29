@@ -5,7 +5,8 @@ from pathlib import Path
 import shlex
 from pydantic import BaseModel
 from langchain.schema import Document
-from services.ingestion_service.types import SimbaDoc
+from models.simbadoc import SimbaDoc
+
 from services.vector_store_service import VectorStoreService
 logger = logging.getLogger(__name__)
 

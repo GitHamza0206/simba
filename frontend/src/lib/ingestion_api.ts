@@ -92,6 +92,16 @@ class IngestionApi {
     });
   }
 
+  async updateDocument(id: string, document: SimbaDoc): Promise<SimbaDoc> {
+    return this.request(`/ingestion/update_document?doc_id=${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(document)
+    });
+  }
+
   async getLoaders(): Promise<string[]> {
     const response = await this.request<{ loaders: string[] }>('/loaders');
     return response.loaders;

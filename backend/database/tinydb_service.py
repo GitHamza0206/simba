@@ -3,7 +3,8 @@ from pathlib import Path
 import logging
 from typing import Dict, List, Optional, Any
 from core.config import settings
-from services.ingestion_service.types import SimbaDoc
+from models.simbadoc import SimbaDoc
+
 
 logger = logging.getLogger(__name__)
 
@@ -84,13 +85,4 @@ class TinyDocumentDB():
             return False
 
 if __name__ == "__main__":
-    db = TinyDocumentDB()
-    import json
-    from pprint import pprint
-    from langchain_core.documents import Document
-    from services.ingestion_service.types import MetadataType
-    a = SimbaDoc(id='1', documents=[Document(page_content='a')], metadata=MetadataType(file_name='a'))
-    #db.insert_document(a)
-    b = [{'int': 2, 'char': 'b'}, {'int': 3, 'char': 'c'}]
-    db.insert_anything(b)
-    print(db.get_all_documents())
+    pass

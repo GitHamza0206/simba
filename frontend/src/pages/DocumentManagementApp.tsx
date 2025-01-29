@@ -133,10 +133,8 @@ const DocumentManagementApp: React.FC = () => {
   };
 
   const handleDocumentUpdate = (updatedDoc: DocumentType) => {
-    setDocuments(prevDocs => 
-      prevDocs.map(doc => 
-        doc.id === updatedDoc.id ? updatedDoc : doc
-      )
+    setDocuments(prev => 
+      prev.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc)
     );
   };
 
@@ -168,8 +166,8 @@ const DocumentManagementApp: React.FC = () => {
         onClose={() => setSelectedDocument(null)}
         document={selectedDocument}
         onUpdate={(updatedDoc) => {
-          setDocuments(prevDocs => 
-            prevDocs.map(doc => 
+          setDocuments(prev => 
+            prev.map(doc => 
               doc.id === updatedDoc.id ? updatedDoc : doc
             )
           );

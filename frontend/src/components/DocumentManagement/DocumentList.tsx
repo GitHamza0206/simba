@@ -222,44 +222,50 @@ const DocumentList: React.FC<DocumentListProps> = ({
 
   const enableDocument = async (doc: SimbaDoc, checked: boolean) => {
     try {
-      if (checked) {
-        // Add to embeddings
-        await embeddingApi.embedd_document(doc.id);
-        setEnabledDocuments(prev => {
-          const next = new Set(prev);
-          next.add(doc.id);
-          return next;
-        });
-        // Update the document in the documents array
-        const updatedDoc = { ...doc, metadata: { ...doc.metadata, enabled: true }};
-        onDocumentUpdate(updatedDoc);
-        toast({
-          title: "Document embedded",
-          description: `Document embedded successfully.`
-        });
-      } else {
-        // Remove from embeddings
+      // Update local state immediately for better UX
+      const updatedDoc = { ...doc, metadata: { ...doc.metadata, enabled: checked }};
+      onDocumentUpdate(updatedDoc);
+
+      if (!checked) {  // If we're disabling the document
+        // Call delete endpoint
         await embeddingApi.delete_document(doc.id);
+        
         setEnabledDocuments(prev => {
           const next = new Set(prev);
           next.delete(doc.id);
           return next;
         });
-        // Update the document in the documents array
-        const updatedDoc = { ...doc, metadata: { ...doc.metadata, enabled: false }};
-        onDocumentUpdate(updatedDoc);
+        
         toast({
           title: "Document removed",
           description: "Document removed from embeddings successfully"
         });
+      } else {  // If we're enabling the document
+        // Call embed endpoint
+        await embeddingApi.embedd_document(doc.id);
+        
+        setEnabledDocuments(prev => {
+          const next = new Set(prev);
+          next.add(doc.id);
+          return next;
+        });
+        
+        toast({
+          title: "Document embedded",
+          description: `Document embedded successfully.`
+        });
       }
     } catch (error) {
-      // Reset the switch state on error
+      // Revert local state on error
+      const revertedDoc = { ...doc, metadata: { ...doc.metadata, enabled: !checked }};
+      onDocumentUpdate(revertedDoc);
+      
       setEnabledDocuments(prev => {
         const next = new Set(prev);
         checked ? next.delete(doc.id) : next.add(doc.id);
         return next;
       });
+      
       toast({
         title: "Error",
         description: error instanceof Error 
@@ -381,8 +387,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 <TableCell>{formatDate(doc.metadata.uploadedAt || "Unknown")}</TableCell>
                 <TableCell>
                   <Switch
-                    checked={enabledDocuments.has(doc.id)}
+                    checked={doc.metadata.enabled}
                     onCheckedChange={(checked) => enableDocument(doc, checked)}
+                    aria-label="Toggle document embedding"
                   />
                 </TableCell>
                 <TableCell>
