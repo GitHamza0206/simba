@@ -10,7 +10,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { DocumentType } from '@/types/document';
-import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play } from 'lucide-react';
+import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { 
   DropdownMenu,
@@ -48,6 +48,12 @@ import { Badge } from "@/components/ui/badge";
 import { SimbaDoc } from '@/types/document';
 import { Metadata } from '@/types/document';
 import { embeddingApi } from '@/lib/embedding_api';
+import { ParsingStatusBox } from './ParsingStatusBox';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card"
 
 interface DocumentListProps {
   documents: SimbaDoc[];
@@ -83,6 +89,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const [enabledDocuments, setEnabledDocuments] = useState<Set<string>>(
     new Set(documents.filter(doc => doc.metadata.enabled).map(doc => doc.id))
   );
+  const [parsingTasks, setParsingTasks] = useState<Record<string, string>>({});  // docId -> taskId
 
   useEffect(() => {
     setEnabledDocuments(
@@ -301,8 +308,78 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
-  const handleParseClick = (document: SimbaDoc) => {
-    console.log("Document to parse:", document);
+  const handleParseClick = async (document: SimbaDoc) => {
+    try {
+      const result = await ingestionApi.startParsing(document.id, document.metadata.parser || 'docling');
+      setParsingTasks(prev => ({
+        ...prev,
+        [document.id]: result.task_id
+      }));
+      
+      toast({
+        title: "Parsing Started",
+        description: "Document parsing has been queued"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to start parsing",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleParseComplete = async (docId: string, status: string) => {
+    // Remove the task from parsing tasks
+    setParsingTasks(prev => {
+      const newTasks = { ...prev };
+      delete newTasks[docId];
+      return newTasks;
+    });
+
+    // Update the document's parsing status
+    const updatedDocs = documents.map(doc => {
+      if (doc.id === docId) {
+        return {
+          ...doc,
+          metadata: {
+            ...doc.metadata,
+            parsing_status: status
+          }
+        };
+      }
+      return doc;
+    });
+    
+    setDocuments(updatedDocs);
+
+    // Refresh the document list
+    await fetchDocuments();
+
+    // Show success toast if parsed successfully
+    if (status === 'PARSED') {
+      toast({
+        title: "Success",
+        description: "Document parsed successfully",
+      });
+    }
+  };
+
+  const handleParseCancel = async (documentId: string) => {
+    // Remove task from tracking
+    setParsingTasks(prev => {
+      const next = { ...prev };
+      delete next[documentId];
+      return next;
+    });
+    
+    // Refresh documents list
+    await fetchDocuments();
+    
+    toast({
+      title: "Cancelled",
+      description: "Parsing cancelled",
+    });
   };
 
   return (
@@ -397,19 +474,27 @@ const DocumentList: React.FC<DocumentListProps> = ({
                   />
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    variant={
-                      doc.metadata.parsing_status === 'SUCCESS' ? 'success' :
-                      doc.metadata.parsing_status === 'CANCEL' ? 'warning' :
-                      doc.metadata.parsing_status === 'FAILED' ? 'destructive' :
-                      'default'
-                    }
-                  >
-                    {doc.metadata.parsing_status || 'PENDING'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={
+                        doc.metadata.parsing_status === 'SUCCESS' ? 'success' :
+                        doc.metadata.parsing_status === 'FAILED' ? 'destructive' :
+                        'default'
+                      }
+                    >
+                      {doc.metadata.parsing_status || 'PENDING'}
+                    </Badge>
+                    {parsingTasks[doc.id] && (
+                      <ParsingStatusBox 
+                        taskId={parsingTasks[doc.id]} 
+                        onComplete={(status) => handleParseComplete(doc.id, status)}
+                        onCancel={() => handleParseCancel(doc.id)}
+                      />
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -418,6 +503,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             size="icon"
                             onClick={() => handleParseClick(doc)}
                             className="h-8 w-8"
+                            disabled={!!parsingTasks[doc.id]}
                           >
                             <Play className="h-4 w-4" />
                           </Button>

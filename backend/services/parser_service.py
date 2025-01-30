@@ -66,6 +66,7 @@ class ParserService:
         """Return either single doc or list of docs"""
         if parser == "docling":
             # Returns list of split documents
+
             return self._parse_docling(document)
         else:
             # Return single modified document
@@ -78,17 +79,33 @@ class ParserService:
 
     def _parse_docling(self, document: SimbaDoc) -> List[SimbaDoc]:
         """Return list of chunked documents"""
-        loader = DoclingLoader(
-            file_path=document.metadata.file_path,
-            chunker=HybridChunker(
-                tokenizer="sentence-transformers/all-MiniLM-L6-v2",
-                device=self.device
-            ),
-        )
-        docs = loader.load()
-        return SimbaDoc(
-                id=document.id,
-                documents=docs,
-                metadata=document.metadata
+        try:
+            loader = DoclingLoader(
+                file_path=document.metadata.file_path,
+                chunker=HybridChunker(
+                    tokenizer="sentence-transformers/all-MiniLM-L6-v2",
+                    device=self.device
+                ),
             )
+            docs = loader.load()
+
+            
+            document.metadata.parsing_status = "SUCCESS"
+            document.metadata.parser = "docling"
+            document.metadata.parsed_at = datetime.now()
+
+            doc = SimbaDoc(
+                    id=document.id,
+                    documents=docs,
+                    metadata=document.metadata
+                )
+            
+            return doc 
+        
+        except Exception as e:
+            document.metadata.parsing_status = "FAILED"
+            return document
+        
+
+        
         

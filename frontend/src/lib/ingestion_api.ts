@@ -120,6 +120,30 @@ class IngestionApi {
     const response = await this.request<{ path: string }>('/upload-directory');
     return response.path;
   }
+
+  async startParsing(documentId: string, parser: string): Promise<{ task_id: string }> {
+    return this.request('/parse', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+        parser: parser
+      })
+    });
+  }
+
+  async getParseStatus(taskId: string): Promise<{
+    status: string;
+    result?: {
+      status: 'success' | 'error';
+      document_id?: string;
+      error?: string;
+    };
+  }> {
+    return this.request(`/parsing/tasks/${taskId}`);
+  }
 }
 
 // Export a single instance
