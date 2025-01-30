@@ -5,37 +5,42 @@ import logging
 from typing import Dict, List, Optional, Any, cast
 from core.config import settings
 from models.simbadoc import SimbaDoc
-
+import threading
 
 logger = logging.getLogger(__name__)
 
 class LiteDocumentDB():
-    _instance = None
+    _local = threading.local()
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(LiteDocumentDB, cls).__new__(cls)
-            cls._instance._initialize()
-        return cls._instance
+    def __init__(self):
+        self._initialize()
 
     def _initialize(self):
         """Initialize the database"""
         try:
-            db_path = Path(settings.paths.upload_dir) / "documents.db" #TODO: make this configurable
-            self.conn = sqlite3.connect(str(db_path))
+            db_path = Path(settings.paths.upload_dir) / "documents.db"
+            # Create a new connection for this thread/process
+            self._local.conn = sqlite3.connect(str(db_path))
             # Enable JSON serialization
-            self.conn.row_factory = sqlite3.Row
+            self._local.conn.row_factory = sqlite3.Row
             
             # Create table with a single JSON column
-            self.conn.execute('''
+            self._local.conn.execute('''
                 CREATE TABLE IF NOT EXISTS documents
                 (id TEXT PRIMARY KEY, data JSON)
             ''')
-            self.conn.commit()
+            self._local.conn.commit()
             logger.info(f"Initialized LiteDB at {db_path}")
         except Exception as e:
             logger.error(f"Failed to initialize LiteDB: {e}")
             raise
+
+    @property
+    def conn(self):
+        """Get the thread-local connection, initializing if needed"""
+        if not hasattr(self._local, 'conn'):
+            self._initialize()
+        return self._local.conn
 
     def insert_documents(self, documents: SimbaDoc | List[SimbaDoc]) -> List[str]:
         """Insert one or multiple documents"""
@@ -60,11 +65,7 @@ class LiteDocumentDB():
     def get_document(self, document_id: str) -> Optional[SimbaDoc]:
         """Retrieve a document by ID"""
         try:
-            # Ensure fresh connection state
-            self.refresh()
-            
             cursor = self.conn.cursor()
-            # First log the actual query for debugging
             logger.info(f"Fetching document with ID: {document_id}")
             
             result = cursor.execute(
@@ -81,7 +82,7 @@ class LiteDocumentDB():
                     logger.error(f"Failed to parse document data for ID {document_id}: {je}")
                     return None
             else:
-                logger.warning(f"No document found with ID: {document_id}")
+                logger.error(f"Document {document_id} not found in database")
                 return None
                 
         except Exception as e:
@@ -93,8 +94,6 @@ class LiteDocumentDB():
     def get_all_documents(self) -> List[SimbaDoc]:
         """Retrieve all documents"""
         try:
-
-            
             cursor = self.conn.cursor()
             results = cursor.execute('SELECT data FROM documents').fetchall()
             return [SimbaDoc(**json.loads(row[0])) for row in results]
@@ -106,7 +105,6 @@ class LiteDocumentDB():
         """Delete documents by IDs"""
         try:
             cursor = self.conn.cursor()
-            # Create placeholders for the IN clause
             placeholders = ','.join(['?' for _ in document_ids])
             cursor.execute(
                 f'DELETE FROM documents WHERE id IN ({placeholders})', 
@@ -154,10 +152,6 @@ class LiteDocumentDB():
             logger.error(f"Failed to update document {document_id}: {e}")
             raise e
 
-    def refresh(self):
-        """Refresh the database connection and commit any pending changes"""
-        pass
-
     def clear_database(self):
         """Clear the database"""
         try:
@@ -168,7 +162,6 @@ class LiteDocumentDB():
         except Exception as e:
             logger.error(f"Failed to clear database: {e}")
             return e
-        
 
 
 if __name__ == "__main__":

@@ -7,7 +7,11 @@ const ALLOWED_FILE_TYPES = [
   'text/plain',
   'text/markdown',
   'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',  // .xls
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',  // .xlsx
+  'application/vnd.ms-powerpoint',  // .ppt
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation'  // .pptx
 ];
 
 class IngestionApi {

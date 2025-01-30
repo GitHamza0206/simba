@@ -301,6 +301,10 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
+  const handleParseClick = (document: SimbaDoc) => {
+    console.log("Document to parse:", document);
+  };
+
   return (
     <div className="relative">
       <CardContent>
@@ -378,7 +382,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     {React.createElement(getFileIcon(doc.metadata))}
-                    <span>{doc.metadata.file_path.split('/').pop()}</span>
+                    <span>{doc.metadata.filename}</span>
                   </div>
                 </TableCell>
                 <TableCell>

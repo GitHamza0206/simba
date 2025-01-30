@@ -45,7 +45,7 @@ app.add_middleware(
 async def startup_event():
     """Log configuration details on startup"""
     logger.info("=" * 50)
-    logger.info("Starting MigiBot Application")
+    logger.info("Starting SIMBA Application")
     logger.info("=" * 50)
     
     # Project Info
@@ -65,6 +65,8 @@ async def startup_event():
     logger.info(f"Vector Store Provider: {settings.vector_store.provider}")
     logger.info(f"Database Provider: {settings.database.provider}")
     
+    
+
     # Paths
     logger.info("\nPaths:")
     logger.info(f"Base Directory: {settings.paths.base_dir}")
@@ -72,6 +74,20 @@ async def startup_event():
     logger.info(f"Vector Store Directory: {settings.paths.vector_store_dir}")
     
     logger.info("=" * 50)
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup resources on shutdown"""
+    logger.info("Shutting down application...")
+    
+    # Close Redis connections
+    from core.factories.database_factory import redis_pool
+    await redis_pool.disconnect()
+    
+    # Celery cleanup
+    from tasks.parsing_tasks import celery
+    if celery:
+        celery.close()
 
 # Include routers
 app.include_router(chat)
