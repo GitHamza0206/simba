@@ -1,6 +1,13 @@
 import os
 # Must be set BEFORE any other imports that might use HuggingFace
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
+
+import multiprocessing
+
+# Set multiprocessing start method before any other imports
+if os.name != 'nt' and multiprocessing.get_start_method(allow_none=True) != 'spawn':
+    multiprocessing.set_start_method('spawn')
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -97,6 +104,7 @@ app.include_router(database_route)
 app.include_router(embedding_route)
 
 if __name__ == "__main__":
+
     uvicorn.run(
         app, 
         host="0.0.0.0", 

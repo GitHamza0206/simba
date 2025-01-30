@@ -3,10 +3,12 @@ import os
 import logging
 from pathlib import Path
 import shlex
+from typing import List, Union
 from pydantic import BaseModel
 from langchain.schema import Document
 from models.simbadoc import SimbaDoc
 from datetime import datetime
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -15,191 +17,78 @@ from docling.chunking import HybridChunker
 from langchain_docling.loader import ExportType
 from core.config import settings
 
-
-from langchain_docling import DoclingLoader
-from docling.chunking import HybridChunker
-
 class ParserService:
     SUPPORTED_PARSERS = [
         "markitdown",
         "docling"
     ]
 
+    def __init__(self, device: str = None, force_cpu: bool = False):
+        """Initialize parser service with specified device
+        
+        Args:
+            device: Device to use ('cpu', 'cuda', 'mps', or None for auto-detect)
+            force_cpu: If True, always use CPU regardless of device parameter
+        """
+        # Check environment variable first
+        env_device = os.environ.get("PYTORCH_DEVICE")
+        if env_device:
+            self.device = env_device
+            logger.info(f"Using device from environment: {self.device}")
+        elif force_cpu:
+            self.device = 'cpu'
+            logger.info("Forcing CPU usage")
+        else:
+            if device is None:
+                # Auto-detect best available device
+                if torch.backends.mps.is_available():
+                    device = 'mps'
+                elif torch.cuda.is_available():
+                    device = 'cuda'
+                else:
+                    device = 'cpu'
+            self.device = device
+            
+        # Ensure PyTorch uses the selected device
+        if self.device == 'cpu':
+            torch.set_default_device('cpu')
+        elif self.device == 'mps' and torch.backends.mps.is_available():
+            torch.device('mps')
+        elif self.device == 'cuda' and torch.cuda.is_available():
+            torch.device('cuda')
+            
+        logger.info(f"Initialized ParserService with device: {self.device}")
+
     def get_parsers(self):
         return self.SUPPORTED_PARSERS
 
-    def parse_document(self, document: SimbaDoc, parser: str) -> SimbaDoc:
-        """Parse document synchronously and return updated SimbaDoc"""
-        logger.info(f"Parsing document {document.id} with {parser}")
-        
-        try:
-            if parser == "markitdown":
-                parsed_doc = self._parse_markitdown(document)
-            elif parser == "docling":
-                parsed_docs = self._parse_docling(document)
-
-            else:
-                raise ValueError(f"Unsupported parser: {parser}")
-            
-
-            document.documents = parsed_docs
-            # Update the existing document instead of returning just the content
-            document.metadata["parser"] = parser
-            document.metadata["parsing_status"] = "success"
-            document.metadata["parsed_at"] = datetime.now().isoformat()
-            return document  # Return the full SimbaDoc object
-            
-        except Exception as e:
-            logger.error(f"Parsing failed: {str(e)}")
-            raise
+    def parse_document(self, document: SimbaDoc, parser: str) -> Union[SimbaDoc, List[SimbaDoc]]:
+        """Return either single doc or list of docs"""
+        if parser == "docling":
+            # Returns list of split documents
+            return self._parse_docling(document)
+        else:
+            # Return single modified document
+            return self._parse_markitdown(document)
 
     def _parse_markitdown(self, document: SimbaDoc) -> str:
         """Parse markitdown and return content string"""
-        # Your parsing logic here
-        document.id="PARSER_TEST"
+        document.id = "PARSER_TEST"
         return document
 
-    def _parse_docling(self, document: SimbaDoc) -> str:
-        """Parse docling and return content string"""
-        # Your parsing logic here
-
+    def _parse_docling(self, document: SimbaDoc) -> List[SimbaDoc]:
+        """Return list of chunked documents"""
         loader = DoclingLoader(
             file_path=document.metadata.file_path,
-            chunker=HybridChunker(tokenizer="sentence-transformers/all-MiniLM-L6-v2"),
+            chunker=HybridChunker(
+                tokenizer="sentence-transformers/all-MiniLM-L6-v2",
+                device=self.device
+            ),
         )
         docs = loader.load()
-        return docs 
-
-
-
-    # def parse_document(self, document: SimbaDoc, parser: str)-> SimbaDoc:
-    #     file_path = document.metadata.file_path
-
-    #     if parser == "markitdown":
-    #         try:
-    #             logger.info(f"Starting to parse document: {file_path}")
-    #             # Ensure file exists
-    #             if not os.path.exists(file_path):
-    #                 raise ValueError(f"File not found: {file_path}")
-                
-                
-
-    #             # Create output path with .md extension
-    #             output_path = os.path.splitext(file_path)[0] + '.md'
-                
-    #             # Properly escape the file path for shell
-    #             escaped_path = shlex.quote(file_path)
-    #             escaped_output = shlex.quote(output_path)
-                
-    #             # Build command using input redirection and output redirection
-    #             command = f"markitdown < {escaped_path} > {escaped_output}"
-    #             logger.info(f"Executing command: {command}")
-                
-    #             # Execute markitdown command
-    #             result = subprocess.run(
-    #                 command,
-    #                 shell=True,
-    #                 capture_output=True,
-    #                 text=True,
-    #                 timeout=120
-    #             )
-                
-    #             # Log the command output
-    #             logger.info(f"Command stdout: {result.stdout}")
-    #             logger.info(f"Command stderr: {result.stderr}")
-                
-    #             if result.returncode != 0:
-    #                 logger.error(f"Markitdown failed with return code {result.returncode}")
-    #                 raise ValueError(f"Markitdown failed: {result.stderr}")
-                
-    #             # Check if output file exists and read it
-    #             if os.path.exists(output_path):
-    #                 with open(output_path, 'r') as f:
-    #                     content = f.read()
-    #                     document.page_content = content
-    #                     document.metadata["filename"] = os.path.basename(output_path)
-    #                     document.metadata["file_path"] = output_path
-
-    #                     document.metadata["parser"] = "markitdown"
-    #                     f.close()
-
-    #                     return document
-                
-    #             else:
-    #                 raise ValueError("Output file was not created")
-                
-    #         except subprocess.TimeoutExpired:
-    #             logger.error("Markitdown command timed out")
-    #             raise ValueError("Parser timed out after 30 seconds")
-    #         except Exception as e:
-    #             logger.error(f"Error parsing document with markitdown: {str(e)}")
-    #             raise ValueError(f"Parser error: {str(e)}")
-    #     elif parser == "docling":
-    #         from docling.document_converter import DocumentConverter
-
-    #         try:
-    #             logger.info(f"Starting to parse document: {file_path}")
-    #             # Replace file extension with .md
-    #             output_path = os.path.splitext(file_path)[0] + '.md'
-    #             # EMBED_MODEL_ID = "sentence-transformers/all-MiniLM-L6-v2"
-
-    #             # loader = DoclingLoader(
-    #             #         file_path=file_path,
-    #             #         export_type=ExportType.MARKDOWN,
-    #             #         chunker=HybridChunker(tokenizer=EMBED_MODEL_ID),
-    #             #     )
-
-    #             # docs = loader.load()
-
-    #             # converter = DocumentConverter()
-    #             # result = converter.convert(file_path)
-    #             # page_content = result.document.export_to_markdown()
-    #             if not os.path.exists(file_path):
-    #                 raise ValueError(f"File not found: {file_path}")
-                
-    #             output_folder_path = settings.paths.upload_dir
-                
-    #             # Properly escape the file path for shell
-    #             escaped_path = shlex.quote(file_path)
-    #             escaped_output = shlex.quote(output_path)
-                
-    #             # Build command using input redirection and output redirection
-    #             command = f"docling {escaped_path} --output {output_folder_path}"
-    #             logger.info(f"Executing command: {command}")
-                
-    #             result = subprocess.run(
-    #                 command,
-    #                 shell=True,
-    #                 capture_output=True,
-    #                 text=True,
-    #                 timeout=120
-    #             )
-
-    #             if result.returncode != 0:
-    #                 logger.error(f"docling failed with return code {result.returncode}")
-    #                 raise ValueError(f"docling failed: {result.stderr}")
-                
-    #             # Check if output file exists and read it
-    #             if os.path.exists(output_path):
-    #                 with open(output_path, 'r') as f:
-    #                     content = f.read()
-    #                     document.page_content = content
-    #                     document.metadata["filename"] = os.path.basename(output_path)
-    #                     document.metadata["file_path"] = output_path
-    #                     document.metadata["parser"] = "docling"
-    #                     f.close()
-
-    #                     return document
-                
-    #             else:
-    #                 raise ValueError("Output file was not created")
-
-
-            
-            
-
-    #         except Exception as e:
-    #             logger.error(f"Error parsing document with docling: {str(e)}")
-    #             raise ValueError(f"Parser error: {str(e)}")
-    #     else:
-    #         raise ValueError(f"Unsupported parser: {parser}")
+        return SimbaDoc(
+                id=document.id,
+                documents=docs,
+                metadata=document.metadata
+            )
+        
