@@ -82,19 +82,7 @@ async def startup_event():
     
     logger.info("=" * 50)
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup resources on shutdown"""
-    logger.info("Shutting down application...")
-    
-    # Close Redis connections
-    from core.factories.database_factory import redis_pool
-    await redis_pool.disconnect()
-    
-    # Celery cleanup
-    from tasks.parsing_tasks import celery
-    if celery:
-        celery.close()
+
 
 # Include routers
 app.include_router(chat)

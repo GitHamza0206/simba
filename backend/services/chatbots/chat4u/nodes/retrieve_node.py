@@ -17,7 +17,7 @@ def retrieve(state):
     """
     try:
         print("---RETRIEVE---")
-        question = state["question"]
+        question = state["messages"][-1].content
         # Retrieval with error handling
         retriever = Retriever()
         ensemble_retriever = retriever.as_retriever()

@@ -5,6 +5,7 @@ from services.chatbots.chat4u.state import State
 from services.chatbots.chat4u.graph import graph
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
+from langchain_core.messages import HumanMessage
 
 chat = APIRouter()    
 
@@ -20,8 +21,7 @@ async def invoke_graph(query: Query = Body(...)):
     
     config = {"configurable": {"thread_id": "2"}}
     state = State()
-    state["messages"] = [("user", query.message)]
-    state["question"] = query.message
+    state["messages"] = [HumanMessage(content=query.message)]
 
     # Helper function to check if string is numeric (including . and ,)
     def is_numeric(s):

@@ -1,5 +1,6 @@
-from typing import List
-
+from typing import List, Annotated, Sequence
+from langgraph.graph.message import add_messages
+from langchain_core.messages import BaseMessage
 from typing_extensions import TypedDict
 
 
@@ -11,8 +12,8 @@ class State(TypedDict):
         question: question
         generation: LLM generation
         documents: list of documents
+        messages: list of messages
     """
 
-    question: str
-    generation: str
+    messages: Annotated[Sequence[BaseMessage] , add_messages]
     documents: List[str]
