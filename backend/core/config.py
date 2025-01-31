@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field, ConfigDict
 import yaml
 from dotenv import load_dotenv
 import logging
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 load_dotenv()
 
@@ -76,7 +78,19 @@ class DatabaseConfig(BaseModel):
     provider: str = "litedb"  # or "sqlite"
     additional_params: Dict[str, Any] = Field(default_factory=dict)
 
-class Settings(BaseModel):
+class CelerySettings(BaseModel):
+    broker_url: str = "redis://localhost:6379/0"
+    result_backend: str = "redis://localhost:6379/1"
+
+class FeaturesConfig(BaseModel):
+    enable_parsers: bool = True
+
+class Settings(BaseSettings):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
+    # Add features config
+    features: FeaturesConfig = Field(default_factory=FeaturesConfig)
+    
     project: ProjectConfig = Field(default_factory=ProjectConfig)
     paths: PathConfig = Field(default_factory=PathConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
@@ -85,6 +99,15 @@ class Settings(BaseModel):
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    celery: CelerySettings = Field(default_factory=CelerySettings)
+
+    @field_validator('celery')
+    @classmethod
+    def validate_celery(cls, v, values):
+        if values.data.get('features', FeaturesConfig()).enable_parsers:
+            if not v.broker_url:
+                raise ValueError("Celery broker URL required when parsers are enabled")
+        return v
 
     @classmethod
     def load_from_yaml(cls, config_path: Optional[Path] = None) -> 'Settings':

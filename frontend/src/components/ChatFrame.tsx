@@ -55,54 +55,31 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages }) => {
         role: 'assistant',
         content: '',
         streaming: true,
+        state: {},
         followUpQuestions: []
       };
       
       setMessages(prev => [...prev, assistantMessage]);
       setIsThinking(false);
 
-      let currentResponse = '';
-
       await handleChatStream(
         response,
-        (chunk) => {
-          try {
-            const data = JSON.parse(chunk);
-            
-            if (data.node === "transform_query" && data.status === "end") {
-              // Mise à jour des questions de suivi
-              setMessages(prev => {
-                const lastMessage = prev[prev.length - 1];
-                if (lastMessage && lastMessage.id === assistantMessage.id) {
-                  return [
-                    ...prev.slice(0, -1),
-                    { 
-                      ...lastMessage, 
-                      followUpQuestions: data.followUpQuestions || []
-                    }
-                  ];
+        (content, state) => {
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage && lastMessage.id === assistantMessage.id) {
+              return [
+                ...prev.slice(0, -1),
+                { 
+                  ...lastMessage,
+                  content: content ? (lastMessage.content + content) : lastMessage.content,
+                  state: state || lastMessage.state,
+                  followUpQuestions: state?.followUpQuestions || lastMessage.followUpQuestions
                 }
-                return prev;
-              });
-              return;
+              ];
             }
-          } catch (e) {
-            // Si ce n'est pas du JSON, c'est du contenu de message
-            currentResponse += chunk;
-            setMessages(prev => {
-              const lastMessage = prev[prev.length - 1];
-              if (lastMessage && lastMessage.id === assistantMessage.id) {
-                return [
-                  ...prev.slice(0, -1),
-                  { 
-                    ...lastMessage, 
-                    content: currentResponse
-                  }
-                ];
-              }
-              return prev;
-            });
-          }
+            return prev;
+          });
         },
         () => {
           setMessages(prev => {
@@ -148,6 +125,7 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages }) => {
             streaming={message.streaming}
             followUpQuestions={message.followUpQuestions}
             onFollowUpClick={handleFollowUpClick}
+            state={message.state}
           />
         ))}
         {isThinking && <Thinking />}

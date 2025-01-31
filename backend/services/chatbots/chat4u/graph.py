@@ -48,7 +48,7 @@ def show_graph(workflow):
     plt.show()  
 
 # Compile
-graph = workflow.compile()
+graph = workflow.compile(checkpointer=memory)
 
 if __name__ == "__main__":
 

@@ -4,11 +4,11 @@ from langchain.schema.embeddings import Embeddings
 from langchain_ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.embeddings import (
-    HuggingFaceEmbeddings,
-    CohereEmbeddings,
-    HuggingFaceBgeEmbeddings
+    CohereEmbeddings
+
 )
-from ..config import settings
+from langchain_huggingface import HuggingFaceEmbeddings
+from core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 SUPPORTED_PROVIDERS = {
     "openai": OpenAIEmbeddings,
     "huggingface": HuggingFaceEmbeddings,
-    "huggingface-bge": HuggingFaceBgeEmbeddings,
     "cohere": CohereEmbeddings,
 }
 
@@ -67,19 +66,11 @@ def get_embeddings(
         elif provider == "huggingface":
             return HuggingFaceEmbeddings(
                 model_name=model_name,
-                model_kwargs={"device": settings.embedding.device},
+                model_kwargs={'device': settings.embedding.device},
                 **settings.embedding.additional_params,
                 **kwargs
             )
 
-        elif provider == "huggingface-bge":
-            return HuggingFaceBgeEmbeddings(
-                model_name=model_name or "BAAI/bge-large-en",
-                model_kwargs={"device": "cuda" if kwargs.get("use_gpu") else "cpu"},
-                encode_kwargs={"normalize_embeddings": True},
-                **settings.embedding.additional_params,
-                **kwargs
-            )
 
         elif provider == "ollama":
             return OllamaEmbeddings(
@@ -98,3 +89,13 @@ def get_embeddings(
     except Exception as e:
         logger.error(f"Error creating embeddings for provider {provider}: {e}")
         raise
+
+def get_embeddings():
+    """Get embeddings model based on configuration"""
+    if settings.embedding.provider == "huggingface":
+        return HuggingFaceEmbeddings(
+            model_name=settings.embedding.model_name,
+            model_kwargs={'device': settings.embedding.device}
+        )
+    else:
+        raise ValueError(f"Unsupported embedding provider: {settings.embedding.provider}")

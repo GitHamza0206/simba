@@ -17,6 +17,9 @@ class MetadataType(BaseModel):
     parser: Optional[str] = Field(default=None)
     uploadedAt: str = Field(default='')
     file_path: str = Field(default='')
+    parsing_status: str = Field(default='')
+    parsed_at: str = Field(default='')
+
 
     def dict(self, *args, **kwargs):
         # Override dict method to ensure all fields are JSON serializable
@@ -31,7 +34,9 @@ class MetadataType(BaseModel):
             "loader": self.loader,
             "parser": self.parser or 'no parser',
             "uploadedAt": self.uploadedAt,
-            "file_path": self.file_path
+            "file_path": self.file_path,
+            "parsing_status": self.parsing_status,
+            "parsed_at": self.parsed_at
         }
 
 

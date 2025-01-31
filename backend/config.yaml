@@ -20,7 +20,7 @@ llm:
   streaming: true
   additional_params: {}
 
-embeddings:
+embedding:
   provider: "huggingface"
   model_name: "BAAI/llm-embedder"
   device: "mps"
@@ -37,3 +37,10 @@ chunking:
 
 retrieval:
   k: 5
+
+features:
+  enable_parsers: true  # Set to false to disable parsing
+
+celery: #REMOVE IF enable_parsers is false
+  broker_url: "redis://localhost:6379/0"
+  result_backend: "redis://localhost:6379/1"

@@ -1,11 +1,11 @@
-
 import json
 from fastapi import APIRouter,Body
 from services.chatbots.chat4u.state import State
 from services.chatbots.chat4u.graph import graph
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
-
+from langchain_core.messages import HumanMessage
+from services.chatbots.chat4u.state import for_client
 chat = APIRouter()    
 
 # request input format
@@ -20,8 +20,8 @@ async def invoke_graph(query: Query = Body(...)):
     
     config = {"configurable": {"thread_id": "2"}}
     state = State()
-    state["messages"] = [("user", query.message)]
-    state["question"] = query.message
+    state["messages"] = [HumanMessage(content=query.message)]
+
 
     # Helper function to check if string is numeric (including . and ,)
     def is_numeric(s):
@@ -31,38 +31,42 @@ async def invoke_graph(query: Query = Body(...)):
     
     async def generate_response():
         try:
-            # Initialize buffer for numeric chunks
             buffer = ""
+            last_state = None
 
-            async for event in graph.astream_events(
-                state,
-                version="v2", 
-                config=config,
-                
-            ):
-                
-                # Access the metadata field
+            async for event in graph.astream_events(state, version="v2", config=config ):
                 metadata = event.get("metadata", {})
                 event_type = event.get("event")
-                key=metadata.get("langgraph_node")
 
+                # Handle retriever node completion
+                if event_type == "on_chain_end" and event["name"] == "retrieve":
+                    # Store documents from node output
+                    state["documents"] = event["data"]["output"]["documents"]
+                    last_state = for_client(state)
+                    yield f"{json.dumps({'state': last_state})}\n\n"
                 if event_type == "on_chat_model_stream":
-                    chunk = event["data"]["chunk"].content  
-                    # Buffer numeric chunks until we get non-numeric content
+                    chunk = event["data"]["chunk"].content
+                    state_snapshot = for_client(state)
+                    last_state = state_snapshot  # Keep track of latest state
+                    
+                    # Buffer numeric chunks logic
                     if is_numeric(chunk) or (buffer and chunk in [" ", ",", "."]):
                         buffer += chunk
                     else:
-                        # Output buffered content if any, otherwise output current chunk
                         if buffer:
-                            buffer += chunk
-                            yield buffer
+                            combined = buffer + chunk
+                            yield f"{json.dumps({'content': combined, 'state': last_state})}\n\n"
                             buffer = ""
                         else:
-                            yield chunk
+                            yield f"{json.dumps({'content': chunk, 'state': last_state})}\n\n"
 
-           
+                # Send state updates even when no content chunk
+                elif event_type == "on_chat_end":
+                    # Send the latest state that now includes documents
+                    yield f"{json.dumps({'state': last_state})}\n\n"
+
         except Exception as e:
-            yield f"Error: {str(e)}"
+            yield f"{json.dumps({'error': str(e)})}\n\n"
         finally:
             print("Done")
 

@@ -5,6 +5,15 @@ export interface SimbaDoc {
 }
 
 export interface Metadata {
+
+  filename: string;
+  type: string;
+  chunk_number?: number;
+  page_number?: number;
+  parsing_status?: string;
+  size?: string;
+  loader?: string;
+  parser?: string;
   file_path: string;
   folder_path?: string;
   is_folder?: boolean;
@@ -15,6 +24,6 @@ export interface Metadata {
 export interface Document {
   id: string;
   content: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata: Record<string, any>;
 }
+

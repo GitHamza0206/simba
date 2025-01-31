@@ -7,7 +7,11 @@ const ALLOWED_FILE_TYPES = [
   'text/plain',
   'text/markdown',
   'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',  // .xls
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',  // .xlsx
+  'application/vnd.ms-powerpoint',  // .ppt
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation'  // .pptx
 ];
 
 class IngestionApi {
@@ -115,6 +119,30 @@ class IngestionApi {
   async getUploadDirectory(): Promise<string> {
     const response = await this.request<{ path: string }>('/upload-directory');
     return response.path;
+  }
+
+  async startParsing(documentId: string, parser: string): Promise<{ task_id: string }> {
+    return this.request('/parse', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+        parser: parser
+      })
+    });
+  }
+
+  async getParseStatus(taskId: string): Promise<{
+    status: string;
+    result?: {
+      status: 'success' | 'error';
+      document_id?: string;
+      error?: string;
+    };
+  }> {
+    return this.request(`/parsing/tasks/${taskId}`);
   }
 }
 

@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from ..chains.grade_chain import grade_chain
 
 def grade(state):

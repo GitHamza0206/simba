@@ -5,37 +5,52 @@ import logging
 from typing import Dict, List, Optional, Any, cast
 from core.config import settings
 from models.simbadoc import SimbaDoc
-
+import atexit
 
 logger = logging.getLogger(__name__)
 
 class LiteDocumentDB():
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(LiteDocumentDB, cls).__new__(cls)
-            cls._instance._initialize()
-        return cls._instance
+    def __init__(self):
+        """Initialize the database"""
+        self.db_path = Path(settings.paths.upload_dir) / "documents.db"
+        self._conn = None
+        self._initialize()
+        atexit.register(self.close)
 
     def _initialize(self):
         """Initialize the database"""
         try:
-            db_path = Path(settings.paths.upload_dir) / "documents.db" #TODO: make this configurable
-            self.conn = sqlite3.connect(str(db_path))
+            self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
             # Enable JSON serialization
-            self.conn.row_factory = sqlite3.Row
+            self._conn.row_factory = sqlite3.Row
             
             # Create table with a single JSON column
-            self.conn.execute('''
+            self._conn.execute('''
                 CREATE TABLE IF NOT EXISTS documents
                 (id TEXT PRIMARY KEY, data JSON)
             ''')
-            self.conn.commit()
-            logger.info(f"Initialized LiteDB at {db_path}")
+            self._conn.commit()
+            logger.info(f"Initialized LiteDB at {self.db_path}")
         except Exception as e:
             logger.error(f"Failed to initialize LiteDB: {e}")
             raise
+
+    @property
+    def conn(self):
+        """Get the database connection, creating a new one if needed"""
+        if self._conn is None:
+            self._initialize()
+        return self._conn
+
+    def close(self):
+        """Close the database connection"""
+        if self._conn is not None:
+            try:
+                self._conn.close()
+            except Exception as e:
+                logger.error(f"Error closing database connection: {e}")
+            finally:
+                self._conn = None
 
     def insert_documents(self, documents: SimbaDoc | List[SimbaDoc]) -> List[str]:
         """Insert one or multiple documents"""
@@ -56,15 +71,14 @@ class LiteDocumentDB():
             self.conn.rollback()
             logger.error(f"Failed to insert documents: {e}")
             raise
+        finally:
+            cursor.close()
 
     def get_document(self, document_id: str) -> Optional[SimbaDoc]:
         """Retrieve a document by ID"""
+        cursor = None
         try:
-            # Ensure fresh connection state
-            self.refresh()
-            
             cursor = self.conn.cursor()
-            # First log the actual query for debugging
             logger.info(f"Fetching document with ID: {document_id}")
             
             result = cursor.execute(
@@ -86,27 +100,31 @@ class LiteDocumentDB():
                 
         except Exception as e:
             logger.error(f"Failed to get document {document_id}: {e}")
-            # Re-initialize connection on error
-            self._initialize()
+            self._initialize()  # Re-initialize connection on error
             return None
+        finally:
+            if cursor:
+                cursor.close()
 
     def get_all_documents(self) -> List[SimbaDoc]:
         """Retrieve all documents"""
+        cursor = None
         try:
-
-            
             cursor = self.conn.cursor()
             results = cursor.execute('SELECT data FROM documents').fetchall()
             return [SimbaDoc(**json.loads(row[0])) for row in results]
         except Exception as e:
             logger.error(f"Failed to get all documents: {e}")
             return []
+        finally:
+            if cursor:
+                cursor.close()
 
     def delete_documents(self, document_ids: List[str]) -> bool:
         """Delete documents by IDs"""
+        cursor = None
         try:
             cursor = self.conn.cursor()
-            # Create placeholders for the IN clause
             placeholders = ','.join(['?' for _ in document_ids])
             cursor.execute(
                 f'DELETE FROM documents WHERE id IN ({placeholders})', 
@@ -115,12 +133,17 @@ class LiteDocumentDB():
             self.conn.commit()
             return cursor.rowcount > 0
         except Exception as e:
-            self.conn.rollback()
+            if self.conn:
+                self.conn.rollback()
             logger.error(f"Failed to delete documents {document_ids}: {e}")
             return False
+        finally:
+            if cursor:
+                cursor.close()
 
     def update_document(self, document_id: str, newDocument: SimbaDoc) -> bool:
         """Update a document by ID"""
+        cursor = None
         try:
             cursor = self.conn.cursor()
             
@@ -150,25 +173,29 @@ class LiteDocumentDB():
             return True
             
         except Exception as e:
-            self.conn.rollback()
+            if self.conn:
+                self.conn.rollback()
             logger.error(f"Failed to update document {document_id}: {e}")
             raise e
-
-    def refresh(self):
-        """Refresh the database connection and commit any pending changes"""
-        pass
+        finally:
+            if cursor:
+                cursor.close()
 
     def clear_database(self):
         """Clear the database"""
+        cursor = None
         try:
-            self.conn.execute('DELETE FROM documents')
+            cursor = self.conn.cursor()
+            cursor.execute('DELETE FROM documents')
             self.conn.commit()
             logger.info("Database cleared") 
             return True
         except Exception as e:
             logger.error(f"Failed to clear database: {e}")
             return e
-        
+        finally:
+            if cursor:
+                cursor.close()
 
 
 if __name__ == "__main__":

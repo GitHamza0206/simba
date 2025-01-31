@@ -41,6 +41,8 @@ rank-bm25 = "^0.2.2"
 langchain-experimental = "^0.3.4"
 sentence-transformers = "^3.4.1"
 langchain-huggingface = "^0.1.2"
+pydantic-settings = "^2.7.1"
+flower = "^2.0.1"
 
 
 
