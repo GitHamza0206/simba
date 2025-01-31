@@ -13,8 +13,10 @@ def generate(state):
     print("---GENERATE---")
     question = state["messages"][-1].content
     documents = state["documents"]
+    
+    docs_content = "\n\n".join(doc.page_content for doc in documents)
     # RAG generation
-    generation = generate_chain.invoke({"context": documents, "question": question, "chat_history": state["messages"]})
+    generation = generate_chain.invoke({"context": docs_content, "question": question, "chat_history": state["messages"]})
     messages = state["messages"] + [AIMessage(content=generation)]
 
     

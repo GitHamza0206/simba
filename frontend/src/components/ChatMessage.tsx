@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import chatbotIcon from "../assets/chatbot-icon.svg";
 import FollowUpQuestions from './FollowUpQuestions';
+import Sources from './Sources';
 
 interface ChatMessageProps {
   isAi: boolean;
@@ -11,15 +12,19 @@ interface ChatMessageProps {
   streaming?: boolean;
   followUpQuestions?: string[];
   onFollowUpClick?: (question: string) => void;
+  state?: {
+    sources?: Array<{ file_name: string }>;
+  };
 }
 
-const ChatMessage = ({ 
+const ChatMessage: React.FC<ChatMessageProps> = ({ 
   isAi, 
   message, 
   streaming,
   followUpQuestions = [],
-  onFollowUpClick 
-}: ChatMessageProps) => {
+  onFollowUpClick,
+  state
+}) => {
   // Filter out status messages
   const cleanMessage = message.replace(
     /\{"status":\s*"end",\s*"node":\s*"generate",\s*"details":\s*"Node stream ended"\}/g, 
@@ -61,6 +66,8 @@ const ChatMessage = ({
               >
                 {cleanMessage}
               </ReactMarkdown>
+              
+              {state?.sources && <Sources sources={state.sources} />}
               
               {followUpQuestions && followUpQuestions.length > 0 && (
                 <div className="mt-4">

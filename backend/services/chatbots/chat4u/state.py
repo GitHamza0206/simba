@@ -16,4 +16,15 @@ class State(TypedDict):
     """
 
     messages: Annotated[Sequence[BaseMessage] , add_messages]
-    documents: List[str]
+    documents: List[dict]
+
+    # New: Client-facing state representation
+def for_client(state:State) -> dict:
+    if "documents" in state.keys(): 
+        return {
+            "sources": [{
+                "file_name": doc.metadata.get("source"),
+            } for doc in state["documents"]]
+        }
+    else:
+        return {}
