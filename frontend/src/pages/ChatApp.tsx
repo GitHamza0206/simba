@@ -11,9 +11,15 @@ import {
 import { Message } from '@/types/chat';
 import { config } from '@/config';
 
+const STORAGE_KEY = 'chat_messages';
+
 const ChatApp: React.FC = () => {
   const [isMobile, setIsMobile] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // Load messages from localStorage on initial render
+    const savedMessages = localStorage.getItem(STORAGE_KEY);
+    return savedMessages ? JSON.parse(savedMessages) : [];
+  });
 
   useEffect(() => {
     const handleResize = () => {
@@ -24,8 +30,14 @@ const ChatApp: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  }, [messages]);
+
   const handleClearMessages = () => {
     setMessages([]);
+    localStorage.removeItem(STORAGE_KEY);
   };
 
   const handleEndDiscussion = () => {
