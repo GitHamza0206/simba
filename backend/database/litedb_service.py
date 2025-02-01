@@ -4,6 +4,7 @@ from pathlib import Path
 import logging
 from typing import Dict, List, Optional, Any, cast
 from core.config import settings
+from core.factories.vector_store_factory import VectorStoreFactory
 from models.simbadoc import SimbaDoc
 import atexit
 
@@ -197,6 +198,41 @@ class LiteDocumentDB():
             if cursor:
                 cursor.close()
 
+    def sync_store(self):
+        """Sync the database with the vector store by:
+        1. Finding documents that exist in vector store but not in DB (to be deleted)
+        2. Finding documents that exist in DB but not in vector store (to be added)
+        3. Performing the necessary delete and add operations
+        """
+        try:
+            #we should remove orphan chunks from vector store
+
+            # Get all documents from DB
+            documents = self.get_all_documents()
+            db_document_ids = [doc.id for doc in documents]
+            logger.info(f"Found {len(documents)} documents in database")
+
+            # Get vector store
+            vector_store = VectorStoreFactory.get_vector_store()
+            all_embedded_docs = vector_store.get_documents()
+            store_document_ids = [doc.id for doc in all_embedded_docs]
+
+            #oprhan chunks 
+            orphan_chunks = set(store_document_ids) - set(db_document_ids)
+            logger.info(f"Orphan chunks: {orphan_chunks}")
+            logger.info(f"Found {len(orphan_chunks)} orphan chunks in vector store")
+
+            #delete orphan chunks
+            vector_store.delete_documents(list(orphan_chunks))
+            logger.info(f"Deleted {len(orphan_chunks)} orphan chunks from vector store")
+            
+
+            
+            
+            
+        except Exception as e:
+            logger.error(f"Failed to sync database with vector store: {e}")
+            raise
 
 if __name__ == "__main__":
     db = LiteDocumentDB()

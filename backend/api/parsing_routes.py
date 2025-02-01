@@ -6,8 +6,9 @@ from services.parser_service import ParserService
 from pydantic import BaseModel
 import logging
 import os
-from tasks.parsing_tasks import parse_markitdown_task, parse_docling_task
+from tasks.parsing_tasks import parse_markitdown_task, parse_docling_task, celery
 from core.config import settings
+from celery.app.control import Inspect
 
 logger = logging.getLogger(__name__)
 parsing = APIRouter()
@@ -58,11 +59,34 @@ async def parse_document(request: ParseDocumentRequest):
 @parsing.get("/parsing/tasks/{task_id}")
 async def get_task_status(task_id: str):
     """Check status of a parsing task"""
-    from tasks.parsing_tasks import celery
-    
     result = celery.AsyncResult(task_id)
     return {
         "task_id": task_id,
         "status": result.status,
         "result": result.result if result.ready() else None
     }
+
+@parsing.get("/parsing/tasks")
+async def get_all_tasks():
+    """Get all Celery tasks (active, reserved, scheduled)"""
+    try:
+        i = Inspect(app=celery)
+        tasks = {
+            'active': i.active(),  # Currently executing tasks
+            'reserved': i.reserved(),  # Tasks that have been claimed by workers
+            'scheduled': i.scheduled(),  # Tasks scheduled for later execution
+            'registered': i.registered()  # All tasks registered in the worker
+        }
+        
+        # Add task queue length if available
+        try:
+            stats = celery.control.inspect().stats()
+            if stats:
+                tasks['stats'] = stats
+        except:
+            pass
+            
+        return tasks
+    except Exception as e:
+        logger.error(f"Error fetching tasks: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

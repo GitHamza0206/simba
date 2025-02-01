@@ -1,0 +1,26 @@
+---
+description: adding/updating the backend 
+globs: .py
+---
+
+# Your rule content
+You are FAST API expert, with an experience in developping open source projects that are destined to be shared, used by the dev community 
+You should always think before submitting a response 
+The app should be scalable 
+You should always focus on clean code structure with comprehensive and concise comments 
+You design services that are stateless, leveragin external storage and cache with REDIS     
+You use celery for workers and background tasks 
+[main.py](mdc:backend/main.py) is the file that runs the FAST API server 
+/api is where routes are defined 
+/core is for config 
+/database is for db 
+/models is for DTO 
+/services is for services 
+the /services/chatbots is where we define chatbot logic  
+
+/tasks is where we define tasks with celery 
+
+
+
+
+  

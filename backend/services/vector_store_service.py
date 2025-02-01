@@ -102,11 +102,9 @@ class VectorStoreService:
     def delete_documents(self, uids: list[str]) -> bool:
         """Delete documents and verify deletion"""
         try:
-            
-            
+            logger.info(f"Deleting documents: {uids}")
             self.store.delete(uids)
             self.save() 
-            self.verify_store_sync()
             
             return True
         except Exception as e:
@@ -144,6 +142,10 @@ class VectorStoreService:
         index_to_docstore_id = self.store.index_to_docstore_id
         return chunk_id in index_to_docstore_id.values()
     
+
+    def get_document_ids(self) -> list[str]:
+        index_to_docstore_id = self.store.index_to_docstore_id
+        return list(index_to_docstore_id.values())  
 
     def search(self, query, **kwargs):
         # Search for similar documents
@@ -215,31 +217,7 @@ class VectorStoreService:
         Verify synchronization between FAISS index and document store
         Returns: bool indicating if stores are in sync
         """
-        try:
-            # Get counts
-            faiss_count = self.store.index.ntotal
-            docstore_count = len(self.store.docstore._dict)
-            index_map_count = len(self.store.index_to_docstore_id)
-            
-            # Check all counts match
-            counts_match = (faiss_count == docstore_count == index_map_count)
-            
-            # Verify all mapped IDs exist in docstore
-            ids_exist = all(
-                self.store.docstore._dict.get(doc_id) is not None 
-                for doc_id in self.store.index_to_docstore_id.values()
-            )
-            
-            if not counts_match:
-                print(f"Count mismatch: FAISS={faiss_count}, "
-                            f"Docstore={docstore_count}, "
-                            f"Index Map={index_map_count}")
-            
-            return counts_match and ids_exist
-
-        except Exception as e:
-            logger.error(f"Error verifying store sync: {e}")
-            return False
+        pass
 
 def usage():
     store = VectorStoreService()

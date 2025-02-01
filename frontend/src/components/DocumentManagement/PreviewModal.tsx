@@ -99,25 +99,14 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   const renderFilePreview = () => {
     if (!document) return null;
 
+    console.log(document);
     const fileType = document.metadata.file_path.split('.').pop()?.toLowerCase();
     
     switch (fileType) {
       case 'pdf':
         return (
-          <div className="flex flex-col items-center">
-            <div className="p-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                PDF Preview not available
-              </p>
-              <a 
-                href={document.metadata.file_path} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-primary hover:underline mt-2 inline-block"
-              >
-                Open PDF in new tab
-              </a>
-            </div>
+          <div className="w-full h-full min-h-[500px]">
+            <p>Preview coming soon ...</p>
           </div>
         );
       
