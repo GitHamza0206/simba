@@ -82,8 +82,6 @@ async def startup_event():
     
     logger.info("=" * 50)
 
-
-
 # Include routers
 app.include_router(chat)
 app.include_router(ingestion)
@@ -92,7 +90,7 @@ app.include_router(database_route)
 app.include_router(embedding_route)
 
 if __name__ == "__main__":
-
+    # Must be set in __main__ context
     uvicorn.run(
         app, 
         host="0.0.0.0", 

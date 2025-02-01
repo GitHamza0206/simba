@@ -89,7 +89,7 @@ async def delete_document(doc_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@embedding_route.post("/embed/clear_store")
+@embedding_route.delete("/embed/clear_store")
 async def clear_store():
     store.clear_store()
     #kms.sync_with_store()

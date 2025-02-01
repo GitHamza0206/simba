@@ -145,6 +145,10 @@ class VectorStoreService:
         return chunk_id in index_to_docstore_id.values()
     
 
+    def get_document_ids(self) -> list[str]:
+        index_to_docstore_id = self.store.index_to_docstore_id
+        return list(index_to_docstore_id.values())  
+
     def search(self, query, **kwargs):
         # Search for similar documents
         return self.store.similarity_search(query, **kwargs)

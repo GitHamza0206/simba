@@ -338,23 +338,17 @@ const DocumentList: React.FC<DocumentListProps> = ({
     });
 
     // Update the document's parsing status
-    const updatedDocs = documents.map(doc => {
-      if (doc.id === docId) {
-        return {
-          ...doc,
-          metadata: {
-            ...doc.metadata,
-            parsing_status: status
-          }
-        };
-      }
-      return doc;
-    });
-    
-    setDocuments(updatedDocs);
-
-    // Refresh the document list
-    await fetchDocuments();
+    const updatedDoc = documents.find(doc => doc.id === docId);
+    if (updatedDoc) {
+      const docWithNewStatus = {
+        ...updatedDoc,
+        metadata: {
+          ...updatedDoc.metadata,
+          parsing_status: status
+        }
+      };
+      onDocumentUpdate(docWithNewStatus);
+    }
 
     // Show success toast if parsed successfully
     if (status === 'PARSED') {
@@ -362,6 +356,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
         title: "Success",
         description: "Document parsed successfully",
       });
+      // Refresh the document list after successful parsing
+      await fetchDocuments();
     }
   };
 

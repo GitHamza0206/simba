@@ -16,7 +16,7 @@ from langchain_docling import DoclingLoader
 from docling.chunking import HybridChunker
 from langchain_docling.loader import ExportType
 from core.config import settings
-
+import uuid
 class ParserService:
     SUPPORTED_PARSERS = [
         "markitdown",
@@ -78,7 +78,7 @@ class ParserService:
         return document
 
     def _parse_docling(self, document: SimbaDoc) -> List[SimbaDoc]:
-        """Return list of chunked documents"""
+        """Return list of chunked documents and update SimbaDoc with new documents"""
         try:
             loader = DoclingLoader(
                 file_path=document.metadata.file_path,
@@ -88,6 +88,14 @@ class ParserService:
                 ),
             )
             docs = loader.load()
+
+            #create ids for each document
+            for doc in docs:
+                doc.id = str(uuid.uuid4())  
+
+            print("---")
+            print(docs)
+            print("---")
 
             
             document.metadata.parsing_status = "SUCCESS"
