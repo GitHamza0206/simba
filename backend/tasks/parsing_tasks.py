@@ -1,5 +1,5 @@
-from celery import Celery
 from core.config import settings
+from core.celery_config import celery_app
 from core.factories.vector_store_factory import VectorStoreFactory
 from models.simbadoc import SimbaDoc
 from services.parser_service import ParserService
@@ -20,35 +20,10 @@ if torch.cuda.is_available():
     torch.cuda.empty_cache()
 torch.set_num_threads(1)  # Limit to single thread to avoid conflicts
 
-if settings.features.enable_parsers:
-    celery = Celery('tasks')
-    
-    # Configure from settings
-    celery.conf.update(
-        broker_url=settings.celery.broker_url,
-        result_backend=settings.celery.result_backend,
-        task_serializer='json',
-        accept_content=['json'],
-        result_serializer='json',
-        enable_utc=True,
-        worker_send_task_events=True,
-        task_send_sent_event=True,
-        worker_redirect_stdouts=False,
-        worker_cancel_long_running_tasks_on_connection_loss=True,
-        worker_max_tasks_per_child=1,  # Recycle workers after each task
-        broker_connection_max_retries=0,  # Faster failure detection
-        worker_pool='solo',  # Use solo pool to avoid multiprocessing issues
-        worker_max_memory_per_child=1000000,  # 1GB memory limit per worker
-        task_time_limit=3600,  # 1 hour time limit per task
-        task_soft_time_limit=3000,  # 50 minutes soft time limit
-    )
-else:
-    celery = None  # Disable Celery when parsers are off
-
 # Initialize parser service with explicit CPU device and force CPU flag
 parser_service = ParserService(device='cpu', force_cpu=True)
 
-@celery.task(name="parse_markitdown", bind=True)
+@celery_app.task(name="parse_markitdown", bind=True)
 def parse_markitdown_task(self, document_id: str):
     db = None
     try:
@@ -75,7 +50,7 @@ def parse_markitdown_task(self, document_id: str):
         if hasattr(db, 'close'):
             db.close()
 
-@celery.task(name="parse_docling")
+@celery_app.task(name="parse_docling")
 def parse_docling_task(document_id: str):
     try:
         # Ensure we're using CPU for this task

@@ -23,7 +23,7 @@ llm:
 embedding:
   provider: "huggingface"
   model_name: "BAAI/llm-embedder"
-  device: "cpu"
+  device: "mps"
   additional_params: {}
 
 vector_store:
