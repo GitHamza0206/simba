@@ -90,6 +90,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
     new Set(documents.filter(doc => doc.metadata.enabled).map(doc => doc.id))
   );
   const [parsingTasks, setParsingTasks] = useState<Record<string, string>>({});  // docId -> taskId
+  const [parsingButtonStates, setParsingButtonStates] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setEnabledDocuments(
@@ -310,6 +311,43 @@ const DocumentList: React.FC<DocumentListProps> = ({
 
   const handleParseClick = async (document: SimbaDoc) => {
     try {
+      // Disable the button during the whole process
+      setParsingButtonStates(prev => ({
+        ...prev,
+        [document.id]: true
+      }));
+
+      // If document is enabled, simulate disable/enable cycle first
+      if (document.metadata.enabled) {
+        // First simulate clicking disable
+        const disabledDoc = {
+          ...document,
+          metadata: {
+            ...document.metadata,
+            enabled: false
+          }
+        };
+        onDocumentUpdate(disabledDoc);
+        
+        // Wait 0.5 seconds to simulate user interaction
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Then simulate clicking enable again
+        const enabledDoc = {
+          ...document,
+          metadata: {
+            ...document.metadata,
+            enabled: true,
+            parsing_status: 'PENDING'
+          }
+        };
+        onDocumentUpdate(enabledDoc);
+
+        // Delete the embeddings after simulating the UI interaction
+        await embeddingApi.delete_document(document.id);
+      }
+
+      // Start new parsing task
       const result = await ingestionApi.startParsing(document.id, document.metadata.parser || 'docling');
       setParsingTasks(prev => ({
         ...prev,
@@ -317,7 +355,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
       }));
       
       toast({
-        title: "Parsing Started",
+        title: document.metadata.parsing_status === 'SUCCESS' ? "Re-parsing Started" : "Parsing Started",
         description: "Document parsing has been queued"
       });
     } catch (error) {
@@ -326,6 +364,12 @@ const DocumentList: React.FC<DocumentListProps> = ({
         description: error instanceof Error ? error.message : "Failed to start parsing",
         variant: "destructive"
       });
+    } finally {
+      // Re-enable the button
+      setParsingButtonStates(prev => ({
+        ...prev,
+        [document.id]: false
+      }));
     }
   };
 
@@ -499,13 +543,17 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             size="icon"
                             onClick={() => handleParseClick(doc)}
                             className="h-8 w-8"
-                            disabled={!!parsingTasks[doc.id]}
+                            disabled={!!parsingTasks[doc.id] || parsingButtonStates[doc.id]}
                           >
-                            <Play className="h-4 w-4" />
+                            {parsingButtonStates[doc.id] ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Play className="h-4 w-4" />
+                            )}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Parse document</p>
+                          <p>{doc.metadata.parsing_status === 'SUCCESS' ? 'Re-parse document' : 'Parse document'}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>

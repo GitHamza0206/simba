@@ -205,41 +205,30 @@ class LiteDocumentDB():
         3. Performing the necessary delete and add operations
         """
         try:
-            logger.info("Starting database synchronization with vector store")
-            
+            #we should remove orphan chunks from vector store
+
             # Get all documents from DB
             documents = self.get_all_documents()
+            db_document_ids = [doc.id for doc in documents]
             logger.info(f"Found {len(documents)} documents in database")
-            
+
             # Get vector store
             vector_store = VectorStoreFactory.get_vector_store()
+            all_embedded_docs = vector_store.get_documents()
+            store_document_ids = [doc.id for doc in all_embedded_docs]
+
+            #oprhan chunks 
+            orphan_chunks = set(store_document_ids) - set(db_document_ids)
+            logger.info(f"Orphan chunks: {orphan_chunks}")
+            logger.info(f"Found {len(orphan_chunks)} orphan chunks in vector store")
+
+            #delete orphan chunks
+            vector_store.delete_documents(list(orphan_chunks))
+            logger.info(f"Deleted {len(orphan_chunks)} orphan chunks from vector store")
             
-            # Collect all document chunk IDs from DB
-            db_chunk_ids = set()
-            for doc in documents:
-                for chunk in doc.documents:
-                    db_chunk_ids.add(chunk.id)
+
             
-            # Get all IDs from vector store
-            store_ids = set(vector_store.get_document_ids())
-            logger.info(f"Found {len(store_ids)} documents in vector store")
             
-            # Calculate differences
-            to_delete = store_ids - db_chunk_ids  # In store but not in DB
-            to_add = db_chunk_ids - store_ids     # In DB but not in store
-            
-            # Delete documents that exist in vector store but not in DB
-            if to_delete:
-                logger.info(f"Deleting {len(to_delete)} documents from vector store")
-                vector_store.delete_documents(list(to_delete))
-            
-            # Add documents that exist in DB but not in vector store
-            if documents:
-                logger.info(f"Adding/Updating documents in vector store")
-                vector_store.add_documents(documents)
-            
-            logger.info("Database synchronization completed successfully")
-            return True
             
         except Exception as e:
             logger.error(f"Failed to sync database with vector store: {e}")

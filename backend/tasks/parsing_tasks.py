@@ -1,5 +1,5 @@
 from core.config import settings
-from core.celery_config import celery_app
+from core.celery_config import celery_app as celery  # Rename for backward compatibility
 from core.factories.vector_store_factory import VectorStoreFactory
 from models.simbadoc import SimbaDoc
 from services.parser_service import ParserService
@@ -22,8 +22,9 @@ torch.set_num_threads(1)  # Limit to single thread to avoid conflicts
 
 # Initialize parser service with explicit CPU device and force CPU flag
 parser_service = ParserService(device='cpu', force_cpu=True)
+vector_store = VectorStoreFactory.get_vector_store()
 
-@celery_app.task(name="parse_markitdown", bind=True)
+@celery.task(name="parse_markitdown", bind=True)
 def parse_markitdown_task(self, document_id: str):
     db = None
     try:
@@ -50,7 +51,7 @@ def parse_markitdown_task(self, document_id: str):
         if hasattr(db, 'close'):
             db.close()
 
-@celery_app.task(name="parse_docling")
+@celery.task(name="parse_docling")
 def parse_docling_task(document_id: str):
     try:
         # Ensure we're using CPU for this task
@@ -65,16 +66,19 @@ def parse_docling_task(document_id: str):
             parsed_simba_doc = parser_service.parse_document(original_doc, "docling")
         
         # Update database
+
+        vector_store.add_documents(parsed_simba_doc.documents)
+        print("---")
+        print("adding documents to store : ", parsed_simba_doc.documents)
+        print("---")
+
         db.update_document(document_id, parsed_simba_doc)
 
-        # Sync vector store
-        vector_store = VectorStoreFactory.get_vector_store()
-        # Delete old chunks
-        if original_doc and original_doc.documents:
-            vector_store.delete_documents([doc.id for doc in original_doc.documents])   
-        # Add new chunks
-        if parsed_simba_doc and parsed_simba_doc.documents:
-            vector_store.add_documents(parsed_simba_doc.documents)
+
+
+
+        
+
             
         return {"status": "success", "document_id": parsed_simba_doc.id}
     except Exception as e:

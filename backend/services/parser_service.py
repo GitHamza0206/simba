@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 import shlex
 from typing import List, Union
+from core.factories.vector_store_factory import VectorStoreFactory
 from pydantic import BaseModel
 from langchain.schema import Document
 from models.simbadoc import SimbaDoc
@@ -31,6 +32,8 @@ class ParserService:
             force_cpu: If True, always use CPU regardless of device parameter
         """
         # Check environment variable first
+        self.store = VectorStoreFactory.get_vector_store()
+
         env_device = os.environ.get("PYTORCH_DEVICE")
         if env_device:
             self.device = env_device
@@ -66,7 +69,7 @@ class ParserService:
         """Return either single doc or list of docs"""
         if parser == "docling":
             # Returns list of split documents
-
+            #remove old chunks
             return self._parse_docling(document)
         else:
             # Return single modified document
@@ -94,7 +97,12 @@ class ParserService:
                 doc.id = str(uuid.uuid4())  
 
             print("---")
-            print(docs)
+            # for ldocs in document.documents:
+            #     ids_to_remove = [d.id for d in ldocs]
+            
+            # self.store.delete_documents(ids_to_remove)
+            # self.store.add_documents(docs)
+            # self.store.save()
             print("---")
 
             
