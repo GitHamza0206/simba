@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import ChatFrame from '@/components/ChatFrame';
-import { cn } from "@/lib/utils";
 import { MoreVertical, RotateCw } from 'lucide-react';
 import {
   DropdownMenu,
@@ -10,6 +9,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Message } from '@/types/chat';
 import { config } from '@/config';
+import { FileUploadModal } from '@/components/DocumentManagement/FileUploadModal';
+import { ingestionApi } from '@/lib/ingestion_api';
+import { useToast } from '@/hooks/use-toast';
+import { Toaster } from "@/components/ui/toaster";
 
 const STORAGE_KEY = 'chat_messages';
 
@@ -20,6 +23,8 @@ const ChatApp: React.FC = () => {
     const savedMessages = localStorage.getItem(STORAGE_KEY);
     return savedMessages ? JSON.parse(savedMessages) : [];
   });
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const handleResize = () => {
@@ -43,6 +48,27 @@ const ChatApp: React.FC = () => {
   const handleEndDiscussion = () => {
     handleClearMessages();
     window.parent.postMessage({ type: 'CLOSE_CHAT' }, '*');
+  };
+
+  const handleChatUpload = async (files: FileList) => {
+    try {
+      await ingestionApi.uploadDocuments(Array.from(files));
+      setIsUploadModalOpen(false);
+
+      // Show toast in chat interface
+      toast({
+        title: "✅ Upload Successful",
+        description: "Your documents have been uploaded. Go to KMS to process them.",
+        className: "bg-green-50 text-green-900 border-green-200",
+        duration: 5000
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to upload files",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -76,9 +102,20 @@ const ChatApp: React.FC = () => {
         </div>
 
         <div className="flex-1 overflow-hidden">
-          <ChatFrame messages={messages} setMessages={setMessages} />
+          <ChatFrame 
+            messages={messages} 
+            setMessages={setMessages} 
+            onUploadClick={() => setIsUploadModalOpen(true)}
+          />
         </div>
       </div>
+
+      <FileUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUpload={handleChatUpload}
+      />
+      <Toaster />
     </div>
   );
 };

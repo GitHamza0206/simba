@@ -2,18 +2,25 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send } from 'lucide-react';
+import { Send, Paperclip } from 'lucide-react';
 import ChatMessage from '../components/ChatMessage';
 import { Message } from '@/types/chat';
 import Thinking from '@/components/Thinking';
 import { sendMessage, handleChatStream } from '@/lib/api';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ChatFrameProps {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  onUploadClick: () => void;
 }
 
-const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages }) => {
+const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadClick }) => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -134,12 +141,34 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages }) => {
 
       <CardFooter className="p-4 border-t">
         <form onSubmit={handleSubmit} className="flex w-full gap-2">
-          <Input
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Type a message..."
-            disabled={isLoading}
-          />
+          <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border bg-white">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={onUploadClick}
+                    className="h-8 w-8 hover:bg-transparent p-0"
+                  >
+                    <Paperclip className="h-5 w-5 text-gray-500 rotate-45" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Upload document</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <Input
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              placeholder="Type a message..."
+              disabled={isLoading}
+              className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
+            />
+          </div>
           <Button 
             type="submit" 
             disabled={isLoading || !inputMessage.trim()}

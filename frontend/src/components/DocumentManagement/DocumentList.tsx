@@ -66,6 +66,8 @@ interface DocumentListProps {
   onDocumentUpdate: (document: SimbaDoc) => void;
 }
 
+const PARSING_TASKS_STORAGE_KEY = 'parsing_tasks';
+
 const DocumentList: React.FC<DocumentListProps> = ({
   documents,
   isLoading,
@@ -89,8 +91,60 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const [enabledDocuments, setEnabledDocuments] = useState<Set<string>>(
     new Set(documents.filter(doc => doc.metadata.enabled).map(doc => doc.id))
   );
-  const [parsingTasks, setParsingTasks] = useState<Record<string, string>>({});  // docId -> taskId
+  
+  // Initialize parsingTasks from localStorage
+  const [parsingTasks, setParsingTasks] = useState<Record<string, string>>(() => {
+    const savedTasks = localStorage.getItem(PARSING_TASKS_STORAGE_KEY);
+    return savedTasks ? JSON.parse(savedTasks) : {};
+  });
+  
   const [parsingButtonStates, setParsingButtonStates] = useState<Record<string, boolean>>({});
+
+  // Save parsingTasks to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(PARSING_TASKS_STORAGE_KEY, JSON.stringify(parsingTasks));
+  }, [parsingTasks]);
+
+  // Check status of existing parsing tasks on component mount
+  useEffect(() => {
+    const checkExistingTasks = async () => {
+      const tasks = { ...parsingTasks };
+      let hasChanges = false;
+
+      for (const [docId, taskId] of Object.entries(tasks)) {
+        try {
+          const result = await ingestionApi.getParseStatus(taskId);
+          if (result.status === 'SUCCESS' || result.status === 'FAILED') {
+            delete tasks[docId];
+            hasChanges = true;
+            
+            // Update document status if task completed
+            const doc = documents.find(d => d.id === docId);
+            if (doc) {
+              const updatedDoc = {
+                ...doc,
+                metadata: {
+                  ...doc.metadata,
+                  parsing_status: result.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED'
+                }
+              };
+              onDocumentUpdate(updatedDoc);
+            }
+          }
+        } catch (error) {
+          console.error(`Error checking task ${taskId}:`, error);
+          delete tasks[docId];
+          hasChanges = true;
+        }
+      }
+
+      if (hasChanges) {
+        setParsingTasks(tasks);
+      }
+    };
+
+    checkExistingTasks();
+  }, []);
 
   useEffect(() => {
     setEnabledDocuments(
@@ -374,7 +428,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
   };
 
   const handleParseComplete = async (docId: string, status: string) => {
-    // Remove the task from parsing tasks
+    // Remove the task from parsing tasks and localStorage
     setParsingTasks(prev => {
       const newTasks = { ...prev };
       delete newTasks[docId];
@@ -406,7 +460,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
   };
 
   const handleParseCancel = async (documentId: string) => {
-    // Remove task from tracking
+    // Remove task from tracking and localStorage
     setParsingTasks(prev => {
       const next = { ...prev };
       delete next[documentId];
@@ -516,13 +570,15 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Badge
-                      variant={
-                        doc.metadata.parsing_status === 'SUCCESS' ? 'success' :
-                        doc.metadata.parsing_status === 'FAILED' ? 'destructive' :
-                        'default'
-                      }
+                      variant="outline"
+                      className={cn(
+                        doc.metadata.parsing_status === 'SUCCESS' && "bg-green-100 text-green-800 border-green-200",
+                        doc.metadata.parsing_status === 'FAILED' && "bg-red-100 text-red-800 border-red-200",
+                        doc.metadata.parsing_status === 'PENDING' && "bg-orange-100 text-orange-800 border-orange-200",
+                        !doc.metadata.parsing_status && "bg-gray-100 text-gray-800 border-gray-200"
+                      )}
                     >
-                      {doc.metadata.parsing_status || 'PENDING'}
+                      {doc.metadata.parsing_status || 'Unparsed'}
                     </Badge>
                     {parsingTasks[doc.id] && (
                       <ParsingStatusBox 
