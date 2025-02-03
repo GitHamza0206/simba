@@ -1,11 +1,6 @@
 
 # Simba
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/yourorg/simba/ci.yml?branch=main)](https://github.com/yourorg/simba/actions)
-[![Documentation](https://img.shields.io/badge/docs-latest-brightgreen)](https://docs.simba-kms.com)
-[![License](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/licenses/MIT)
-
-
 <!-- <a href="https://ibb.co/RHkRGcs"><img src="https://i.ibb.co/ryRDKHz/logo.jpg" alt="logo" border="0"></a> -->
 
 
