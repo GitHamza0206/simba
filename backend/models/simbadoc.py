@@ -15,6 +15,7 @@ class MetadataType(BaseModel):
     size: str = Field(default='')
     loader: str = Field(default='')
     parser: Optional[str] = Field(default=None)
+    splitter: Optional[str] = Field(default=None)
     uploadedAt: str = Field(default='')
     file_path: str = Field(default='')
     parsing_status: str = Field(default='')
@@ -33,6 +34,7 @@ class MetadataType(BaseModel):
             "size": self.size,
             "loader": self.loader,
             "parser": self.parser or 'no parser',
+            "splitter": self.splitter or 'no splitter',
             "uploadedAt": self.uploadedAt,
             "file_path": self.file_path,
             "parsing_status": self.parsing_status,

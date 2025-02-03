@@ -14,6 +14,7 @@ export interface Metadata {
   size?: string;
   loader?: string;
   parser?: string;
+  splitter?: string;
   file_path: string;
   folder_path?: string;
   is_folder?: boolean;

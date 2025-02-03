@@ -12,7 +12,7 @@ prompt_template = ChatPromptTemplate.from_template("""
     You are also able to reason and provide general answers 
     You always respond in French. 
     Question: {question} 
-    Context: {context} 
+    Context: {context}  
     Chat History: {chat_history}
     Answer: 
 """)

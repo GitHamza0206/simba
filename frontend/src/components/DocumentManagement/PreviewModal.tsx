@@ -255,18 +255,18 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button variant="ghost" size="icon" onClick={handleConfirmLoader}>
+                  {/* <Button variant="ghost" size="icon" onClick={handleConfirmLoader}>
                     <Check className="h-4 w-4" />
-                  </Button>
+                  </Button> */}
                 </>
               ) : (
                 <>
                   <div className="text-sm text-muted-foreground">
                     Loader: {confirmedLoader}
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setIsEditingLoader(true)}>
+                  {/* <Button variant="ghost" size="icon" onClick={() => setIsEditingLoader(true)}>
                     <Pencil className="h-4 w-4" />
-                  </Button>
+                  </Button> */}
                 </>
               )}
             </div>
@@ -287,18 +287,18 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button variant="ghost" size="icon" onClick={handleConfirmParser}>
+                  {/* <Button variant="ghost" size="icon" onClick={handleConfirmParser}>
                     <Check className="h-4 w-4" />
-                  </Button>
+                  </Button> */}
                 </>
               ) : (
                 <>
                   <div className="text-sm text-muted-foreground">
                     Parser: {confirmedParser}
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setIsEditingParser(true)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                    {/* <Button variant="ghost" size="icon" onClick={() => setIsEditingParser(true)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button> */}
                 </>
               )}
             </div>

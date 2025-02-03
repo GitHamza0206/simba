@@ -115,9 +115,6 @@ class DocumentIngestionService:
             logger.error(f"Error deleting document {uid}: {e}")
             raise e
         
-    
-        
-    
 
     def update_document(self, simbadoc: SimbaDoc, args: dict):
         try:
@@ -130,85 +127,8 @@ class DocumentIngestionService:
             logger.error(f"Error updating document {simbadoc.id}: {e}")
             raise e
 
-    def sync_with_store(self):
-        """Sync embedding status with vector store"""
-        try:
-            # Get all documents from database
-            db_docs = self.database.get_all_documents()
+    
 
-            # Get IDs for comparison
-            kms_chunks_id = [chunk.id for simba_doc in db_docs for chunk in simba_doc.documents]
-            store_chunks_id = [doc.id for doc in store_documents]
-            orphaned_chunks = set(store_chunks_id) - set(kms_chunks_id)
 
-            logger.info(f"KMS chunks: {kms_chunks_id}")
-            logger.info(f"Store chunks: {store_chunks_id}")
-            logger.info(f"Orphaned chunks: {orphaned_chunks}")
-
-            # Delete orphaned chunks from store
-            if orphaned_chunks:
-                logger.warning(f"Deleting orphaned chunks: {orphaned_chunks}")
-                self.vector_store.delete_documents(list(orphaned_chunks))
-
-            # Track documents that need updates
-            updates_needed = []
-
-            # Update document states based on their chunks in store
-            for simba_doc in db_docs:
-                doc_chunks = set(chunk.id for chunk in simba_doc.documents)
-                chunks_in_store = doc_chunks.intersection(set(store_chunks_id))
-                
-                if len(chunks_in_store) == len(doc_chunks):
-                    # All chunks are in store - document should be enabled
-                    if not simba_doc.metadata.enabled:
-                        logger.info(f"Enabling document {simba_doc.id} - all chunks found in store")
-                        simba_doc.metadata.enabled = True
-                        updates_needed.append(simba_doc)
-                else:
-                    # Not all chunks are in store - document should be disabled
-                    if simba_doc.metadata.enabled:
-                        logger.warning(f"Disabling document {simba_doc.id} - missing chunks in store")
-                        simba_doc.metadata.enabled = False
-                        updates_needed.append(simba_doc)
-                        # Delete any remaining chunks from store
-                        if chunks_in_store:
-                            logger.info(f"Deleting remaining chunks for disabled document: {chunks_in_store}")
-                            self.vector_store.delete_documents(list(chunks_in_store))
-
-            # Perform all database updates
-            for doc in updates_needed:
-                logger.info(f"Updating document {doc.id} enabled status to {doc.metadata.enabled}")
-                success = self.database.update_document(doc.id, doc)
-                if not success:
-                    logger.error(f"Failed to update document {doc.id}")
-                    raise ValueError(f"Failed to update document {doc.id}")
-
-            # Verify updates
-            for doc in updates_needed:
-                verified_doc = self.database.get_document(doc.id)
-                if verified_doc.metadata.enabled != doc.metadata.enabled:
-                    logger.error(f"Document {doc.id} failed to update. Expected enabled={doc.metadata.enabled}, got {verified_doc.metadata.enabled}")
-                    raise ValueError(f"Document {doc.id} failed to update correctly")
-
-            # Final verification of store state
-            store_documents_after = self.vector_store.get_documents()
-            store_chunks_after = set(doc.id for doc in store_documents_after)
-            
-            # Verify no orphaned chunks remain
-            remaining_orphans = store_chunks_after - set(kms_chunks_id)
-            if remaining_orphans:
-                logger.error(f"Orphaned chunks still present after sync: {remaining_orphans}")
-                raise ValueError(f"Failed to remove all orphaned chunks: {remaining_orphans}")
-
-            logger.info("Store synchronization completed successfully")
-            return True
-
-        except Exception as e:
-            logger.error(f"Error during store synchronization: {e}")
-            raise e
-
-if __name__ == "__main__":
-    kms = DocumentIngestionService()
-    kms.sync_with_store()
 
 
