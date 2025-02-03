@@ -1,17 +1,20 @@
+version: '3.8'
 
 services:
   backend:
-    build: ./backend
-    ports:
-      - "8000:8000"
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    volumes:
-      - ./backend:/app
-      - /app/.venv
-      - /app/__pycache__
-    command: poetry run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-    restart: "no"
+    extends:
+      file: ./backend/docker-compose.yml
+      service: web
+
+  celery_worker:
+    extends:
+      file: ./backend/docker-compose.yml
+      service: celery_worker
+
+  redis:
+    extends:
+      file: ./backend/docker-compose.yml
+      service: redis
 
   frontend:
     build:
@@ -26,4 +29,14 @@ services:
       - VITE_API_URL=http://localhost:8000
     depends_on:
       - backend
-    restart: "no"
+    networks:
+      - app_network
+    restart: unless-stopped
+
+networks:
+  app_network:
+    name: migibot_network
+    driver: bridge
+volumes:
+  redis_data:
+    driver: local
