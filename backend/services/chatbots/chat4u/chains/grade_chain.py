@@ -1,7 +1,6 @@
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.pydantic_v1 import BaseModel, Field
 from core.factories.llm_factory import get_llm
-
+from pydantic import BaseModel, Field
 # Data model
 class GradeDocuments(BaseModel):
     """Binary score for relevance check on retrieved documents."""

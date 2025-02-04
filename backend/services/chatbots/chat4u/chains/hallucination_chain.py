@@ -1,7 +1,6 @@
-from langchain_core.pydantic_v1 import BaseModel, Field
 from core.factories.llm_factory import get_llm
 from langchain_core.prompts import ChatPromptTemplate
-
+from pydantic import BaseModel, Field
 # Data model
 class GradeHallucinations(BaseModel):
     """Binary score for hallucination present in generation answer."""

@@ -93,7 +93,10 @@ const ChatApp: React.FC = () => {
             </DropdownMenu>
 
             <button 
-              onClick={handleClearMessages}
+              onClick={() => {
+                handleClearMessages();
+                window.location.reload();
+              }}
               className="hover:bg-[#0077cc] p-1 rounded"
             >
               <RotateCw className="h-5 w-5" />

@@ -24,10 +24,10 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
     - [Local Development](#local-development)
   - [Backend](#backend)
   - [Frontend](#frontend)
-  - [Launch with docker](#launch-with-docker)
-- [Configuration](#configuration)
-  - [Project Structure](#project-structure)
-- [Roadmap](#roadmap)
+  - [Launch with docker (Recommended)](#launch-with-docker-recommended)
+  - [📂 Project Structure](#-project-structure)
+  - [⚙️ Configuration](#️-configuration)
+  - [Roadmap](#roadmap)
   - [🤝 Contributing](#-contributing)
   - [💬  Support \& Contact](#--support--contact)
   
@@ -42,7 +42,7 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
 
 ## Demo 
 
-Demo here: 
+[![Watch the demo](/assets/thumbnail.png)](/assets/demo.mp4)
 
 ## Getting Started
 
@@ -72,7 +72,10 @@ cd backend
 
 0. Redis installation 
    make sure to have redis installed in your OS 
-   </br>
+   ```bash
+   #init redis server
+    redis-server
+   ```
 
 1.  setup env
    
@@ -168,7 +171,7 @@ npm run dev
 then navigate to <a>http:localhost:5173</a> to access the frontend
 
 
-## Launch with docker
+## Launch with docker (Recommended)
 
 navigate to root simba directory
 
@@ -177,20 +180,7 @@ export OPENAI_API_KEY="" #(optional)
 docker-compose up --build 
 ```
 
-
-# Configuration
-the [config.yaml](/backend/config.yaml) file is used to configure the backend application.
-You can change : 
-- embedding model
-- vector store
-- chunking
-- retrieval
-- features
-- parsers 
-
-navigate to [backend/README.md](/backend/README.md) for more information
-
-## Project Structure
+## 📂 Project Structure
 
 ```bash
 simba/
@@ -205,7 +195,21 @@ simba/
 ├── docker-compose.yml    # Development environment
 └── docker-compose.prod.yml # Production setup
 ```
-# Roadmap
+
+## ⚙️ Configuration
+the [config.yaml](/backend/config.yaml) file is used to configure the backend application.
+You can change : 
+- embedding model
+- vector store
+- chunking
+- retrieval
+- features
+- parsers 
+
+navigate to [backend/README.md](/backend/README.md) for more information
+
+
+## Roadmap
 
 - [ ] Add more documentation 
 - [ ] Make simba work with any RAG system as an importable python package
