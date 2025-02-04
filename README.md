@@ -7,17 +7,18 @@
 
 Simba is an open source, portable KMS (knowledge management system) designed to integrate seamlessly with any Retrieval-Augmented Generation (RAG) system. With a modern UI and modular architecture, Simba allows developers to focus on building advanced AI solutions without worrying about the complexities of knowledge management.
 
-| Just build your RAG, we take care of the knowledge management |
+| Just build your RAG, we take care of the knowledge |
 |:------------------------------------------------------------:|
 
 
-## Table of Contents
+# Table of Contents
+
 
 - [Simba - Bring Your Knowledge into Your AI](#simba---bring-your-knowledge-into-your-ai)
-  - [Table of Contents](#table-of-contents)
+- [Table of Contents](#table-of-contents)
   - [Features](#features)
-- [Demo](#demo)
-  - [🚀 Getting Started](#-getting-started)
+  - [Demo](#demo)
+  - [Getting Started](#getting-started)
     - [Prerequisites](#prerequisites)
     - [Installation](#installation)
     - [Local Development](#local-development)
@@ -25,25 +26,25 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
   - [Frontend](#frontend)
   - [Launch with docker](#launch-with-docker)
 - [Configuration](#configuration)
-  - [🧩 Project Structure](#-project-structure)
+  - [Project Structure](#project-structure)
 - [Roadmap](#roadmap)
-  - [Contributing](#contributing)
-  - [Support \& Contact](#support--contact)
+  - [🤝 Contributing](#-contributing)
+  - [💬  Support \& Contact](#--support--contact)
   
 
 ## Features
 
-- **Modular Architecture:** Plug in various vector stores, embedding models, chunkers, and parsers.
-- **Modern UI:** Intuitive user interface to visualize and modify every document chunk.
-- **Seamless Integration:** Easily integrates with any RAG-based system.
-- **Developer Focus:** Simplifies knowledge management so you can concentrate on building core AI functionality.
-- **Open Source & Extensible:** Community-driven, with room for custom features and integrations.
+- **🧩 Modular Architecture:** Plug in various vector stores, embedding models, chunkers, and parsers.
+- **🖥️ Modern UI:** Intuitive user interface to visualize and modify every document chunk.
+- **� Seamless Integration:** Easily integrates with any RAG-based system.
+- **👨‍💻 Developer Focus:** Simplifies knowledge management so you can concentrate on building core AI functionality.
+- **📦 Open Source & Extensible:** Community-driven, with room for custom features and integrations.
 
-# Demo 
+## Demo 
 
 Demo here: 
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -189,7 +190,7 @@ You can change :
 
 navigate to [backend/README.md](/backend/README.md) for more information
 
-## 🧩 Project Structure
+## Project Structure
 
 ```bash
 simba/
@@ -217,7 +218,7 @@ simba/
 - [ ] Enable role access control
 - [ ] 
 
-## Contributing
+## 🤝 Contributing
 Contributions are welcome! If you'd like to contribute to Simba, please follow these steps:
 
 - Fork the repository.
@@ -225,6 +226,6 @@ Contributions are welcome! If you'd like to contribute to Simba, please follow t
 - Commit your changes with clear messages.
 - Open a pull request describing your changes.
 
-## Support & Contact
-For support or inquiries, please open an issue on GitHub or contact repo owner at zeroualihamza0206@gmail.com
+## 💬  Support & Contact
+For support or inquiries, please open an issue 📌 on GitHub or contact repo owner at [Hamza Zerouali](mailto:zeroualihamza0206@gmail.com)
 
