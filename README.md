@@ -42,7 +42,7 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
 
 ## Demo 
 
-[![Watch the demo](/assets/thumbnail.png)](/assets/demo.mp4)
+[![Watch the demo](/assets/demo.gif)
 
 ## Getting Started
 
