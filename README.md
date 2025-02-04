@@ -1,30 +1,35 @@
 
-# Simba
+# Simba - Bring Your Knowledge into Your AI 
 
 <!-- <a href="https://ibb.co/RHkRGcs"><img src="https://i.ibb.co/ryRDKHz/logo.jpg" alt="logo" border="0"></a> -->
+[![Twitter Follow](https://img.shields.io/twitter/follow/zeroualihamza?style=social)](https://x.com/zerou_hamza)
 
 
 Simba is an open source, portable KMS (knowledge management system) designed to integrate seamlessly with any Retrieval-Augmented Generation (RAG) system. With a modern UI and modular architecture, Simba allows developers to focus on building advanced AI solutions without worrying about the complexities of knowledge management.
- 
-# Demo 
 
-Demo here: 
+| Just build your RAG, we take care of the knowledge management |
+|:------------------------------------------------------------:|
+
 
 ## Table of Contents
 
-- [Simba](#simba)
-- [Demo](#demo)
+- [Simba - Bring Your Knowledge into Your AI](#simba---bring-your-knowledge-into-your-ai)
   - [Table of Contents](#table-of-contents)
   - [Features](#features)
+- [Demo](#demo)
   - [🚀 Getting Started](#-getting-started)
     - [Prerequisites](#prerequisites)
     - [Installation](#installation)
     - [Local Development](#local-development)
-        - [Backend](#backend)
-        - [Frontend](#frontend)
-      - [Launch with docker](#launch-with-docker)
+  - [Backend](#backend)
+  - [Frontend](#frontend)
+  - [Launch with docker](#launch-with-docker)
 - [Configuration](#configuration)
   - [🧩 Project Structure](#-project-structure)
+- [Roadmap](#roadmap)
+  - [Contributing](#contributing)
+  - [Support \& Contact](#support--contact)
+  
 
 ## Features
 
@@ -33,6 +38,10 @@ Demo here:
 - **Seamless Integration:** Easily integrates with any RAG-based system.
 - **Developer Focus:** Simplifies knowledge management so you can concentrate on building core AI functionality.
 - **Open Source & Extensible:** Community-driven, with room for custom features and integrations.
+
+# Demo 
+
+Demo here: 
 
 ## 🚀 Getting Started
 
@@ -47,17 +56,21 @@ Before you begin, ensure you have met the following requirements:
 - (Optional) Docker for containerized deployment.
 
 ### Installation
-**note**: Simba uses celery for heavy tasks like parsing. These tasks may be launched with gpu. In order to avoid infrastructure problem related we recommend to launch the app using Docker 
+**note :** Simba uses celery for heavy tasks like parsing. These tasks may be launched with gpu. In order to avoid infrastructure problem related we recommend to launch the app using Docker 
 ### Local Development
 
 ```bash
 git clone https://github.com/GitHamza0206/simba.git
 cd simba
 ```
-##### Backend
+## Backend
+
+```bash
+cd backend
+```
 
 0. Redis installation 
-   **note** : make sure to have redis installed in your OS 
+   make sure to have redis installed in your OS 
    </br>
 
 1.  setup env
@@ -70,7 +83,7 @@ then edit the .env file with your own values
 
 OPENAI_API_KEY="" 
 LANGCHAIN_TRACING_V2= #(optional - for langsmith tracing) 
-LANGCHAIN_API_KEY="" #(optiona l- for langsmith tracing) 
+LANGCHAIN_API_KEY="" #(optional - for langsmith tracing) 
 REDIS_HOST=redis
 CELERY_BROKER_URL=redis://redis:6379/0
 CELERY_RESULT_BACKEND=redis://redis:6379/1
@@ -78,7 +91,6 @@ CELERY_RESULT_BACKEND=redis://redis:6379/1
 
 2. install dependencies
 ```bash
-cd backend
 poetry install
 poetry shell OR source .venv/bin/activate (MAC/LINUX) OR .venv\Scripts\activate (WINDOWS)
 ```
@@ -91,11 +103,61 @@ then navigate to <a>http:0.0.0.0:8000/docs</a> to access swagger ui (Optional)
 
 4. run the parser with celery worker
 ```bash
-celery -A backend.tasks.parsing_tasks worker --loglevel=info
+celery -A tasks.parsing_tasks worker --loglevel=info
+```
+5. modify the config.yaml file to your needs
+
+```bash
+# config.yaml
+
+project:
+  name: "Simba"
+  version: "1.0.0"
+  api_version: "/api/v1"
+
+paths:
+  base_dir: null  # Will be set programmatically
+  markdown_dir: "markdown"
+  faiss_index_dir: "vector_stores/faiss_index"
+  vector_store_dir: "vector_stores"
+
+llm:
+  provider: "openai" #or ollama (vllm coming soon)
+  model_name: "gpt-4o" #or ollama model name
+  temperature: 0.0
+  max_tokens: null
+  streaming: true
+  additional_params: {}
+
+embedding:
+  provider: "huggingface" #or openai
+  model_name: "BAAI/bge-base-en-v1.5" #or any HF model name
+  device: "cpu"  # mps,cuda,cpu
+  additional_params: {}
+
+vector_store:
+  provider: "faiss" 
+  collection_name: "migi_collection"
+  additional_params: {}
+
+chunking:
+  chunk_size: 512
+  chunk_overlap: 200
+
+retrieval:
+  k: 5 #number of chunks to retrieve 
+
+features:
+  enable_parsers: true  # Set to false to disable parsing
+
+celery: 
+  broker_url: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+  result_backend: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
 ```
 
+## Frontend
 
-##### Frontend
+Make sure to be in the root simba directory
 
 ```bash
 cd frontend
@@ -105,7 +167,7 @@ npm run dev
 then navigate to <a>http:localhost:5173</a> to access the frontend
 
 
-####  Launch with docker
+## Launch with docker
 
 navigate to root simba directory
 
@@ -113,6 +175,7 @@ navigate to root simba directory
 export OPENAI_API_KEY="" #(optional) 
 docker-compose up --build 
 ```
+
 
 # Configuration
 the [config.yaml](/backend/config.yaml) file is used to configure the backend application.
@@ -141,5 +204,27 @@ simba/
 ├── docker-compose.yml    # Development environment
 └── docker-compose.prod.yml # Production setup
 ```
+# Roadmap
 
+- [ ] Add more documentation 
+- [ ] Make simba work with any RAG system as an importable python package
+- [ ] Add CI/CD pipeline
+- [ ] Add control over chunking parameters
+- [ ] Add more parsers 
+- [ ] Add more vector stores
+- [ ] Add more embedding models
+- [ ] Add more retrieval models
+- [ ] Enable role access control
+- [ ] 
+
+## Contributing
+Contributions are welcome! If you'd like to contribute to Simba, please follow these steps:
+
+- Fork the repository.
+- Create a new branch for your feature or bug fix.
+- Commit your changes with clear messages.
+- Open a pull request describing your changes.
+
+## Support & Contact
+For support or inquiries, please open an issue on GitHub or contact repo owner at zeroualihamza0206@gmail.com
 
