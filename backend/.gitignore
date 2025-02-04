@@ -7,7 +7,7 @@ faiss_index/
 .vscode
 **/__pycache__/
 
-
+.DS_Store
 # Ignore everything in the folders
 data/
 # Allow the .gitkeep files
