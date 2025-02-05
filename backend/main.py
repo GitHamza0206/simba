@@ -22,6 +22,17 @@ from api.embedding_routes import embedding_route
 from core.config import settings
 import uvicorn
 
+# If your Celery app and Redis are both accessible:
+# (Replace "celery_app" and "redis_conn" with your actual instances)
+try:
+    from core.celery_config import celery_app
+except ImportError:
+    celery_app = None
+
+# If you maintain a Redis client connection:
+# import redis
+# redis_conn = redis.Redis(host='localhost', port=6379)
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -82,6 +93,36 @@ async def startup_event():
     
     logger.info("=" * 50)
 
+@app.on_event("shutdown")
+async def shutdown_event():
+    """
+    Perform any necessary cleanup here: 
+    - gracefully end Celery workers 
+    - close Redis if directly connected
+    """
+    logger.info("Shutting down SIMBA Application...")
+
+    # If you have a Celery app running in the same process (uncommon):
+    if celery_app:
+        logger.info("Sending shutdown signal to Celery workers...")
+        try:
+            celery_app.control.broadcast("shutdown")
+            logger.info("Celery workers have been signaled to shut down.")
+        except Exception as e:
+            logger.error(f"Error while shutting down Celery: {e}")
+
+    # If you have a direct Redis connection in this process:
+    # try:
+    #     logger.info("Shutting down Redis server...")
+    #     # This gracefully stops Redis without saving. 
+    #     # Using it in production is often discouraged unless Redis runs in the same process.
+    #     redis_conn.shutdown(nosave=True)
+    #     logger.info("Redis server shutdown complete.")
+    # except Exception as e:
+    #     logger.error(f"Error while shutting down Redis: {e}")
+
+    logger.info("SIMBA Application shutdown complete.")
+
 # Include routers
 app.include_router(chat)
 app.include_router(ingestion)
@@ -90,7 +131,10 @@ app.include_router(database_route)
 app.include_router(embedding_route)
 
 if __name__ == "__main__":
-    # Must be set in __main__ context
+    # NOTE:
+    # Typically, Celery and Redis each run as separate processes/containers.
+    # This script only handles FastAPI shutdown. 
+    # Celery and Redis will still shut down when their processes/containers stop.
     uvicorn.run(
         app, 
         host="0.0.0.0", 

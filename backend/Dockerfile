@@ -33,7 +33,7 @@ RUN poetry install --no-interaction --no-ansi --no-root
 # Final stage
 FROM python:3.11-slim
 
-# Install runtime dependencies
+# Install Tesseract OCR & libraries, plus Poppler & other dependencies
 RUN apt-get update && apt-get install -y \
     libgl1-mesa-glx \
     libglib2.0-0 \
@@ -41,6 +41,11 @@ RUN apt-get update && apt-get install -y \
     libxext6 \
     libxrender-dev \
     ffmpeg \
+    poppler-utils \
+    libpoppler-cpp-dev \
+    libpoppler-cpp0v5 \
+    tesseract-ocr \
+    libtesseract-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder
