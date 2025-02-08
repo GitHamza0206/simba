@@ -1,4 +1,3 @@
-
 <h1 align="center">Simba - Your Knowledge Management System</h1>
 
 <p align="center">
@@ -39,25 +38,23 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
 
 # Table of Contents
 
-
 - [Table of Contents](#table-of-contents)
-  - [Features](#features)
-  - [Demo](#demo)
-  - [Getting Started](#getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Installation](#installation)
-    - [Local Development](#local-development)
-  - [Backend](#backend)
-  - [Frontend](#frontend)
-  - [Launch with docker (Recommended)](#launch-with-docker-recommended)
+  - [🚀 Features](#-features)
+  - [🎥 Demo](#-demo)
+  - [🛠️ Getting Started](#️-getting-started)
+    - [📋 Prerequisites](#-prerequisites)
+    - [⬇️ Installation](#️-installation)
+    - [💻 Local Development](#-local-development)
+  - [⚙️ Backend](#️-backend)
+  - [🖥️ Frontend](#️-frontend)
+  - [🐳 Launch with docker (Recommended)](#-launch-with-docker-recommended)
   - [📂 Project Structure](#-project-structure)
   - [⚙️ Configuration](#️-configuration)
-  - [Roadmap](#roadmap)
+  - [🏁 Roadmap](#-roadmap)
   - [🤝 Contributing](#-contributing)
-  - [💬  Support \& Contact](#--support--contact)
-  
+  - [💬 Support \& Contact](#-support--contact)
 
-## Features
+## 🚀 Features
 
 - **🧩 Modular Architecture:** Plug in various vector stores, embedding models, chunkers, and parsers.
 - **🖥️ Modern UI:** Intuitive user interface to visualize and modify every document chunk.
@@ -65,13 +62,13 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
 - **👨‍💻 Developer Focus:** Simplifies knowledge management so you can concentrate on building core AI functionality.
 - **📦 Open Source & Extensible:** Community-driven, with room for custom features and integrations.
 
-## Demo 
+## 🎥 Demo 
 
 ![Watch the demo](/assets/demo.gif)
 
-## Getting Started
+## 🛠️ Getting Started
 
-### Prerequisites
+### 📋 Prerequisites
 
 Before you begin, ensure you have met the following requirements:
 
@@ -81,15 +78,15 @@ Before you begin, ensure you have met the following requirements:
 - [Git](https://git-scm.com/) for version control.
 - (Optional) Docker for containerized deployment.
 
-### Installation
+### ⬇️ Installation
 **note :** Simba uses celery for heavy tasks like parsing. These tasks may be launched with gpu. In order to avoid infrastructure problem related we recommend to launch the app using Docker 
-### Local Development
+### 💻 Local Development
 
 ```bash
 git clone https://github.com/GitHamza0206/simba.git
 cd simba
 ```
-## Backend
+## ⚙️ Backend
 
 ```bash
 cd backend
@@ -184,7 +181,7 @@ celery:
   result_backend: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
 ```
 
-## Frontend
+## 🖥️ Frontend
 
 Make sure to be in the root simba directory
 
@@ -196,7 +193,7 @@ npm run dev
 then navigate to <a>http:localhost:5173</a> to access the frontend
 
 
-## Launch with docker (Recommended)
+## 🐳 Launch with docker (Recommended)
 
 navigate to root simba directory
 
@@ -234,7 +231,7 @@ You can change :
 navigate to [backend/README.md](/backend/README.md) for more information
 
 
-## Roadmap
+## 🏁 Roadmap
 
 - [ ] Add more documentation 
 - [ ] Make simba work with any RAG system as an importable python package
@@ -254,6 +251,6 @@ Contributions are welcome! If you'd like to contribute to Simba, please follow t
 - Commit your changes with clear messages.
 - Open a pull request describing your changes.
 
-## 💬  Support & Contact
+## 💬 Support & Contact
 For support or inquiries, please open an issue 📌 on GitHub or contact repo owner at [Hamza Zerouali](mailto:zeroualihamza0206@gmail.com)
 
