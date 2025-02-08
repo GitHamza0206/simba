@@ -1,5 +1,31 @@
 
-# Simba - Bring Your Knowledge into Your AI 
+<h1 align="center">Simba - Your Knowledge Management System</h1>
+
+<p align="center">
+  <img src="/assets/logo.png" alt="Simba Logo" width="200"/>
+</p>
+
+<p align="center">
+  <strong>Connect your knowledge to any RAG system</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/GitHamza0206/simba/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/GitHamza0206/simba" alt="License">
+  </a>
+  <a href="https://github.com/GitHamza0206/simba/stargazers">
+    <img src="https://img.shields.io/github/stars/GitHamza0206/simba" alt="Stars">
+  </a>
+  <a href="https://github.com/GitHamza0206/simba/network/members">
+    <img src="https://img.shields.io/github/forks/GitHamza0206/simba" alt="Forks">
+  </a>
+  <a href="https://github.com/GitHamza0206/simba/issues">
+    <img src="https://img.shields.io/github/issues/GitHamza0206/simba" alt="Issues">
+  </a>
+  <a href="https://github.com/GitHamza0206/simba/pulls">
+    <img src="https://img.shields.io/github/issues-pr/GitHamza0206/simba" alt="Pull Requests">
+  </a>
+</p>
 
 <!-- <a href="https://ibb.co/RHkRGcs"><img src="https://i.ibb.co/ryRDKHz/logo.jpg" alt="logo" border="0"></a> -->
 [![Twitter Follow](https://img.shields.io/twitter/follow/zeroualihamza?style=social)](https://x.com/zerou_hamza)
@@ -7,14 +33,13 @@
 
 Simba is an open source, portable KMS (knowledge management system) designed to integrate seamlessly with any Retrieval-Augmented Generation (RAG) system. With a modern UI and modular architecture, Simba allows developers to focus on building advanced AI solutions without worrying about the complexities of knowledge management.
 
-| Just build your RAG, we take care of the knowledge |
+| Build your RAG &  Connect your Knowledge with Simba |
 |:------------------------------------------------------------:|
 
 
 # Table of Contents
 
 
-- [Simba - Bring Your Knowledge into Your AI](#simba---bring-your-knowledge-into-your-ai)
 - [Table of Contents](#table-of-contents)
   - [Features](#features)
   - [Demo](#demo)
@@ -36,7 +61,7 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
 
 - **🧩 Modular Architecture:** Plug in various vector stores, embedding models, chunkers, and parsers.
 - **🖥️ Modern UI:** Intuitive user interface to visualize and modify every document chunk.
-- **� Seamless Integration:** Easily integrates with any RAG-based system.
+- **🔗 Seamless Integration:** Easily integrates with any RAG-based system.
 - **👨‍💻 Developer Focus:** Simplifies knowledge management so you can concentrate on building core AI functionality.
 - **📦 Open Source & Extensible:** Community-driven, with room for custom features and integrations.
 
@@ -220,7 +245,6 @@ navigate to [backend/README.md](/backend/README.md) for more information
 - [ ] Add more embedding models
 - [ ] Add more retrieval models
 - [ ] Enable role access control
-- [ ] 
 
 ## 🤝 Contributing
 Contributions are welcome! If you'd like to contribute to Simba, please follow these steps:
