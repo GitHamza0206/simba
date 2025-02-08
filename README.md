@@ -32,9 +32,6 @@
 
 Simba is an open source, portable KMS (knowledge management system) designed to integrate seamlessly with any Retrieval-Augmented Generation (RAG) system. With a modern UI and modular architecture, Simba allows developers to focus on building advanced AI solutions without worrying about the complexities of knowledge management.
 
-| Build your RAG &  Connect your Knowledge with Simba |
-|:------------------------------------------------------------:|
-
 
 # Table of Contents
 
