@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.9'
 
 services:
   web:
@@ -13,6 +13,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - PYTHONPATH=/app
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ./uploads:/app/uploads:rw
       - ./markdown:/app/markdown:rw
@@ -27,10 +28,11 @@ services:
       - no-new-privileges
     mem_limit: 1g
     cpus: 0.5
+    runtime: nvidia
 
   celery_worker:
-    build: . 
-    container_name: celery_worker 
+    build: .
+    container_name: celery_worker
     command: celery -A tasks.parsing_tasks worker --loglevel=info
     environment:
       - REDIS_HOST=redis
@@ -38,6 +40,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - PYTHONPATH=/app
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ./uploads:/app/uploads:rw
       - ./markdown:/app/markdown:rw
@@ -52,7 +55,7 @@ services:
       - no-new-privileges
     mem_limit: 2g
     cpus: 1
-    
+    runtime: nvidia
 
   redis:
     image: redis:7-alpine

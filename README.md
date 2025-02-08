@@ -95,6 +95,7 @@ CELERY_RESULT_BACKEND=redis://redis:6379/1
 
 2. install dependencies
 ```bash
+poetry config virtualenvs.in-project true
 poetry install
 poetry shell OR source .venv/bin/activate (MAC/LINUX) OR .venv\Scripts\activate (WINDOWS)
 ```

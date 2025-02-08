@@ -8,6 +8,9 @@ services:
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
+      - OLLAMA_URL=http://ollama:11434
+    depends_on:
+      - ollama
 
   celery_worker:
     extends:
@@ -39,6 +42,16 @@ services:
       - app_network
     restart: unless-stopped
 
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - app_network
+    restart: unless-stopped
+
 networks:
   app_network:
     name: migibot_network
@@ -46,4 +59,6 @@ networks:
 
 volumes:
   redis_data:
+    driver: local
+  ollama_data:
     driver: local

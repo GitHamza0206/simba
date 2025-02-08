@@ -42,6 +42,9 @@ sentence-transformers = "^3.4.1"
 langchain-huggingface = "^0.1.2"
 pydantic-settings = "^2.7.1"
 flower = "^2.0.1"
+torch = "^2.6.0"
+torchvision = "^0.21.0"
+torchaudio = "^2.6.0"
 
 
 
