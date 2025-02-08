@@ -2,7 +2,7 @@
 <h1 align="center">Simba - Your Knowledge Management System</h1>
 
 <p align="center">
-  <img src="/assets/logo.jpeg" alt="Simba Logo" width="200"/>
+  <img src="/assets/logo.png" alt="Simba Logo" width="400", height="400"/>
 </p>
 
 <p align="center">
