@@ -9,6 +9,10 @@
 </p>
 
 <p align="center">
+  <a href="https://www.producthunt.com/posts/simba-2?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-simba&#0045;2" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=863851&theme=light&t=1739449352356" alt="Simba&#0032; - Connect&#0032;your&#0032;Knowledge&#0032;into&#0032;any&#0032;RAG&#0032;based&#0032;system | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/GitHamza0206/simba/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/GitHamza0206/simba" alt="License">
   </a>
