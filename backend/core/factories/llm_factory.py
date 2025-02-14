@@ -42,9 +42,11 @@ def get_llm (LLMConfig: Optional[LLMConfig] = None):
             raise e
         
     elif settings.llm.provider == "ollama":
+        print(f"Using Ollama model: {settings.llm.base_url}")
         return ChatOllama(
             model=settings.llm.model_name,
             temperature=settings.llm.temperature,
+            base_url=settings.llm.base_url,
             streaming=settings.llm.streaming
         )
 

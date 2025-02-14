@@ -1,20 +1,27 @@
-# Build stage
-FROM node:18-alpine as build
+FROM node:18-slim
 
 WORKDIR /app
 
-# Copy package files
+# Install necessary build tools
+RUN apt-get update && \
+    apt-get install -y python3 make g++ git && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy package files first for better caching
 COPY package*.json ./
-RUN npm install
+
+# Install dependencies with platform-specific binaries
+RUN npm ci && \
+    npm install --platform=linux --arch=x64 && \
+    npm install @rollup/rollup-linux-x64-gnu
+
+# Add node_modules/.bin to PATH
+ENV PATH="/app/node_modules/.bin:$PATH"
 
 # Copy source code
 COPY . .
 
-# Build the application
-RUN npm run build
+EXPOSE 5173
 
-# Production stage
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Use Vite's development server with host binding
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
