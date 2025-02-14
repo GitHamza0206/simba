@@ -1,10 +1,39 @@
 version: '3.9'
 
 services:
+  ollama:
+    image: ollama/ollama
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ollama:/root/.ollama
+      - ./config.yaml:/app/config.yaml:ro
+      - ./install_llm.sh:/app/install_llm.sh:ro
+    entrypoint: ["/bin/bash", "/app/install_llm.sh"]
+    ports:
+      - "11434:11434"
+    networks:
+      simba_network:
+        aliases:
+          - ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
   web:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.gpu
     ports:
       - "8000:8000"
     environment:
@@ -14,15 +43,20 @@ services:
       - PYTHONPATH=/app
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - NVIDIA_VISIBLE_DEVICES=all
+      - DEVICE=cuda
     volumes:
       - ./uploads:/app/uploads:rw
       - ./markdown:/app/markdown:rw
       - ./vector_stores:/app/vector_stores:rw
     depends_on:
+      ollama:
+        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - app_network
+      simba_network:
+        aliases:
+          - backend
     restart: unless-stopped
     security_opt:
       - no-new-privileges
@@ -31,8 +65,10 @@ services:
     runtime: nvidia
 
   celery_worker:
-    build: .
-    container_name: celery_worker
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    container_name: celery_worker_gpu
     command: celery -A tasks.parsing_tasks worker --loglevel=info
     environment:
       - REDIS_HOST=redis
@@ -41,15 +77,20 @@ services:
       - PYTHONPATH=/app
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - NVIDIA_VISIBLE_DEVICES=all
+      - DEVICE=cuda
     volumes:
       - ./uploads:/app/uploads:rw
       - ./markdown:/app/markdown:rw
       - ./vector_stores:/app/vector_stores:rw
     depends_on:
+      ollama:
+        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - app_network
+      simba_network:
+        aliases:
+          - celery
     restart: on-failure
     security_opt:
       - no-new-privileges
@@ -62,7 +103,9 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - app_network
+      simba_network:
+        aliases:
+          - redis
     volumes:
       - redis_data:/data
     restart: unless-stopped
@@ -75,10 +118,17 @@ services:
     cpus: 0.3
 
 networks:
-  app_network:
+  simba_network:
+    name: simba_network
     driver: bridge
+    labels:
+      com.docker.compose.network: simba_network
+      com.docker.compose.project: simba_backend
 
 volumes:
   redis_data:
     name: simba_redis_data
+    driver: local
+  ollama:
+    name: ollama
     driver: local 

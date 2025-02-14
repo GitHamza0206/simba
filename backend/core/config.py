@@ -42,10 +42,13 @@ class LLMConfig(BaseModel):
 
     provider: str = Field(default="openai")
     model_name: str = Field(default="gpt-4")
-    # Get API key from environment variable
     api_key: str = Field(
         default_factory=lambda: os.getenv("OPENAI_API_KEY", ""),
         description="OpenAI API key from environment variables"
+    )
+    base_url: str = Field(
+        default="http://localhost:11434",
+        description="Base URL for LLM service (e.g., Ollama server)"
     )
     temperature: float = Field(default=0.0)
     streaming: bool = Field(default=True)

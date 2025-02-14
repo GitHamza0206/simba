@@ -17,10 +17,23 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     pkg-config \
     git \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    ffmpeg \
+    poppler-utils \
+    libpoppler-cpp-dev \
+    libpoppler-cpp0v5 \
+    tesseract-ocr \
+    libtesseract-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry via pip
 RUN pip install "poetry==$POETRY_VERSION"
+
+
 
 # Set working directory
 WORKDIR /app
@@ -29,12 +42,12 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock ./
 
 # Install dependencies via Poetry
-RUN poetry install --no-interaction --no-ansi --no-root 
+RUN poetry install --no-interaction --no-ansi --no-root
 
 # --- Final stage ---
 FROM python:3.11-slim
 
-# Installer Tesseract OCR, Poppler et autres dépendances
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     libgl1-mesa-glx \
     libglib2.0-0 \
@@ -49,26 +62,18 @@ RUN apt-get update && apt-get install -y \
     libtesseract-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# --- Installation du CUDA Toolkit pour obtenir nvidia-smi ---
-RUN apt-get update && apt-get install -y wget gnupg2 && \
-    wget https://developer.download.nvidia.com/compute/cuda/repos/debian11/x86_64/cuda-keyring_1.0-1_all.deb && \
-    dpkg -i cuda-keyring_1.0-1_all.deb && \
-    apt-get update && apt-get install -y cuda-toolkit-11-8 && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copier les packages Python construits dans l'étape builder
+# Copy Python packages from builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
-# Définir le répertoire de travail et copier le reste de l'application
+# Set working directory and copy application
 WORKDIR /app
 COPY . .
 
-# Créer les répertoires nécessaires et ajuster les permissions
+# Create necessary directories and set permissions
 RUN mkdir -p /app/uploads /app/markdown /app/vector_stores && \
     chmod -R 755 /app
 
 EXPOSE 8000
 
-# Démarrer l'application avec uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
