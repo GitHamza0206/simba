@@ -22,7 +22,7 @@ llm:
 embedding:
   provider: "huggingface"
   model_name: "BAAI/bge-base-en-v1.5"
-  device: "mps"  # Changed from mps to cpu for container compatibility
+  device: "cpu"  # Changed from mps to cpu for container compatibility
   additional_params: {}
 
 vector_store:

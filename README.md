@@ -201,7 +201,16 @@ navigate to root simba directory
 
 ```bash
 export OPENAI_API_KEY="" #(optional) 
-docker-compose up --build 
+cd backend 
+poetry shell # activate poetry env 
+cd .. 
+./run.sh # launch simba with docker 
+```
+launch new terminal to install llm inside ollama (optional)
+
+```bash 
+cd backend 
+./install_llm.sh
 ```
 
 ## 📂 Project Structure
