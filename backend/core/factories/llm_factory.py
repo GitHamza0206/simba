@@ -4,6 +4,7 @@ from core.config import settings, LLMConfig
 from typing import Optional
 from langchain_ollama import ChatOllama
 from langchain_community.llms import VLLM
+import os
 
 
 @lru_cache()
@@ -42,10 +43,12 @@ def get_llm (LLMConfig: Optional[LLMConfig] = None):
             raise e
         
     elif settings.llm.provider == "ollama":
+        base_url = os.environ.get("OLLAMA_BASE_URL", settings.llm.base_url)
+        print(f"Using Ollama base_url: {base_url}")
         return ChatOllama(
             model=settings.llm.model_name,
             temperature=settings.llm.temperature,
-            base_url=settings.llm.base_url,
+            base_url=base_url,
             streaming=settings.llm.streaming
         )
 

@@ -16,25 +16,10 @@ if [ ! -f "config.yaml" ]; then
     error "Config file not found in current directory"
 fi
 
-MODEL=$(python3 -c '
-import yaml
-try:
-    with open("config.yaml", "r") as f:
-        config = yaml.safe_load(f)
-        print(config["llm"]["model_name"])
-except Exception as e:
-    print(f"Error: {e}")
-    exit(1)
-')
-
-if [ $? -ne 0 ] || [ -z "$MODEL" ]; then
-    error "Failed to read model name from config"
-fi
+MODEL=$(grep -A1 'llm:' config.yaml | grep 'model_name:' | awk '{print $2}' | tr -d '"')
 
 # Pull the model in Ollama container
 log "Installing model: $MODEL in Ollama container..."
-if ! docker exec -it ollama ollama pull "$MODEL"; then
-    error "Failed to pull model: $MODEL"
-fi
+docker exec ollama ollama pull $MODEL
 
 log "Model installation complete! ✨" 
