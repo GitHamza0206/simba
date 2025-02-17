@@ -37,7 +37,7 @@ except ImportError:
 load_dotenv()
 
 # Setup logging at application start
-setup_logging(level=logging.INFO)
+setup_logging(level=logging.DEBUG)
 
 # Get logger for this file
 logger = logging.getLogger(__name__)
@@ -83,8 +83,6 @@ async def startup_event():
     logger.info(f"Vector Store Provider: {settings.vector_store.provider}")
     logger.info(f"Database Provider: {settings.database.provider}")
     
-    
-
     # Paths
     logger.info("\nPaths:")
     logger.info(f"Base Directory: {settings.paths.base_dir}")
