@@ -3,8 +3,8 @@ import os
 from typing import List, Optional, Union
 
 import faiss
-from core.config import settings
-from core.factories.embeddings_factory import get_embeddings
+from simba.core.config import settings
+from simba.core.factories.embeddings_factory import get_embeddings
 from langchain.docstore.document import Document
 from langchain.retrievers import EnsembleRetriever
 from langchain_community.docstore.in_memory import InMemoryDocstore

@@ -1,7 +1,7 @@
 from typing import cast
 
 from fastapi import APIRouter
-from models.simbadoc import SimbaDoc
+from simba.models.simbadoc import SimbaDoc
 
 from simba.core.factories.database_factory import get_database
 from simba.ingestion.document_ingestion import DocumentIngestionService

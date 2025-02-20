@@ -1,4 +1,4 @@
-from core.factories.llm_factory import get_llm
+from simba.core.factories.llm_factory import get_llm
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 

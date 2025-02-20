@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import Optional
 
 import aiofiles
-from core.config import settings
-from core.factories.database_factory import get_database
-from core.factories.vector_store_factory import VectorStoreFactory
+from simba.core.config import settings
+from simba.core.factories.database_factory import get_database
+from simba.core.factories.vector_store_factory import VectorStoreFactory
 from fastapi import UploadFile
 from langchain.schema import Document
-from models.simbadoc import MetadataType, SimbaDoc
+from simba.models.simbadoc import MetadataType, SimbaDoc
 
 from simba.ingestion import Loader
 from simba.ingestion.file_handling import delete_file_locally

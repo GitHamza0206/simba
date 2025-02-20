@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from core.config import settings
+from simba.core.config import settings
 from fastapi import HTTPException
 from pydantic import BaseModel
 

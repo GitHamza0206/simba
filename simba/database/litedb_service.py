@@ -5,9 +5,9 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
-from core.config import settings
-from core.factories.vector_store_factory import VectorStoreFactory
-from models.simbadoc import SimbaDoc
+from simba.core.config import settings
+from simba.core.factories.vector_store_factory import VectorStoreFactory
+from simba.models.simbadoc import SimbaDoc
 
 logger = logging.getLogger(__name__)
 

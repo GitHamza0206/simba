@@ -2,7 +2,7 @@ import os
 from functools import lru_cache
 from typing import Optional
 
-from core.config import LLMConfig, settings
+from simba.core.config import LLMConfig, settings
 from langchain_community.llms import VLLM
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI

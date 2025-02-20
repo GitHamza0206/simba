@@ -1,6 +1,7 @@
-from api.dto.retriever_dto import RetrieverConfig
 from fastapi import APIRouter
 from pydantic import BaseModel
+
+from simba.api.dto.retriever_dto import RetrieverConfig
 
 from simba.retrieval import Retriever
 

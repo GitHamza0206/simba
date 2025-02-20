@@ -7,16 +7,16 @@ from pathlib import Path
 from typing import List, Union
 
 import torch
-from core.factories.vector_store_factory import VectorStoreFactory
+from simba.core.factories.vector_store_factory import VectorStoreFactory
 from langchain.schema import Document
-from models.simbadoc import SimbaDoc
+from simba.models.simbadoc import SimbaDoc
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 import uuid
 
-from core.config import settings
+from simba.core.config import settings
 from docling.chunking import HybridChunker
 from langchain_docling import DoclingLoader
 from langchain_docling.loader import ExportType

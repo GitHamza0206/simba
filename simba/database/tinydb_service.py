@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from core.config import settings
-from models.simbadoc import SimbaDoc
+from simba.core.config import settings
+from simba.models.simbadoc import SimbaDoc
 from tinydb import Query, TinyDB
 
 logger = logging.getLogger(__name__)

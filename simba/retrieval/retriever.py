@@ -1,4 +1,4 @@
-from core.factories.vector_store_factory import VectorStoreFactory
+from simba.core.factories.vector_store_factory import VectorStoreFactory
 from langchain.retrievers import EnsembleRetriever
 from langchain_community.retrievers import BM25Retriever
 

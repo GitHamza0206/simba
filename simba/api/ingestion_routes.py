@@ -7,18 +7,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, cast
 
-from core.config import settings
-from core.factories.database_factory import get_database
-from core.factories.vector_store_factory import VectorStoreFactory
+from simba.core.config import settings
+from simba.core.factories.database_factory import get_database
+from simba.core.factories.vector_store_factory import VectorStoreFactory
 from fastapi import APIRouter, Body, File, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from langchain_core.documents import Document
-from models.simbadoc import SimbaDoc
+from simba.models.simbadoc import SimbaDoc
 from pydantic import BaseModel
-from services.ingestion_service.document_ingestion_service import (
+from simba.ingestion.document_ingestion import (
     DocumentIngestionService,
 )
-from services.ingestion_service.folder_handling import (
+from simba.ingestion.folder_handling import (
     Folder,
     FolderCreate,
     FolderMove,
@@ -27,9 +27,9 @@ from services.ingestion_service.folder_handling import (
     get_folders,
     move_to_folder,
 )
-from services.ingestion_service.utils import check_file_exists
-from services.loader import Loader
-from services.parser_service import ParserService
+from simba.ingestion.utils import check_file_exists
+from simba.ingestion import Loader
+from simba.parsing import ParserService
 
 from simba.ingestion import (
     DocumentIngestionService,

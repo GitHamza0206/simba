@@ -2,12 +2,12 @@ import logging
 import os
 
 from celery.app.control import Inspect
-from core.config import settings
-from core.factories.database_factory import get_database
+from simba.core.config import settings
+from simba.core.factories.database_factory import get_database
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from models.simbadoc import SimbaDoc
+from simba.models.simbadoc import SimbaDoc
 from pydantic import BaseModel
-from tasks.parsing_tasks import celery, parse_docling_task, parse_markitdown_task
+from simba.tasks.parsing_tasks import celery, parse_docling_task, parse_markitdown_task
 
 from simba.parsing import ParserService
 

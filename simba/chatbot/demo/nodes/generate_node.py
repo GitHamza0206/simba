@@ -1,6 +1,6 @@
 from langchain_core.messages import AIMessage, HumanMessage
 
-from ..chains.generate_chain import generate_chain
+from simba.chatbot.demo.chains.generate_chain import generate_chain
 
 
 def generate(state):

@@ -13,14 +13,14 @@ if os.name != 'nt' and multiprocessing.get_start_method(allow_none=True) != 'spa
 import logging
 
 import uvicorn
-from api.chat_routes import chat
-from api.database_routes import database_route
-from api.embedding_routes import embedding_route
-from api.ingestion_routes import ingestion
-from api.parsing_routes import parsing
-from api.retriever_routes import retriever_route
-from core.config import settings
-from core.utils.logger import setup_logging
+from simba.api.chat_routes import chat
+from simba.api.database_routes import database_route
+from simba.api.embedding_routes import embedding_route
+from simba.api.ingestion_routes import ingestion
+from simba.api.parsing_routes import parsing
+from simba.api.retriever_routes import retriever_route
+from simba.core.config import settings
+from simba.core.utils.logger import setup_logging
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,7 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # If your Celery app and Redis are both accessible:
 # (Replace "celery_app" and "redis_conn" with your actual instances)
 try:
-    from core.celery_config import celery_app
+    from simba.core.celery_config import celery_app
 except ImportError:
     celery_app = None
 

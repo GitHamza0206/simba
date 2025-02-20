@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from ..chains.grade_chain import grade_chain
+from simba.chatbot.demo.chains.grade_chain import grade_chain
 
 
 def grade(state):

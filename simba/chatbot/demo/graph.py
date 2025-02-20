@@ -3,13 +3,13 @@ import io
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
-from .nodes.generate_node import generate
-from .nodes.grade_node import grade
+from simba.chatbot.demo.nodes.generate_node import generate
+from simba.chatbot.demo.nodes.grade_node import grade
 
 #===========================================
 # Import nodes
-from .nodes.retrieve_node import retrieve
-from .state import State
+from simba.chatbot.demo.nodes.retrieve_node import retrieve
+from simba.chatbot.demo.state import State
 
 #===========================================
 

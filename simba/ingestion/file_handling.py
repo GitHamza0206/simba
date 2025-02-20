@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 import aiofiles
-from core.config import settings
+from simba.core.config import settings
 from fastapi import HTTPException, UploadFile
 
 logger = logging.getLogger(__name__)

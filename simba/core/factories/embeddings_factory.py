@@ -2,7 +2,7 @@ import logging
 from functools import lru_cache
 from typing import Optional
 
-from core.config import settings
+from simba.core.config import settings
 from langchain.schema.embeddings import Embeddings
 from langchain_community.embeddings import CohereEmbeddings
 from langchain_huggingface import HuggingFaceEmbeddings

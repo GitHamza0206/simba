@@ -1,13 +1,13 @@
 from typing import List, cast
 
-from core.factories.database_factory import get_database
-from core.factories.vector_store_factory import VectorStoreFactory
+from simba.core.factories.database_factory import get_database
+from simba.core.factories.vector_store_factory import VectorStoreFactory
 from fastapi import APIRouter, HTTPException
-from models.simbadoc import SimbaDoc
-from services.ingestion_service.document_ingestion_service import (
+from simba.models.simbadoc import SimbaDoc
+from simba.ingestion.document_ingestion import (
     DocumentIngestionService,
 )
-from services.splitter import Splitter
+from simba.splitting import Splitter
 
 embedding_route = APIRouter()
 
