@@ -2,8 +2,8 @@ from core.factories.database_factory import get_database
 
 db = get_database()
 def test_docling():
-    from docling.document_converter import DocumentConverter
     from docling.chunking import HybridChunker
+    from docling.document_converter import DocumentConverter
     from langchain_docling.loader import ExportType
 
     
@@ -17,8 +17,8 @@ def test_docling():
     print(chunk_iter)
 
 def test_docling_langchain():
-    from langchain_docling import DoclingLoader
     from docling.chunking import HybridChunker
+    from langchain_docling import DoclingLoader
 
     doc = db.get_document("d0b5fc22-3020-474c-9c32-b86fe51f66eb")
     loader = DoclingLoader(

@@ -1,12 +1,13 @@
-from core.config import settings
+import logging
+import os
+
+import torch
 from core.celery_config import celery_app as celery  # Rename for backward compatibility
+from core.config import settings
+from core.factories.database_factory import get_database
 from core.factories.vector_store_factory import VectorStoreFactory
 from models.simbadoc import SimbaDoc
 from services.parser_service import ParserService
-from core.factories.database_factory import get_database
-import logging
-import os
-import torch
 
 logger = logging.getLogger(__name__)
 

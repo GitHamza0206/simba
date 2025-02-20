@@ -1,13 +1,15 @@
-import pytest
-import sqlite3
-from database.litedb_service import LiteDocumentDB
-from models.simbadoc import SimbaDoc
-import SimbaDoc, MetadataType
-from langchain_core.documents import Document
-from core.factories.database_factory import get_database
 import json
 import logging
+import sqlite3
 import uuid
+
+import MetadataType
+import pytest
+import SimbaDoc
+from core.factories.database_factory import get_database
+from database.litedb_service import LiteDocumentDB
+from langchain_core.documents import Document
+from models.simbadoc import SimbaDoc
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +180,7 @@ def test_bulk_document_updates(db):
 def test_update_performance(db, test_doc):
     """Test update performance with multiple operations"""
     import time
-    
+
     # Insert document
     db.insert_documents([test_doc])
     db.refresh()

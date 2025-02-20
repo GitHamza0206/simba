@@ -1,8 +1,10 @@
 from typing import List
-from langchain.schema import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 from core.factories.embeddings_factory import get_embeddings
+from langchain.schema import Document
 from langchain_experimental.text_splitter import SemanticChunker
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 
 class Splitter:
     def __init__(self):

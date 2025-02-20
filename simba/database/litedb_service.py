@@ -1,12 +1,13 @@
-import sqlite3
+import atexit
 import json
-from pathlib import Path
 import logging
-from typing import Dict, List, Optional, Any, cast
+import sqlite3
+from pathlib import Path
+from typing import Any, Dict, List, Optional, cast
+
 from core.config import settings
 from core.factories.vector_store_factory import VectorStoreFactory
 from models.simbadoc import SimbaDoc
-import atexit
 
 logger = logging.getLogger(__name__)
 
@@ -238,13 +239,14 @@ if __name__ == "__main__":
     db = LiteDocumentDB()
     from langchain_core.documents import Document
     from models.simbadoc import SimbaDoc
+
     # # Test single document
     # doc1 = SimbaDoc(
     #     id='1',
     #     documents=[Document(page_content='test1')],
     #     metadata=MetadataType(file_name='test1.txt')
     # )
-    
+
     # # Test multiple documents
     # docs = [
     #     SimbaDoc(
@@ -258,7 +260,7 @@ if __name__ == "__main__":
     #         metadata=MetadataType(file_name='test3.txt')
     #     )
     # ]
-    
+
     # Insert and test
     alldocs = db.get_all_documents()
     for doc in alldocs:

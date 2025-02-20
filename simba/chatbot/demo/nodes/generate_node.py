@@ -1,5 +1,8 @@
+from langchain_core.messages import AIMessage, HumanMessage
+
 from ..chains.generate_chain import generate_chain
-from langchain_core.messages import HumanMessage, AIMessage
+
+
 def generate(state):
     """
     Generate answer

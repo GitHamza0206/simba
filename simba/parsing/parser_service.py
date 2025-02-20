@@ -1,23 +1,27 @@
-import subprocess
-import os
 import logging
-from pathlib import Path
+import os
 import shlex
+import subprocess
+from datetime import datetime
+from pathlib import Path
 from typing import List, Union
+
+import torch
 from core.factories.vector_store_factory import VectorStoreFactory
-from pydantic import BaseModel
 from langchain.schema import Document
 from models.simbadoc import SimbaDoc
-from datetime import datetime
-import torch
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-from langchain_docling import DoclingLoader
-from docling.chunking import HybridChunker
-from langchain_docling.loader import ExportType
-from core.config import settings
 import uuid
+
+from core.config import settings
+from docling.chunking import HybridChunker
+from langchain_docling import DoclingLoader
+from langchain_docling.loader import ExportType
+
+
 class ParserService:
     SUPPORTED_PARSERS = [
         "markitdown",

@@ -1,4 +1,5 @@
 import os
+
 # Must be set BEFORE any other imports that might use HuggingFace
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
@@ -9,19 +10,20 @@ import multiprocessing
 if os.name != 'nt' and multiprocessing.get_start_method(allow_none=True) != 'spawn':
     multiprocessing.set_start_method('spawn')
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-from api.chat_routes import chat
-from core.utils.logger import setup_logging
 import logging
-from api.ingestion_routes import ingestion
-from api.parsing_routes import parsing
+
+import uvicorn
+from api.chat_routes import chat
 from api.database_routes import database_route
 from api.embedding_routes import embedding_route
-from core.config import settings
-import uvicorn
+from api.ingestion_routes import ingestion
+from api.parsing_routes import parsing
 from api.retriever_routes import retriever_route
+from core.config import settings
+from core.utils.logger import setup_logging
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # If your Celery app and Redis are both accessible:
 # (Replace "celery_app" and "redis_conn" with your actual instances)

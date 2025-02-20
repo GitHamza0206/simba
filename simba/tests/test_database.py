@@ -1,11 +1,14 @@
-import pytest
-from database.litedb_service import LiteDocumentDB
-from models.simbadoc import SimbaDoc
-import SimbaDoc, MetadataType
-from langchain.schema import Document
-import uuid
-from core.config import settings
 import os
+import uuid
+
+import MetadataType
+import pytest
+import SimbaDoc
+from core.config import settings
+from database.litedb_service import LiteDocumentDB
+from langchain.schema import Document
+from models.simbadoc import SimbaDoc
+
 
 @pytest.fixture
 def db():

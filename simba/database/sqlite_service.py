@@ -1,11 +1,11 @@
-from sqlalchemy import create_engine, Column, String, JSON
-from sqlalchemy.orm import sessionmaker, declarative_base
-from pathlib import Path
 import logging
-from typing import Dict, List, Optional, Any
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from core.config import settings
 from models.simbadoc import SimbaDoc
-
+from sqlalchemy import JSON, Column, String, create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +132,8 @@ class SQLiteDocumentDB():
 if __name__ == "__main__":
     db = SQLiteDocumentDB()
     from langchain_core.documents import Document
-    from models.simbadoc import SimbaDoc, MetadataType
-    
+    from models.simbadoc import MetadataType, SimbaDoc
+
     # Test single document
     doc1 = SimbaDoc(
         id='1',

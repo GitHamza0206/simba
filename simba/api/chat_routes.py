@@ -1,10 +1,12 @@
 import json
+
 from fastapi import APIRouter, Body
-from simba.chatbot.chatbots.chat4u.state import State, for_client
-from simba.chatbot.chatbots.chat4u.graph import graph
-from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
+from pydantic import BaseModel
+
+from simba.chatbot.demo.graph import graph
+from simba.chatbot.demo.state import State, for_client
 
 chat = APIRouter(prefix="/chat", tags=["chat"])    
 

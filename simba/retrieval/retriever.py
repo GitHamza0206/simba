@@ -1,6 +1,7 @@
 from core.factories.vector_store_factory import VectorStoreFactory
-from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
+from langchain_community.retrievers import BM25Retriever
+
 
 class Retriever:
     def __init__(self):

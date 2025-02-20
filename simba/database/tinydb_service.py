@@ -1,10 +1,10 @@
-from tinydb import TinyDB, Query
-from pathlib import Path
 import logging
-from typing import Dict, List, Optional, Any
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from core.config import settings
 from models.simbadoc import SimbaDoc
-
+from tinydb import Query, TinyDB
 
 logger = logging.getLogger(__name__)
 

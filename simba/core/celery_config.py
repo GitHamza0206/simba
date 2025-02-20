@@ -1,8 +1,9 @@
-from core.config import settings
-from celery import Celery
-from celery.signals import worker_shutting_down, worker_shutdown, worker_init
 import logging
+
 import torch
+from celery import Celery
+from celery.signals import worker_init, worker_shutdown, worker_shutting_down
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 

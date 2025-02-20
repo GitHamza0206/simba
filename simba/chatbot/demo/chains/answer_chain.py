@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
-from langchain_core.prompts import ChatPromptTemplate
 from core.factories.llm_factory import get_llm
+from langchain_core.prompts import ChatPromptTemplate
+from pydantic import BaseModel, Field
+
 
 # Data model
 class GradeAnswer(BaseModel):

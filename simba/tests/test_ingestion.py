@@ -1,4 +1,6 @@
-from services.ingestion_service.document_ingestion_service import DocumentIngestionService
+from services.ingestion_service.document_ingestion_service import (
+    DocumentIngestionService,
+)
 
 
 def test_embedding_from_folder():

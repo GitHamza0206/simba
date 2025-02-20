@@ -1,4 +1,5 @@
-from services.vector_store_service import VectorStoreService
+from simba.vector_store import VectorStoreService
+
 
 class VectorStoreFactory:
     _instance = None

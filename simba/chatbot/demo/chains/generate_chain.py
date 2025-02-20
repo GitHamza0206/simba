@@ -1,8 +1,8 @@
 # Chain
-from langchain import hub
-from langchain_core.prompts import ChatPromptTemplate
 from core.factories.llm_factory import get_llm
+from langchain import hub
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 
 #prompt = hub.pull("rlm/rag-prompt")
 prompt_template = ChatPromptTemplate.from_template("""

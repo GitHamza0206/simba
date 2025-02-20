@@ -1,8 +1,4 @@
-from services.retriever import Retriever
-
-
-
-
+from simba.retrieval import Retriever
 
 
 def retrieve(state):

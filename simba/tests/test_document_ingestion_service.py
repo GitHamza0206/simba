@@ -1,9 +1,14 @@
-import pytest
 from unittest.mock import Mock, patch
+
+import MetadataType
+import pytest
+import SimbaDoc
 from langchain.schema import Document
-from services.ingestion_service.document_ingestion_service import DocumentIngestionService
 from models.simbadoc import SimbaDoc
-import SimbaDoc, MetadataType
+from services.ingestion_service.document_ingestion_service import (
+    DocumentIngestionService,
+)
+
 
 @pytest.fixture
 def mock_vector_store():

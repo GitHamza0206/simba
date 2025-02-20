@@ -1,14 +1,16 @@
 import io
-from langgraph.graph import END, StateGraph, START
-from langgraph.checkpoint.memory import MemorySaver
-from .state import State
 
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, START, StateGraph
+
+from .nodes.generate_node import generate
+from .nodes.grade_node import grade
 
 #===========================================
 # Import nodes
 from .nodes.retrieve_node import retrieve
-from .nodes.grade_node import grade
-from .nodes.generate_node import generate
+from .state import State
+
 #===========================================
 
 workflow = StateGraph(State)
@@ -36,9 +38,11 @@ workflow.add_edge("generate", END)
 
 
 def show_graph(workflow):
-    from PIL import Image
     import io
+
     import matplotlib.pyplot as plt
+    from PIL import Image
+
     #Generate and display the graph as an image
     image_bytes = workflow.get_graph().draw_mermaid_png()
     image = Image.open(io.BytesIO(image_bytes))

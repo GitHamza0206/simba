@@ -1,21 +1,19 @@
 import logging
+import uuid
 from pathlib import Path
 from typing import Optional
-import uuid
-from core.factories.database_factory import get_database
-from langchain.schema import Document
-from core.config import settings
-from fastapi import UploadFile
+
 import aiofiles
-
-from services.ingestion_service.file_handling import delete_file_locally
-
-from services.splitter import Splitter
-from datetime import datetime
-from services.loader import Loader
-from models.simbadoc import SimbaDoc, MetadataType
+from core.config import settings
+from core.factories.database_factory import get_database
 from core.factories.vector_store_factory import VectorStoreFactory
+from fastapi import UploadFile
+from langchain.schema import Document
+from models.simbadoc import MetadataType, SimbaDoc
 
+from simba.ingestion import Loader
+from simba.ingestion.file_handling import delete_file_locally
+from simba.splitting import Splitter
 
 logger = logging.getLogger(__name__)
 

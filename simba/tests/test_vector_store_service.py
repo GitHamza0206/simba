@@ -1,11 +1,13 @@
-import pytest
-from unittest.mock import Mock, patch
-from langchain.schema import Document
-from core.factories.vector_store_factory import VectorStoreFactory
-import uuid
 import os
 import shutil
+import uuid
+from unittest.mock import Mock, patch
+
+import pytest
 from core.config import settings
+from core.factories.vector_store_factory import VectorStoreFactory
+from langchain.schema import Document
+
 
 @pytest.fixture(autouse=True)
 def clean_vector_store():

@@ -1,11 +1,13 @@
 import os
-from pathlib import Path
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
+
+from core.config import settings
 from fastapi import HTTPException
 from pydantic import BaseModel
-from core.config import settings
+
 
 class FolderCreate(BaseModel):
     name: str

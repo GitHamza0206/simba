@@ -1,15 +1,15 @@
 import logging
 import os
-from core.factories.embeddings_factory import get_embeddings
-from core.config import settings
-from langchain_community.vectorstores import FAISS, Chroma
-from langchain.docstore.document import Document
-import logging
+from typing import List, Optional, Union
+
 import faiss
-from langchain_community.docstore.in_memory import InMemoryDocstore
-from typing import Optional, Union, List
-from langchain_community.retrievers import BM25Retriever
+from core.config import settings
+from core.factories.embeddings_factory import get_embeddings
+from langchain.docstore.document import Document
 from langchain.retrievers import EnsembleRetriever
+from langchain_community.docstore.in_memory import InMemoryDocstore
+from langchain_community.retrievers import BM25Retriever
+from langchain_community.vectorstores import FAISS, Chroma
 
 logger = logging.getLogger(__name__)
 

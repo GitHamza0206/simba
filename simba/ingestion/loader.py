@@ -1,20 +1,17 @@
+import asyncio
+from typing import List
+
+from langchain.schema import Document
 from langchain_community.document_loaders import (
+    PyMuPDFLoader,
+    PyPDFLoader,
+    TextLoader,
+    UnstructuredExcelLoader,
     UnstructuredMarkdownLoader,
     UnstructuredPDFLoader,
     UnstructuredPowerPointLoader,
-    UnstructuredExcelLoader,
     UnstructuredWordDocumentLoader,
-    TextLoader,
-    PyMuPDFLoader,
-    PyPDFLoader,
-
 )
-
-from langchain.schema import Document
-from typing import List
-import asyncio
-
-
 
 
 class Loader:

@@ -1,9 +1,10 @@
-from pydantic import BaseModel
-from datetime import datetime
-from typing import Optional, List, cast
 import json
+from datetime import datetime
+from typing import List, Optional, cast
+
 from langchain.schema import Document
-from pydantic import Field
+from pydantic import BaseModel, Field
+
 
 class MetadataType(BaseModel):
     filename: str = Field(default='')
