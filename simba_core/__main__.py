@@ -21,6 +21,7 @@ from api.database_routes import database_route
 from api.embedding_routes import embedding_route
 from core.config import settings
 import uvicorn
+from api.retriever_routes import retriever_route
 
 # If your Celery app and Redis are both accessible:
 # (Replace "celery_app" and "redis_conn" with your actual instances)
@@ -127,7 +128,7 @@ app.include_router(ingestion)
 app.include_router(parsing)
 app.include_router(database_route)
 app.include_router(embedding_route)
-
+app.include_router(retriever_route)
 if __name__ == "__main__":
     # NOTE:
     # Typically, Celery and Redis each run as separate processes/containers.

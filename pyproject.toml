@@ -1,10 +1,14 @@
 [tool.poetry]
-name = "migibot"
+name = "simba"
 version = "0.1.0"
-description = "RAG Based Agent for insurance"
+description = "Knowledge Management System that connects to your RAG system"
 authors = ["GitHamza0206 <zeroualihamza0206@gmail.com>"]
 readme = "README.md"
-packages = [{include = "services"}]
+license = "LICENCE.md"
+packages = [
+    {include = "simba_core"},
+    {include = "simba_sdk"}
+]
 
 [tool.poetry.dependencies]
 python = "^3.11,<3.13"

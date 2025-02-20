@@ -3,14 +3,14 @@ version: '3.9'
 services:
   ollama:
     image: ollama/ollama
+    container_name: ollama
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
     volumes:
       - ollama:/root/.ollama
-      - ./config.yaml:/app/config.yaml:ro
-      - ./install_llm.sh:/app/install_llm.sh:ro
-    entrypoint: ["/bin/bash", "/app/install_llm.sh"]
     ports:
       - "11434:11434"
     networks:
