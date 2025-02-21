@@ -7,7 +7,6 @@ project:
 
 paths:
   base_dir: null  # Will be set programmatically
-  markdown_dir: "markdown"
   faiss_index_dir: "vector_stores/faiss_index"
   vector_store_dir: "vector_stores"
 
@@ -37,8 +36,6 @@ chunking:
 retrieval:
   k: 5
 
-features:
-  enable_parsers: true  # Set to false to disable parsing
 
 celery: #REMOVE IF enable_parsers is false
   broker_url: ${CELERY_BROKER_URL:-redis://redis:6379/0}

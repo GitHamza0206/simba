@@ -7,10 +7,17 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-load_dotenv()
+import sys
 
 logger = logging.getLogger(__name__)
+
+# Always use the current working directory as the base directory
+BASE_DIR = Path.cwd()
+logger.info(f"Using current working directory as base: {BASE_DIR}")
+
+# Load .env from the base directory
+load_dotenv(BASE_DIR / ".env")
+
 
 
 class ProjectConfig(BaseModel):
@@ -19,23 +26,22 @@ class ProjectConfig(BaseModel):
     api_version: str = "/api/v1"
 
 class PathConfig(BaseModel):
-    base_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parent.parent)
-    markdown_dir: Path = Field(default="markdown")
+    base_dir: Path = Field(default_factory=lambda: BASE_DIR)
     faiss_index_dir: Path = Field(default="vector_stores/faiss_index")
     vector_store_dir: Path = Field(default="vector_stores")
     upload_dir: Path = Field(default="uploads")
 
     def __init__(self, **data):
         super().__init__(**data)
-        # Make sure all paths are relative to base_dir
-        self.markdown_dir = self.base_dir / self.markdown_dir
+        # Resolve all paths relative to base directory
         self.faiss_index_dir = self.base_dir / self.faiss_index_dir
         self.vector_store_dir = self.base_dir / self.vector_store_dir
         self.upload_dir = self.base_dir / self.upload_dir
         
         # Create directories if they don't exist
-        for path in [self.markdown_dir, self.faiss_index_dir, self.vector_store_dir, self.upload_dir]:
+        for path in [self.faiss_index_dir, self.vector_store_dir, self.upload_dir]:
             path.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Ensured directory exists: {path}")
 
 class LLMConfig(BaseModel):
     model_config = ConfigDict(protected_namespaces=())  
@@ -85,14 +91,8 @@ class CelerySettings(BaseModel):
     broker_url: str = "redis://localhost:6379/0"
     result_backend: str = "redis://localhost:6379/1"
 
-class FeaturesConfig(BaseModel):
-    enable_parsers: bool = True
-
 class Settings(BaseSettings):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    
-    # Add features config
-    features: FeaturesConfig = Field(default_factory=FeaturesConfig)
     
     project: ProjectConfig = Field(default_factory=ProjectConfig)
     paths: PathConfig = Field(default_factory=PathConfig)
@@ -107,70 +107,53 @@ class Settings(BaseSettings):
     @field_validator('celery')
     @classmethod
     def validate_celery(cls, v, values):
-        if values.data.get('features', FeaturesConfig()).enable_parsers:
-            if not v.broker_url:
-                raise ValueError("Celery broker URL required when parsers are enabled")
+        if not v.broker_url:
+            raise ValueError("Celery broker URL is required")
         return v
 
     @classmethod
     def load_from_yaml(cls, config_path: Optional[Path] = None) -> 'Settings':
-        """Load settings from config.yaml file with fallback to defaults."""
-        # Set base_dir first
-        base_dir = Path(__file__).resolve().parent.parent
+        """Load settings from config.yaml in the base directory."""
+        config_file = BASE_DIR / "config.yaml"
         
-        # If no config path provided, use default
-        if config_path is None:
-            config_path = base_dir / 'config.yaml'
-
-        # Load YAML configuration
-        config_data = {}
-        if config_path.exists():
-            with open(config_path, 'r') as f:
-                config_data = yaml.safe_load(f) or {}
-                logger.info(f"Loaded configuration from {config_path}")
-                
-                # Handle the embedding/embeddings field name difference
-                if 'embedding' in config_data:
-                    config_data['embedding'] = config_data['embedding']
-                
-                logger.debug(f"Configuration data: {config_data}")
-        else:
-            logger.warning(f"No configuration file found at {config_path}, using defaults")
+        if not config_file.exists():
+            raise FileNotFoundError(
+                f"Config file not found at {config_file}. "
+                "Please ensure config.yaml exists in the project root directory."
+            )
         
-        # Ensure paths.base_dir is set
-        if 'paths' in config_data:
-            config_data['paths']['base_dir'] = str(base_dir)
+        logger.info(f"Loading configuration from {config_file}")
+        with open(config_file, "r") as f:
+            config_data = yaml.safe_load(f) or {}
         
-        # Create settings instance with YAML data
-        settings = cls(**config_data)
+        # Ensure base_dir is set to BASE_DIR
+        if "paths" not in config_data:
+            config_data["paths"] = {}
+        config_data["paths"]["base_dir"] = str(BASE_DIR)
         
-        # Set derived paths
-        settings.paths.base_dir = base_dir
-        settings.paths.markdown_dir = settings.paths.base_dir / settings.paths.markdown_dir
-        settings.paths.faiss_index_dir = settings.paths.base_dir / settings.paths.faiss_index_dir
-        settings.paths.vector_store_dir = settings.paths.base_dir / settings.paths.vector_store_dir
-        settings.paths.upload_dir = settings.paths.base_dir / settings.paths.upload_dir
-
-        return settings
+        return cls(**config_data)
 
 # Create global settings instance
 try:
     settings = Settings.load_from_yaml()
+except FileNotFoundError as e:
+    logger.error(str(e))
+    raise
 except Exception as e:
-    print(f"Warning: Failed to load configuration file, using defaults: {e}")
-    settings = Settings()
+    logger.error(f"Failed to load configuration file: {e}")
+    raise
 
 # Ensure directories exist
 def ensure_directories():
     """Create necessary directories if they don't exist."""
     directories = [
-        settings.paths.markdown_dir,
         settings.paths.faiss_index_dir,
         settings.paths.vector_store_dir
     ]
     
     for directory in directories:
         directory.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Ensured directory exists: {directory}")
 
 # Create directories on import
 ensure_directories()
@@ -178,5 +161,37 @@ ensure_directories()
 if __name__ == "__main__":
     print("\nCurrent Settings:")
     print(f"Base Directory: {settings.paths.base_dir}")
+    print(f"Config file location: {Path.cwd() / 'config.yaml'}")
+    print(f".env file location: {BASE_DIR / '.env'}")
+    print(f"Vector Store Directory: {settings.paths.vector_store_dir}")
     print(f"Vector Store Provider: {settings.vector_store.provider}")
+
+
+    print("=" * 50)
+    print("Starting SIMBA Application")
+    print("=" * 50)
+    
+    # Project Info
+    print(f"Project Name: {settings.project.name}")
+    print(f"Version: {settings.project.version}")
+    
+    # Model Configurations
+    print("\nModel Configurations:")
+    print(f"LLM Provider: {settings.llm.provider}")
+    print(f"LLM Model: {settings.llm.model_name}")
+    print(f"Embedding Provider: {settings.embedding.provider}")
     print(f"Embedding Model: {settings.embedding.model_name}")
+    print(f"Embedding Device: {settings.embedding.device}")
+    
+    # Vector Store & Database
+    print("\nStorage Configurations:")
+    print(f"Vector Store Provider: {settings.vector_store.provider}")
+    print(f"Database Provider: {settings.database.provider}")
+    
+    # Paths
+    print("\nPaths:")
+    print(f"Base Directory: {settings.paths.base_dir}")
+    print(f"Upload Directory: {settings.paths.upload_dir}")
+    print(f"Vector Store Directory: {settings.paths.vector_store_dir}")
+    
+    print("=" * 50)

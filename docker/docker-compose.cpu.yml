@@ -16,6 +16,7 @@ services:
       - DEVICE=cpu
       - OLLAMA_BASE_URL=http://ollama:11434
     volumes:
+      - ./config.yaml:/app/config.yaml
       - ./uploads:/app/uploads:rw
       - ./markdown:/app/markdown:rw
       - ./vector_stores:/app/vector_stores:rw
@@ -44,6 +45,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DEVICE=cpu
     volumes:
+      - ./config.yaml:/app/config.yaml
       - ./uploads:/app/uploads:rw
       - ./markdown:/app/markdown:rw
       - ./vector_stores:/app/vector_stores:rw

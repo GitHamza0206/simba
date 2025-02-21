@@ -45,6 +45,7 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - DEVICE=cuda
     volumes:
+      - ./config.yaml:/app/config.yaml
       - ./uploads:/app/uploads:rw
       - ./markdown:/app/markdown:rw
       - ./vector_stores:/app/vector_stores:rw
@@ -79,6 +80,7 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - DEVICE=cuda
     volumes:
+      - ./config.yaml:/app/config.yaml
       - ./uploads:/app/uploads:rw
       - ./markdown:/app/markdown:rw
       - ./vector_stores:/app/vector_stores:rw

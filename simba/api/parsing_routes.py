@@ -7,7 +7,7 @@ from simba.core.factories.database_factory import get_database
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from simba.models.simbadoc import SimbaDoc
 from pydantic import BaseModel
-from simba.tasks.parsing_tasks import celery, parse_docling_task, parse_markitdown_task
+from simba.tasks.parsing_tasks import celery, parse_docling_task
 
 from simba.parsing import ParserService
 
@@ -43,9 +43,6 @@ async def parse_document(request: ParseDocumentRequest):
         if not simbadoc:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        # Dispatch to Celery using document ID only
-        if request.parser == "markitdown":
-            task = parse_markitdown_task.delay(request.document_id)
         elif request.parser == "docling":
             task = parse_docling_task.delay(request.document_id)
         else:

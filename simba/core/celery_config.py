@@ -1,8 +1,11 @@
+import os
 import logging
-
-import torch
+from pathlib import Path
 from celery import Celery
 from celery.signals import worker_init, worker_shutdown, worker_shutting_down
+import torch
+
+
 from simba.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -29,29 +32,29 @@ def get_celery_config():
         'task_time_limit': 3600,  # 1 hour time limit per task
         'task_soft_time_limit': 3000,  # 50 minutes soft time limit,
         'worker_shutdown_timeout': 10,  # Give tasks 10 seconds to clean up
+        'imports': ['simba.tasks.parsing_tasks'],
+        'task_routes': {
+            'parse_markitdown': {'queue': 'parsing'},
+            'parse_docling': {'queue': 'parsing'}
+        }
     }
 
 def create_celery_app():
     """
     Creates and configures the Celery application with proper shutdown handling
     """
-    app = Celery('tasks')
+    app = Celery('simba')
     app.conf.update(get_celery_config())
     
     @worker_init.connect
-    def init_worker(**kwargs):
-        logger.info("Initializing Celery worker...")
-        
+    def init_worker(sender=None, **kwargs):
+        logger.info(f"🚀 Starting Celery worker with broker: {settings.celery.broker_url}")
+    
     @worker_shutting_down.connect
-    def worker_shutting_down_handler(**kwargs):
-        logger.info("Celery worker is shutting down...")
-        # Clean up any GPU resources
+    def handle_shutdown(sender=None, **kwargs):
+        logger.info("🛑 Worker shutting down, clearing CUDA cache")
         if torch.cuda.is_available():
-            try:
-                torch.cuda.empty_cache()
-                logger.info("Successfully cleared CUDA cache")
-            except Exception as e:
-                logger.error(f"Error clearing CUDA cache: {e}")
+            torch.cuda.empty_cache()
     
     @worker_shutdown.connect
     def worker_shutdown_handler(**kwargs):
@@ -60,4 +63,4 @@ def create_celery_app():
     return app
 
 # Create the celery application
-celery_app = create_celery_app() if settings.features.enable_parsers else None 
+celery_app = create_celery_app()

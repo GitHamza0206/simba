@@ -15,7 +15,7 @@ class Query(BaseModel):
     message: str
 
 
-@chat.post("/chat")
+@chat.post("/")
 async def invoke_graph(query: Query = Body(...)):
     """Invoke the graph workflow with a message"""
 

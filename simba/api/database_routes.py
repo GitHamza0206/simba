@@ -6,21 +6,21 @@ from simba.models.simbadoc import SimbaDoc
 from simba.core.factories.database_factory import get_database
 from simba.ingestion.document_ingestion import DocumentIngestionService
 
-database_route   = APIRouter()
+database_route   = APIRouter(prefix="/database", tags=["database"])
 
 db = get_database()
 kms = DocumentIngestionService()
 
-@database_route.get("/database/info")
+@database_route.get("/info")
 async def get_database_info():
     return db.__name__
 
-@database_route.get("/database/documents")
+@database_route.get("/documents")
 async def get_database_documents():
     #kms.sync_with_store()
     return db.get_all_documents()
 
-@database_route.get("/database/langchain_documents")
+@database_route.get("/langchain_documents")
 async def get_langchain_documents():
     all_documents = db.get_all_documents()
     # to SimbaDoc
@@ -30,7 +30,7 @@ async def get_langchain_documents():
 
     return langchain_documents
 
-@database_route.delete("/database/clear_database")
+@database_route.delete("/clear_database")
 async def clear_database():
     db.clear_database()
     return {"message": "Database cleared"}

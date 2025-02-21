@@ -1,5 +1,6 @@
 import logging
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -11,8 +12,9 @@ from fastapi import UploadFile
 from langchain.schema import Document
 from simba.models.simbadoc import MetadataType, SimbaDoc
 
-from simba.ingestion import Loader
-from simba.ingestion.file_handling import delete_file_locally
+from .loader import Loader
+from .file_handling import delete_file_locally
+from .utils import check_file_exists
 from simba.splitting import Splitter
 
 logger = logging.getLogger(__name__)
