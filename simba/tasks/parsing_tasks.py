@@ -11,18 +11,10 @@ from simba.parsing.parser_service import ParserService
 
 logger = logging.getLogger(__name__)
 
-# Force CPU usage through environment variables
-os.environ["PYTORCH_DEVICE"] = "cpu"
-os.environ["CUDA_VISIBLE_DEVICES"] = ""  # Disable CUDA
-os.environ["TORCH_DEVICE"] = "cpu"  # Force PyTorch to use CPU
 
-# Ensure PyTorch is using CPU
-if torch.cuda.is_available():
-    torch.cuda.empty_cache()
-torch.set_num_threads(1)  # Limit to single thread to avoid conflicts
 
 # Initialize parser service with explicit CPU device and force CPU flag
-parser_service = ParserService(device='cpu', force_cpu=True)
+parser_service = ParserService()
 vector_store = VectorStoreFactory.get_vector_store()
 
 @celery.task(name="parse_markitdown", bind=True)
