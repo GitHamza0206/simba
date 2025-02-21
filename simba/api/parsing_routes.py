@@ -30,11 +30,6 @@ class ParseDocumentRequest(BaseModel):
 @parsing.post("/parse")
 async def parse_document(request: ParseDocumentRequest):
     """Parse a document asynchronously"""
-    if not settings.features.enable_parsers:
-        raise HTTPException(
-            status_code=501, 
-            detail="Document parsing is disabled in system configuration"
-        )
     try:
         logger.info(f"Received parse request: {request}")
         
@@ -51,7 +46,7 @@ async def parse_document(request: ParseDocumentRequest):
         return {"task_id": task.id, "status_url": f"parsing/tasks/{task.id}"}
 
     except Exception as e:
-        logger.error(f"Error queuing parsing task: {str(e)}")
+        logger.error(f"Error enqueuing task: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @parsing.get("/parsing/tasks/{task_id}")

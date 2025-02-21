@@ -235,38 +235,3 @@ class LiteDocumentDB():
             logger.error(f"Failed to sync database with vector store: {e}")
             raise
 
-if __name__ == "__main__":
-    db = LiteDocumentDB()
-    from langchain_core.documents import Document
-    from models.simbadoc import SimbaDoc
-
-    # # Test single document
-    # doc1 = SimbaDoc(
-    #     id='1',
-    #     documents=[Document(page_content='test1')],
-    #     metadata=MetadataType(file_name='test1.txt')
-    # )
-
-    # # Test multiple documents
-    # docs = [
-    #     SimbaDoc(
-    #         id='2',
-    #         documents=[Document(page_content='test2')],
-    #         metadata=MetadataType(file_name='test2.txt')
-    #     ),
-    #     SimbaDoc(
-    #         id='3',
-    #         documents=[Document(page_content='test3')],
-    #         metadata=MetadataType(file_name='test3.txt')
-    #     )
-    # ]
-
-    # Insert and test
-    alldocs = db.get_all_documents()
-    for doc in alldocs:
-        simbadoc = cast(SimbaDoc, doc)
-        print(simbadoc.id)
-
-        print(simbadoc.metadata)
-        break
-    #print("All documents:", alldocs) 

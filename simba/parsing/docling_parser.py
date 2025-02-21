@@ -6,6 +6,8 @@ from simba.parsing.base import BaseParser
 from docling.chunking import HybridChunker
 from langchain_docling import DoclingLoader
 from simba.core.config import settings
+
+
 class DoclingParser(BaseParser):
     """
     A parser that uses Docling to chunk and parse documents.
@@ -44,3 +46,12 @@ class DoclingParser(BaseParser):
             document.metadata.parsing_status = "FAILED"
             # Optionally, log or rethrow the error here
             return document
+        
+if __name__ == "__main__":
+    from simba.core.factories.database_factory import get_database
+    parser = DoclingParser()
+    db = get_database()
+    documents = db.get_all_documents()
+    document = documents[0]
+    parsed_document = parser.parse(document)
+    print(parsed_document.documents)

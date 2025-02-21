@@ -129,33 +129,3 @@ class SQLiteDocumentDB():
         finally:
             session.close()
 
-if __name__ == "__main__":
-    db = SQLiteDocumentDB()
-    from langchain_core.documents import Document
-    from models.simbadoc import MetadataType, SimbaDoc
-
-    # Test single document
-    doc1 = SimbaDoc(
-        id='1',
-        documents=[Document(page_content='test1')],
-        metadata=MetadataType(file_name='test1.txt')
-    )
-    
-    # Test multiple documents
-    docs = [
-        SimbaDoc(
-            id='2',
-            documents=[Document(page_content='test2')],
-            metadata=MetadataType(file_name='test2.txt')
-        ),
-        SimbaDoc(
-            id='3',
-            documents=[Document(page_content='test3')],
-            metadata=MetadataType(file_name='test3.txt')
-        )
-    ]
-    
-    # Insert and test
-    print("Inserting single document:", db.insert_documents(doc1))
-    print("Inserting multiple documents:", db.insert_documents(docs))
-    print("All documents:", db.get_all_documents()) 

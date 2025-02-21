@@ -36,7 +36,6 @@ chunking:
 retrieval:
   k: 5
 
-
-celery: #REMOVE IF enable_parsers is false
+celery: 
   broker_url: ${CELERY_BROKER_URL:-redis://redis:6379/0}
   result_backend: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
