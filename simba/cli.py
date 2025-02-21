@@ -13,7 +13,6 @@ def cli():
 def run_server():
     """Run the Simba FastAPI server."""
     click.echo("Starting Simba server...")
-    # Only import when actually running the server
     from simba.__main__ import create_app
     app = create_app()
     import uvicorn
@@ -28,10 +27,12 @@ def run_parsers():
 @cli.command("front")
 def run_frontend():
     """Run the React frontend development server."""
-    frontend_dir = Path.cwd() / "frontend"
+    # Look for frontend directory at the root level
+    current_dir = Path.cwd()
+    frontend_dir = current_dir / "frontend"
     
     if not frontend_dir.exists():
-        click.echo("Error: Frontend directory not found. Please make sure you're in the correct directory.")
+        click.echo("Error: Frontend directory not found. Please make sure you're in the project root directory.")
         return
 
     os.chdir(frontend_dir)

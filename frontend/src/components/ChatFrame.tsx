@@ -3,7 +3,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Paperclip } from 'lucide-react';
-import ChatMessage from '../components/ChatMessage';
+import ChatMessage from './ChatMessage';
 import { Message } from '@/types/chat';
 import Thinking from '@/components/Thinking';
 import { sendMessage, handleChatStream } from '@/lib/api';
