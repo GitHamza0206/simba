@@ -26,7 +26,7 @@ embedding:
 
 vector_store:
   provider: "faiss"
-  collection_name: "migi_collection"
+  collection_name: "simba_collection"
   additional_params: {}
 
 chunking:

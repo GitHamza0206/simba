@@ -14,22 +14,13 @@ from langchain_community.vectorstores import FAISS, Chroma
 logger = logging.getLogger(__name__)
 
 class VectorStoreService:
-    def __init__(self):
-        self.embeddings = get_embeddings()
-        self._initialize_store()
+    def __init__(self, store=None, embeddings=None):
+        self.store = store
+        self.embeddings = embeddings
+        if not store or not embeddings:
+            raise ValueError("Both store and embeddings must be provided")
     
-    def _initialize_store(self):
-        # Clear existing store when changing providers
-        if hasattr(self, 'store'):
-            del self.store
-        
-        if settings.vector_store.provider == "faiss":
-            self.store = self._initialize_faiss()
-        elif settings.vector_store.provider == "chroma":
-            self.store = self._initialize_chroma()
-
-    
-    def as_retriever(self, **kwargs) :
+    def as_retriever(self, **kwargs):
         return self.store.as_retriever(**kwargs)
     
     def save(self):
@@ -159,59 +150,6 @@ class VectorStoreService:
         # Search for similar documents with filters
         return await self.store.asearch_with_filters(query, **kwargs)    
 
-   
-
-    def _initialize_faiss(self):
-        # Get actual embedding dimension from the model
-        try:
-            # Try to get dimension from HuggingFace embeddings
-            if hasattr(self.embeddings, 'client') and hasattr(self.embeddings.client, 'dimension'):
-                embedding_dim = self.embeddings.client.dimension
-            elif hasattr(self.embeddings, 'model') and hasattr(self.embeddings.model, 'config'):
-                embedding_dim = self.embeddings.model.config.hidden_size
-            else:
-                # Fallback for other embedding types: compute dimension from a test embedding
-                embedding_dim = len(self.embeddings.embed_query("test"))
-            
-            logger.info(f"Using embedding dimension: {embedding_dim}")
-        except Exception as e:
-            logger.error(f"Error determining embedding dimension: {e}")
-            # Fallback to computing dimension
-            embedding_dim = len(self.embeddings.embed_query("test"))
-            logger.info(f"Fallback: Using computed embedding dimension: {embedding_dim}")
-        
-        if os.path.exists(settings.paths.faiss_index_dir) and len(os.listdir(settings.paths.faiss_index_dir)) > 0:
-            logging.info("Loading existing FAISS vector store")
-            store = FAISS.load_local(
-                settings.paths.faiss_index_dir,
-                self.embeddings,
-                allow_dangerous_deserialization=True
-            )
-            # Verify dimension match
-            if store.index.d != embedding_dim:
-                raise ValueError(f"Embedding dimension mismatch: Index has {store.index.d}D vs Model has {embedding_dim}D")
-        else:
-            logging.info(f"Initializing new FAISS index with dimension {embedding_dim}")
-            index = faiss.IndexFlatL2(embedding_dim)
-            store = FAISS(
-                embedding_function=self.embeddings,
-                index=index,
-                docstore=InMemoryDocstore(),
-                index_to_docstore_id={},
-            )
-            store.save_local(settings.paths.faiss_index_dir)
-        return store
-    
-    def _initialize_chroma(self, documents=None):
-        logging.info("Initializing empty Chroma vector store with hello world")
-        store = Chroma.from_documents(
-            documents=documents or [Document(page_content="hello world")],
-            embedding=self.embeddings,
-            allow_dangerous_deserialization=True
-        )
-        store.save_local(settings.paths.faiss_index_dir)
-        return store
-
     def verify_store_sync(self) -> bool:
         """
         Verify synchronization between FAISS index and document store
@@ -220,11 +158,9 @@ class VectorStoreService:
         pass
 
 def usage():
-    store = VectorStoreService()
+    from simba.core.factories.vector_store_factory import VectorStoreFactory
+    store = VectorStoreFactory.get_vector_store()
     print(store.embeddings)
-    
-    
-
 
 if __name__ == "__main__":
     usage()
