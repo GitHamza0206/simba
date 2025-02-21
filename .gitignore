@@ -17,3 +17,6 @@ backend/vector_stores/faiss_index/*
 
 /backend/vector_stores/*
 backend/*
+
+/dist
+/build
