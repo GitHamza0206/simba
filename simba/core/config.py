@@ -143,20 +143,20 @@ except Exception as e:
     logger.error(f"Failed to load configuration file: {e}")
     raise
 
-# Ensure directories exist
-def ensure_directories():
-    """Create necessary directories if they don't exist."""
-    directories = [
-        settings.paths.faiss_index_dir,
-        settings.paths.vector_store_dir
-    ]
+# # Ensure directories exist
+# def ensure_directories():
+#     """Create necessary directories if they don't exist."""
+#     directories = [
+#         settings.paths.faiss_index_dir,
+#         settings.paths.vector_store_dir
+#     ]
     
-    for directory in directories:
-        directory.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Ensured directory exists: {directory}")
+#     for directory in directories:
+#         directory.mkdir(parents=True, exist_ok=True)
+#         logger.info(f"Ensured directory exists: {directory}")
 
-# Create directories on import
-ensure_directories()
+# # Create directories on import
+# ensure_directories()
 
 if __name__ == "__main__":
     print("\nCurrent Settings:")

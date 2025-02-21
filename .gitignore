@@ -11,3 +11,9 @@ __pycache__
 /uploads
 /markdown
 /vector_stores/faiss_index
+
+/backend/*
+backend/vector_stores/faiss_index/*
+
+/backend/vector_stores/*
+backend/*

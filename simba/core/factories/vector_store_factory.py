@@ -5,10 +5,9 @@ import faiss
 from simba.core.config import settings
 from simba.core.factories.embeddings_factory import get_embeddings
 from langchain.schema import Document
-from langchain.docstore.in_memory import InMemoryDocstore
+from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores.faiss import FAISS
-from langchain_community.vectorstores import Chroma  # Old import
-from langchain_chroma import Chroma  # New import
+from langchain_community.vectorstores import Chroma
 
 logger = logging.getLogger(__name__)
 

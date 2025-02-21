@@ -96,7 +96,8 @@ class VectorStoreService:
             logger.info(f"Deleting documents: {uids}")
             self.store.delete(uids)
             self.save() 
-            
+
+                
             return True
         except Exception as e:
             logger.error(f"Error deleting documents: {e}")
