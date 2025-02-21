@@ -131,7 +131,7 @@ then navigate to <a>http:0.0.0.0:8000/docs</a> to access swagger ui (Optional)
 
 4. run the parser with celery worker
 ```bash
-celery -A tasks.parsing_tasks worker --loglevel=info
+celery -A simba worker --loglevel=info -Q parsing
 ```
 5. modify the config.yaml file to your needs
 

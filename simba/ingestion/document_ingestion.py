@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+import asyncio
 
 import aiofiles
 from simba.core.config import settings
@@ -36,36 +37,29 @@ class DocumentIngestionService:
         Returns:
             Document: The ingested document
         """
-        
         try:
             folder_path = Path(settings.paths.upload_dir)
             file_path = folder_path / file.filename
             file_extension = f".{file.filename.split('.')[-1].lower()}" 
 
-            
-            # Ensure file exists and is not empty
-            if not file_path.exists():
-                raise ValueError(f"File {file_path} does not exist")
+            # Get file info and validate in one async operation
+            async with aiofiles.open(file_path, 'rb') as f:
+                await f.seek(0, 2)  # Seek to end
+                file_size = await f.tell()
                 
-            if file_path.stat().st_size == 0:
-                raise ValueError(f"File {file_path} is empty")
-            
+                if file_size == 0:
+                    raise ValueError(f"File {file_path} is empty")
 
-            # Use asyncio.to_thread for synchronous loader
+            # Load and process document
             document = await self.loader.aload(file_path=str(file_path))
-            document = self.splitter.split_document(document) #split document into chunks
-            # Set id for each Document in the list
+            document = await asyncio.to_thread(self.splitter.split_document, document)
+            
+            # Set unique IDs for chunks
             for doc in document:
                 doc.id = str(uuid.uuid4())
-
             
-            # Use aiofiles for async file size check
-            async with aiofiles.open(file_path, 'rb') as f:
-                await f.seek(0, 2)  # Seek to end of file
-                file_size = await f.tell()  # Get current position (file size)
-                
+            # Create metadata
             size_str = f"{file_size / (1024 * 1024):.2f} MB"    
-            
             metadata = MetadataType(
                 filename=file.filename,
                 type=file_extension,
@@ -80,14 +74,16 @@ class DocumentIngestionService:
                 parser=None
             )
             
-   
-            return SimbaDoc.from_documents(id=str(uuid.uuid4()), documents=document, metadata=metadata)
+            return SimbaDoc.from_documents(
+                id=str(uuid.uuid4()), 
+                documents=document, 
+                metadata=metadata
+            )
         
         except Exception as e:
             logger.error(f"Error ingesting document: {e}")
             raise e
     
-        
     def get_document(self, document_id: str) -> Optional[Document]:
         """Get a document by its ID"""
         try:
