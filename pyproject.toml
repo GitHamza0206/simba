@@ -69,4 +69,6 @@ skip = [".git", "venv", ".venv", "env", ".env", "__pycache__", "dist", "build"]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.poetry.scripts]
+simba = "simba.cli:main"
 
