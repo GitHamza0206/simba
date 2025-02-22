@@ -20,7 +20,7 @@ from simba.ingestion.document_ingestion import DocumentIngestionService
 from simba.ingestion.file_handling import save_file_locally
 from simba.ingestion.utils import check_file_exists
 from simba.ingestion import Loader
-from simba.parsing import ParserService
+
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +129,7 @@ async def get_loaders():
 @ingestion.get("/parsers")
 async def get_parsers():
     """Get supported parsers"""
-    return {"parsers": ParserService().get_parsers()}
+    return {"parsers": "docling"}
 
 @ingestion.get("/upload-directory")
 async def get_upload_directory():

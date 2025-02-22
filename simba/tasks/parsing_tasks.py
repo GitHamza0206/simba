@@ -7,12 +7,10 @@ from simba.core.config import settings
 from simba.core.factories.database_factory import get_database
 from simba.core.factories.vector_store_factory import VectorStoreFactory
 from simba.models.simbadoc import SimbaDoc
-from simba.parsing.parser_service import ParserService
 from simba.parsing.docling_parser import DoclingParser
 
 logger = logging.getLogger(__name__)
 
-parser_service = ParserService()
 vector_store = VectorStoreFactory.get_vector_store()
 
 @celery.task(name="parse_docling")
