@@ -16,7 +16,27 @@ BASE_DIR = Path.cwd()
 logger.info(f"Using current working directory as base: {BASE_DIR}")
 
 # Load .env from the base directory
-load_dotenv(BASE_DIR / ".env")
+env_path = BASE_DIR / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
+    logger.info(f"✅ Successfully loaded environment variables from: {env_path}")
+else:
+    logger.warning(f"⚠️ No .env file found at: {env_path}")
+    logger.info("Using default environment variables or system environment variables")
+
+# Validate critical environment variables
+critical_env_vars = {
+    'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY'),
+    'REDIS_HOST': os.getenv('REDIS_HOST'),
+    'CELERY_BROKER_URL': os.getenv('CELERY_BROKER_URL'),
+    'CELERY_RESULT_BACKEND': os.getenv('CELERY_RESULT_BACKEND')
+}
+
+for var_name, var_value in critical_env_vars.items():
+    if var_value:
+        logger.info(f"✅ Environment variable loaded: {var_name}")
+    else:
+        logger.warning(f"⚠️ Missing environment variable: {var_name}")
 
 
 

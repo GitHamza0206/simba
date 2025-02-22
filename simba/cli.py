@@ -14,6 +14,8 @@ def run_server():
     """Run the Simba FastAPI server."""
     click.echo("Starting Simba server...")
     from simba.__main__ import create_app
+    from dotenv import load_dotenv
+    load_dotenv()
     app = create_app()
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, workers=1)

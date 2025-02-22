@@ -20,3 +20,6 @@ backend/*
 
 /dist
 /build
+
+**/uploads/
+**/vector_stores/

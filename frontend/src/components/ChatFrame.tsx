@@ -13,6 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatFrameProps {
   messages: Message[];
@@ -25,6 +26,7 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
   const [isLoading, setIsLoading] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -105,6 +107,15 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
 
     } catch (error) {
       console.error('Error:', error);
+      
+      // Show error toast
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: "destructive",
+        duration: 5000,
+      });
+
       setMessages(prev => [...prev, {
         id: `error-${Date.now()}`,
         role: 'assistant',

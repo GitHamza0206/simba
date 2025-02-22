@@ -13,7 +13,11 @@ export async function sendMessage(message: string): Promise<Response> {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      if (errorData.detail?.includes('API key')) {
+        throw new Error('Missing or invalid API key. Please check your configuration.');
+      }
+      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
     }
 
     return response;
@@ -35,7 +39,11 @@ export async function handleChatStream(
   console.log('🔄 Starting stream handling...');
 
   try {
-    while (reader) {
+    if (!reader) {
+      throw new Error('Connection error: Failed to establish stream');
+    }
+
+    while (true) {
       const { value, done } = await reader.read();
       if (done) break;
       
@@ -59,7 +67,7 @@ export async function handleChatStream(
 
           if (data.error) {
             console.error('❌ Stream error:', data.error);
-            continue;
+            throw new Error(data.error);
           }
 
           // Pass both content and state to the callback
@@ -72,9 +80,13 @@ export async function handleChatStream(
           }
         } catch (e) {
           console.error('❌ Error parsing stream chunk:', e);
+          throw new Error('Connection error: Failed to parse stream data');
         }
       }
     }
+  } catch (error) {
+    console.error('Stream error:', error);
+    throw error;
   } finally {
     console.log('✅ Stream handling complete');
     reader?.releaseLock();
