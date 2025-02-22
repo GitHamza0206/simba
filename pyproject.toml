@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "simba"
+name = "simba-core"
 version = "1.0.0"
 description = "Knowledge Management System that connects to your RAG system"
 authors = ["GitHamza0206 <zeroualihamza0206@gmail.com>"]
@@ -8,6 +8,14 @@ license = "LICENCE.md"
 packages = [
     {include = "simba"},
     {include = "simba_sdk"}
+]
+repository = "https://github.com/GitHamza0206/simba"
+keywords = ["rag", "knowledge-management", "vector-store", "llm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
 ]
 
 [tool.poetry.dependencies]
@@ -48,6 +56,7 @@ pydantic-settings = "^2.7.1"
 torch = "^2.6.0"
 torchvision = "^0.21.0"
 torchaudio = "^2.6.0"
+celery = "^5.4.0"
 
 
 [tool.poetry.group.dev.dependencies]
