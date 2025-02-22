@@ -1,0 +1,42 @@
+# config.yaml
+
+project:
+  name: "Simba"
+  version: "1.0.0"
+  api_version: "/api/v1"
+
+paths:
+  base_dir: null  # Will be set programmatically
+  faiss_index_dir: "vector_stores/faiss_index"
+  vector_store_dir: "vector_stores"
+
+llm:
+  provider: "openai"
+  model_name: "gpt-4o-mini"
+  temperature: 0.0
+  max_tokens: null
+  streaming: true
+  additional_params: {}
+
+embedding:
+  provider: "huggingface"
+  model_name: "BAAI/bge-base-en-v1.5"
+  device: "mps"  # Changed from mps to cpu for container compatibility
+  additional_params: {}
+
+vector_store:
+  provider: "faiss"
+  collection_name: "simba_collection"
+
+  additional_params: {}
+
+chunking:
+  chunk_size: 512
+  chunk_overlap: 200
+
+retrieval:
+  k: 5
+
+celery: 
+  broker_url: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+  result_backend: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}

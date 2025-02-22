@@ -1,41 +1,39 @@
 <h1 align="center">Simba - Your Knowledge Management System</h1>
 
 <p align="center">
-  <img src="/assets/logo.png" alt="Simba Logo" width="400", height="400"/>
+<img src="/assets/logo.png" alt="Simba Logo" width="400", height="400"/>
 </p>
 
 <p align="center">
-  <strong>Connect your knowledge to any RAG system</strong>
+<strong>Connect your knowledge to any RAG system</strong>
 </p>
 
 <p align="center">
-  <a href="https://www.producthunt.com/posts/simba-2?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-simba&#0045;2" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=863851&theme=light&t=1739449352356" alt="Simba&#0032; - Connect&#0032;your&#0032;Knowledge&#0032;into&#0032;any&#0032;RAG&#0032;based&#0032;system | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
+<a href="https://www.producthunt.com/posts/simba-2?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-simba&#0045;2" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=863851&theme=light&t=1739449352356" alt="Simba&#0032; - Connect&#0032;your&#0032;Knowledge&#0032;into&#0032;any&#0032;RAG&#0032;based&#0032;system | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/GitHamza0206/simba/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/GitHamza0206/simba" alt="License">
-  </a>
-  <a href="https://github.com/GitHamza0206/simba/stargazers">
-    <img src="https://img.shields.io/github/stars/GitHamza0206/simba" alt="Stars">
-  </a>
-  <a href="https://github.com/GitHamza0206/simba/network/members">
-    <img src="https://img.shields.io/github/forks/GitHamza0206/simba" alt="Forks">
-  </a>
-  <a href="https://github.com/GitHamza0206/simba/issues">
-    <img src="https://img.shields.io/github/issues/GitHamza0206/simba" alt="Issues">
-  </a>
-  <a href="https://github.com/GitHamza0206/simba/pulls">
-    <img src="https://img.shields.io/github/issues-pr/GitHamza0206/simba" alt="Pull Requests">
-  </a>
+<a href="https://github.com/GitHamza0206/simba/blob/main/LICENSE">
+<img src="https://img.shields.io/github/license/GitHamza0206/simba" alt="License">
+</a>
+<a href="https://github.com/GitHamza0206/simba/stargazers">
+<img src="https://img.shields.io/github/stars/GitHamza0206/simba" alt="Stars">
+</a>
+<a href="https://github.com/GitHamza0206/simba/network/members">
+<img src="https://img.shields.io/github/forks/GitHamza0206/simba" alt="Forks">
+</a>
+<a href="https://github.com/GitHamza0206/simba/issues">
+<img src="https://img.shields.io/github/issues/GitHamza0206/simba" alt="Issues">
+</a>
+<a href="https://github.com/GitHamza0206/simba/pulls">
+<img src="https://img.shields.io/github/issues-pr/GitHamza0206/simba" alt="Pull Requests">
+</a>
 </p>
 
 <!-- <a href="https://ibb.co/RHkRGcs"><img src="https://i.ibb.co/ryRDKHz/logo.jpg" alt="logo" border="0"></a> -->
 [![Twitter Follow](https://img.shields.io/twitter/follow/zeroualihamza?style=social)](https://x.com/zerou_hamza)
 
-
 Simba is an open source, portable KMS (knowledge management system) designed to integrate seamlessly with any Retrieval-Augmented Generation (RAG) system. With a modern UI and modular architecture, Simba allows developers to focus on building advanced AI solutions without worrying about the complexities of knowledge management.
-
 
 # Table of Contents
 
@@ -44,13 +42,9 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
   - [🎥 Demo](#-demo)
   - [🛠️ Getting Started](#️-getting-started)
     - [📋 Prerequisites](#-prerequisites)
-    - [⬇️ Installation](#️-installation)
-    - [💻 Local Development](#-local-development)
-  - [⚙️ Backend](#️-backend)
-  - [🖥️ Frontend](#️-frontend)
-  - [🐳 Launch with docker (Recommended)](#-launch-with-docker-recommended)
-  - [📂 Project Structure](#-project-structure)
-  - [⚙️ Configuration](#️-configuration)
+    - [📦 Installation](#-installation)
+    - [🔑 Configuration](#-configuration)
+    - [🚀 Run Simba](#-run-simba)
   - [🏁 Roadmap](#-roadmap)
   - [🤝 Contributing](#-contributing)
   - [💬 Support \& Contact](#-support--contact)
@@ -63,7 +57,7 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
 - **👨‍💻 Developer Focus:** Simplifies knowledge management so you can concentrate on building core AI functionality.
 - **📦 Open Source & Extensible:** Community-driven, with room for custom features and integrations.
 
-## 🎥 Demo 
+## 🎥 Demo
 
 ![Watch the demo](/assets/demo.gif)
 
@@ -73,69 +67,38 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
 
 Before you begin, ensure you have met the following requirements:
 
-- [Python](https://www.python.org/) 3.11+ &  [poetry](https://python-poetry.org/) 
+- [Python](https://www.python.org/) 3.11+ & [poetry](https://python-poetry.org/)
 - [Redis](https://redis.io/) 7.0+
 - [Node.js](https://nodejs.org/) 20+
 - [Git](https://git-scm.com/) for version control.
 - (Optional) Docker for containerized deployment.
 
-### ⬇️ Installation
-**note :** Simba uses celery for heavy tasks like parsing. These tasks may be launched with gpu. In order to avoid infrastructure problem related we recommend to launch the app using Docker 
-### 💻 Local Development
+### 📦 Installation
+
+Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/GitHamza0206/simba.git
 cd simba
-```
-## ⚙️ Backend
-
-```bash
-cd backend
-```
-
-0. Redis installation 
-   make sure to have redis installed in your OS 
-   ```bash
-   #init redis server
-    redis-server
-   ```
-
-1.  setup env
-   
-```bash
-cp .env.example .env
-```
-then edit the .env file with your own values
-```ini
-
-OPENAI_API_KEY="" 
-LANGCHAIN_TRACING_V2= #(optional - for langsmith tracing) 
-LANGCHAIN_API_KEY="" #(optional - for langsmith tracing) 
-REDIS_HOST=redis
-CELERY_BROKER_URL=redis://redis:6379/0
-CELERY_RESULT_BACKEND=redis://redis:6379/1
-```
-
-2. install dependencies
-```bash
-poetry config virtualenvs.in-project true
 poetry install
-poetry shell OR source .venv/bin/activate (MAC/LINUX) OR .venv\Scripts\activate (WINDOWS)
+poetry shell
 ```
 
-3. run backend
-```bash
-python main.py OR uvicorn main:app --reload #for auto reload 
-```
-then navigate to <a>http:0.0.0.0:8000/docs</a> to access swagger ui (Optional)
+### 🔑 Configuration
 
-4. run the parser with celery worker
-```bash
-celery -A tasks.parsing_tasks worker --loglevel=info
-```
-5. modify the config.yaml file to your needs
+Create a `.env` file in the root directory:
 
 ```bash
+OPENAI_API_KEY=your_openai_api_key
+REDIS_HOST=localhost
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/1
+
+```
+
+create or update config.yaml file in the root directory:
+
+```yaml
 # config.yaml
 
 project:
@@ -145,27 +108,27 @@ project:
 
 paths:
   base_dir: null  # Will be set programmatically
-  markdown_dir: "markdown"
   faiss_index_dir: "vector_stores/faiss_index"
   vector_store_dir: "vector_stores"
 
 llm:
-  provider: "openai" #or ollama (vllm coming soon)
-  model_name: "gpt-4o" #or ollama model name
+  provider: "openai"
+  model_name: "gpt-4o-mini"
   temperature: 0.0
   max_tokens: null
   streaming: true
   additional_params: {}
 
 embedding:
-  provider: "huggingface" #or openai
-  model_name: "BAAI/bge-base-en-v1.5" #or any HF model name
-  device: "cpu"  # mps,cuda,cpu
+  provider: "huggingface"
+  model_name: "BAAI/bge-base-en-v1.5"
+  device: "mps"  # Changed from mps to cpu for container compatibility
   additional_params: {}
 
 vector_store:
-  provider: "faiss" 
-  collection_name: "migi_collection"
+  provider: "faiss"
+  collection_name: "simba_collection"
+
   additional_params: {}
 
 chunking:
@@ -173,95 +136,64 @@ chunking:
   chunk_overlap: 200
 
 retrieval:
-  k: 5 #number of chunks to retrieve 
-
-features:
-  enable_parsers: true  # Set to false to disable parsing
+  k: 5
 
 celery: 
   broker_url: ${CELERY_BROKER_URL:-redis://redis:6379/0}
   result_backend: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+
+
 ```
 
-## 🖥️ Frontend
+### 🚀 Run Simba
 
-Make sure to be in the root simba directory
-
+Run the server:
 ```bash
-cd frontend
-npm install
-npm run dev 
+simba server
 ```
-then navigate to <a>http:localhost:5173</a> to access the frontend
 
-
-## 🐳 Launch with docker (Recommended)
-
-navigate to root simba directory
-
+Run the frontend:
 ```bash
-export OPENAI_API_KEY="" #(optional) 
-cd backend 
-poetry shell # activate poetry env 
-cd .. 
-./run.sh # launch simba with docker 
-```
-launch new terminal to install llm inside ollama (optional)
-
-```bash 
-cd backend 
-./install_llm.sh
+simba front 
 ```
 
-## 📂 Project Structure
-
+Run the parsers:
 ```bash
-simba/
-├── backend/              # Core processing engine
-│   ├── api/              # FastAPI endpoints
-│   ├── services/         # Document processing logic
-│   ├── tasks/            # Celery task definitions
-│   └── models/          # Pydantic data models
-├── frontend/             # React-based UI
-│   ├── public/           # Static assets
-│   └── src/              # React components
-├── docker-compose.yml    # Development environment
-└── docker-compose.prod.yml # Production setup
+simba parsers
 ```
 
-## ⚙️ Configuration
-the [config.yaml](/backend/config.yaml) file is used to configure the backend application.
-You can change : 
-- embedding model
-- vector store
-- chunking
-- retrieval
-- features
-- parsers 
 
-navigate to [backend/README.md](/backend/README.md) for more information
 
 
 ## 🏁 Roadmap
+ 
+- [ ] 💻 pip install simba
+- [ ] 🔧 pip install simba-sdk
+- [ ] 🌐 www.simba-docs.com 
+- [ ] 🔒 Adding Auth & access management
+- [ ] 🕸️ Adding web scraping
+- [ ] ☁️ Pulling data from Azure / AWS / GCP
+- [ ] 📚 More parsers and chunkers available
+- [ ] 🎨 Better UX/UI
 
-- [ ] Add more documentation 
-- [ ] Make simba work with any RAG system as an importable python package
-- [ ] Add CI/CD pipeline
-- [ ] Add control over chunking parameters
-- [ ] Add more parsers 
-- [ ] Add more vector stores
-- [ ] Add more embedding models
-- [ ] Add more retrieval models
-- [ ] Enable role access control
+  
 
 ## 🤝 Contributing
+
 Contributions are welcome! If you'd like to contribute to Simba, please follow these steps:
 
+  
+
 - Fork the repository.
+
 - Create a new branch for your feature or bug fix.
+
 - Commit your changes with clear messages.
+
 - Open a pull request describing your changes.
 
-## 💬 Support & Contact
-For support or inquiries, please open an issue 📌 on GitHub or contact repo owner at [Hamza Zerouali](mailto:zeroualihamza0206@gmail.com)
+  
 
+## 💬 Support & Contact
+
+For support or inquiries, please open an issue 📌 on GitHub or contact repo owner at [Hamza Zerouali](mailto:zeroualihamza0206@gmail.com)

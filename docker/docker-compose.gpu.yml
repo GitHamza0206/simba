@@ -1,0 +1,136 @@
+version: '3.9'
+
+services:
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      simba_network:
+        aliases:
+          - ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - PYTHONPATH=/app
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - DEVICE=cuda
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./uploads:/app/uploads:rw
+      - ./markdown:/app/markdown:rw
+      - ./vector_stores:/app/vector_stores:rw
+    depends_on:
+      ollama:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      simba_network:
+        aliases:
+          - backend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges
+    mem_limit: 1g
+    cpus: 0.5
+    runtime: nvidia
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    container_name: celery_worker_gpu
+    command: celery -A tasks.parsing_tasks worker --loglevel=info
+    environment:
+      - REDIS_HOST=redis
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - PYTHONPATH=/app
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - DEVICE=cuda
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./uploads:/app/uploads:rw
+      - ./markdown:/app/markdown:rw
+      - ./vector_stores:/app/vector_stores:rw
+    depends_on:
+      ollama:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      simba_network:
+        aliases:
+          - celery
+    restart: on-failure
+    security_opt:
+      - no-new-privileges
+    mem_limit: 2g
+    cpus: 1
+    runtime: nvidia
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      simba_network:
+        aliases:
+          - redis
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    mem_limit: 512m
+    cpus: 0.3
+
+networks:
+  simba_network:
+    name: simba_network
+    driver: bridge
+    labels:
+      com.docker.compose.network: simba_network
+      com.docker.compose.project: simba_backend
+
+volumes:
+  redis_data:
+    name: simba_redis_data
+    driver: local
+  ollama:
+    name: ollama
+    driver: local 
