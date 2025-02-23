@@ -87,8 +87,9 @@ Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/GitHamza0206/simba.git
 cd simba
+poetry config virtualenvs.in-project true
 poetry install
-poetry shell
+source .venv/bin/activate 
 ```
 
 ### 🔑 Configuration
@@ -174,7 +175,7 @@ simba parsers
 
 ## 🏁 Roadmap
  
-- [ ] 💻 pip install simba
+- [ ] 💻 pip install simba-core
 - [ ] 🔧 pip install simba-sdk
 - [ ] 🌐 www.simba-docs.com 
 - [ ] 🔒 Adding Auth & access management
