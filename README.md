@@ -75,6 +75,13 @@ Before you begin, ensure you have met the following requirements:
 
 ### 📦 Installation
 
+install simba-core:
+
+```bash
+pip install simba-core
+
+```
+
 Clone the repository and install dependencies:
 
 ```bash

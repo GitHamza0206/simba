@@ -1,8 +1,9 @@
 # Include license and readme files
-include LICENSE
+include LICENSE.md
 include README.md
 include .env.example
 include config.yaml
+include pyproject.toml
 
 # Include all Python source files
 recursive-include simba *.py
