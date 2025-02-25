@@ -23,3 +23,5 @@ backend/*
 
 **/uploads/
 **/vector_stores/
+
+dump.rdb

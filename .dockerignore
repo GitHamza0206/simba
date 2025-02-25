@@ -12,3 +12,9 @@
 **/local_data
 **/uploads/*
 !**/uploads/.gitkeep
+MANIFEST.in
+
+# Don't ignore these files
+!pyproject.toml
+!poetry.lock
+!README.md

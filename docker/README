@@ -1,0 +1,226 @@
+# Simba Docker Deployment Guide
+
+This guide will help you deploy Simba using Docker with support for various hardware configurations including CPU, GPU (NVIDIA CUDA), and Apple Silicon (M1/M2/M3).
+
+## Prerequisites
+
+- Docker and Docker Compose installed
+- Git to clone the repository
+- For GPU usage: NVIDIA Docker runtime and drivers installed
+- For Apple Silicon: macOS on an M1/M2/M3 Mac
+
+## Quick Start Guide
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/GitHamza0206/simba.git
+cd simba
+```
+
+### 2. Basic Commands
+
+#### Run on Specific Hardware
+
+**For CPU:**
+```bash
+DEVICE=cpu make up
+```
+
+**For NVIDIA GPU with Ollama:**
+```bash
+DEVICE=cuda make up
+```
+
+**For Apple Silicon:**
+```bash
+DEVICE=mps make up
+```
+
+**Run with Ollama service (for CPU/MPS):**
+```bash
+DEVICE=mps ENABLE_OLLAMA=true make up
+```
+
+**Run in background mode:**
+```bash
+# All commands run in detached mode by default
+```
+
+### 3. Managing Your Deployment
+
+**View logs:**
+```bash
+make logs
+```
+
+**Stop all containers:**
+```bash
+make down
+```
+
+**Restart all containers:**
+```bash
+DEVICE=mps make restart
+```
+
+**Clean up everything:**
+```bash
+make clean
+```
+
+## Advanced Usage
+
+### Building Images Separately
+
+If you want to build the Docker image without starting containers:
+
+```bash
+# For CPU
+DEVICE=cpu make build
+
+# For NVIDIA GPU
+DEVICE=cuda make build
+
+# For Apple Silicon
+DEVICE=mps make build
+```
+
+### Custom Tags
+
+Tag your images for versioning:
+
+```bash
+IMAGE_TAG=v1.0.0 make build
+```
+
+### Running With/Without Ollama
+
+By default, Ollama runs only with CUDA. To control Ollama service:
+
+```bash
+# Enable Ollama on CPU/MPS
+DEVICE=mps ENABLE_OLLAMA=true make up
+
+# Disable Ollama (default for CPU/MPS)
+DEVICE=mps make up
+```
+
+## Platform-Specific Instructions
+
+### NVIDIA GPU Setup
+
+1. Ensure you have NVIDIA drivers installed on your host
+2. Install the NVIDIA Container Toolkit:
+   ```bash
+   distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+   curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+   curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+   sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+   sudo systemctl restart docker
+   ```
+3. Run Simba with GPU support:
+   ```bash
+   DEVICE=cuda make up
+   ```
+
+### Apple Silicon (M1/M2/M3) Setup
+
+1. Ensure you're running on macOS with an Apple Silicon processor
+2. Run Simba with Metal Performance Shader support:
+   ```bash
+   DEVICE=mps make up
+   ```
+
+## Docker Compose Structure
+
+Simba's Docker setup consists of several services:
+
+- **server**: The main application server
+- **celery_worker**: Background task processing
+- **redis**: Message broker and caching
+- **frontend**: User interface
+- **ollama** (optional): Local language model service
+
+## Troubleshooting
+
+### Network Already Exists Error
+
+If you see an error about the network already existing:
+
+```bash
+# First stop all containers
+make down
+
+# Clean up Docker networks
+docker network rm simba_network
+
+# Then try running again
+DEVICE=mps make up
+```
+
+### Complete Reset
+
+For a full reset of your Docker environment:
+
+```bash
+# Stop containers
+make down
+
+# Remove the network
+docker network rm simba_network
+
+# Create a fresh network
+docker network create simba_network
+
+# Start containers
+DEVICE=mps make up
+```
+
+### Container Fails to Start
+
+Check the logs to see what's happening:
+
+```bash
+make logs
+```
+
+## Accessing the Application
+
+After starting the containers:
+
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:8000
+- **Ollama API** (if enabled): http://localhost:11434
+
+## Configuration
+
+Simba uses several configuration options:
+
+- **DEVICE**: Hardware to use (`cpu`, `cuda`, or `mps`)
+- **ENABLE_OLLAMA**: Whether to include Ollama service (default: `false` for CPU/MPS, `true` for CUDA)
+- **IMAGE_NAME**: Name for Docker images (default: `simba`)
+- **IMAGE_TAG**: Tag for Docker images (default: `latest`)
+
+## Updating the Application
+
+To update to the latest version:
+
+```bash
+git pull
+make clean
+DEVICE=mps make up
+```
+
+## Development Workflow
+
+When working on the application:
+
+1. Edit files locally
+2. The changes are reflected in the containers through volume mounts
+3. Restart containers if necessary:
+   ```bash
+   make restart
+   ```
+
+This guide should help you get Simba up and running on various hardware configurations using Docker.
