@@ -1,6 +1,7 @@
-from simba.core.factories.llm_factory import get_llm
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
+
+from simba.core.factories.llm_factory import get_llm
 
 
 # Data model

@@ -6,8 +6,7 @@ from typing import Any, Dict, Optional
 import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
-import sys
+from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +25,10 @@ else:
 
 # Validate critical environment variables
 critical_env_vars = {
-    'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY'),
-    'REDIS_HOST': os.getenv('REDIS_HOST'),
-    'CELERY_BROKER_URL': os.getenv('CELERY_BROKER_URL'),
-    'CELERY_RESULT_BACKEND': os.getenv('CELERY_RESULT_BACKEND')
+    "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
+    "REDIS_HOST": os.getenv("REDIS_HOST"),
+    "CELERY_BROKER_URL": os.getenv("CELERY_BROKER_URL"),
+    "CELERY_RESULT_BACKEND": os.getenv("CELERY_RESULT_BACKEND"),
 }
 
 for var_name, var_value in critical_env_vars.items():
@@ -39,11 +38,11 @@ for var_name, var_value in critical_env_vars.items():
         logger.warning(f"⚠️ Missing environment variable: {var_name}")
 
 
-
 class ProjectConfig(BaseModel):
     name: str = "Simba"
     version: str = "1.0.0"
     api_version: str = "/api/v1"
+
 
 class PathConfig(BaseModel):
     base_dir: Path = Field(default_factory=lambda: BASE_DIR)
@@ -57,47 +56,52 @@ class PathConfig(BaseModel):
         self.faiss_index_dir = self.base_dir / self.faiss_index_dir
         self.vector_store_dir = self.base_dir / self.vector_store_dir
         self.upload_dir = self.base_dir / self.upload_dir
-        
+
         # Create directories if they don't exist
         for path in [self.faiss_index_dir, self.vector_store_dir, self.upload_dir]:
             path.mkdir(parents=True, exist_ok=True)
             logger.info(f"Ensured directory exists: {path}")
 
+
 class LLMConfig(BaseModel):
-    model_config = ConfigDict(protected_namespaces=())  
+    model_config = ConfigDict(protected_namespaces=())
 
     provider: str = Field(default="openai")
     model_name: str = Field(default="gpt-4")
     api_key: str = Field(
         default_factory=lambda: os.getenv("OPENAI_API_KEY", ""),
-        description="OpenAI API key from environment variables"
+        description="OpenAI API key from environment variables",
     )
     base_url: str = Field(
         default="http://localhost:11434",
-        description="Base URL for LLM service (e.g., Ollama server)"
+        description="Base URL for LLM service (e.g., Ollama server)",
     )
     temperature: float = Field(default=0.0)
     streaming: bool = Field(default=True)
     max_tokens: Optional[int] = None
     additional_params: Dict[str, Any] = Field(default_factory=dict)
 
+
 class EmbeddingConfig(BaseModel):
-    model_config = ConfigDict(protected_namespaces=())  
+    model_config = ConfigDict(protected_namespaces=())
 
     provider: str = "openai"
     model_name: str = "text-embedding-3-small"
     device: str = "cpu"
-    
+
     additional_params: Dict[str, Any] = Field(default_factory=dict)
+
 
 class VectorStoreConfig(BaseModel):
     provider: str = "faiss"
     collection_name: str = "migi_collection"
     additional_params: Dict[str, Any] = Field(default_factory=dict)
 
+
 class ChunkingConfig(BaseModel):
     chunk_size: int = 500
     chunk_overlap: int = 50
+
 
 class RetrievalConfig(BaseModel):
     k: int = 5
@@ -107,13 +111,15 @@ class DatabaseConfig(BaseModel):
     provider: str = "litedb"  # or "sqlite"
     additional_params: Dict[str, Any] = Field(default_factory=dict)
 
+
 class CelerySettings(BaseModel):
     broker_url: str = "redis://localhost:6379/0"
     result_backend: str = "redis://localhost:6379/1"
 
+
 class Settings(BaseSettings):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    
+
     project: ProjectConfig = Field(default_factory=ProjectConfig)
     paths: PathConfig = Field(default_factory=PathConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
@@ -124,7 +130,7 @@ class Settings(BaseSettings):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     celery: CelerySettings = Field(default_factory=CelerySettings)
 
-    @field_validator('celery')
+    @field_validator("celery")
     @classmethod
     def validate_celery(cls, v, values):
         if not v.broker_url:
@@ -132,26 +138,27 @@ class Settings(BaseSettings):
         return v
 
     @classmethod
-    def load_from_yaml(cls, config_path: Optional[Path] = None) -> 'Settings':
+    def load_from_yaml(cls, config_path: Optional[Path] = None) -> "Settings":
         """Load settings from config.yaml in the base directory."""
         config_file = BASE_DIR / "config.yaml"
-        
+
         if not config_file.exists():
             raise FileNotFoundError(
                 f"Config file not found at {config_file}. "
                 "Please ensure config.yaml exists in the project root directory."
             )
-        
+
         logger.info(f"Loading configuration from {config_file}")
         with open(config_file, "r") as f:
             config_data = yaml.safe_load(f) or {}
-        
+
         # Ensure base_dir is set to BASE_DIR
         if "paths" not in config_data:
             config_data["paths"] = {}
         config_data["paths"]["base_dir"] = str(BASE_DIR)
-        
+
         return cls(**config_data)
+
 
 # Create global settings instance
 try:
@@ -170,7 +177,7 @@ except Exception as e:
 #         settings.paths.faiss_index_dir,
 #         settings.paths.vector_store_dir
 #     ]
-    
+
 #     for directory in directories:
 #         directory.mkdir(parents=True, exist_ok=True)
 #         logger.info(f"Ensured directory exists: {directory}")
@@ -186,15 +193,14 @@ if __name__ == "__main__":
     print(f"Vector Store Directory: {settings.paths.vector_store_dir}")
     print(f"Vector Store Provider: {settings.vector_store.provider}")
 
-
     print("=" * 50)
     print("Starting SIMBA Application")
     print("=" * 50)
-    
+
     # Project Info
     print(f"Project Name: {settings.project.name}")
     print(f"Version: {settings.project.version}")
-    
+
     # Model Configurations
     print("\nModel Configurations:")
     print(f"LLM Provider: {settings.llm.provider}")
@@ -202,16 +208,16 @@ if __name__ == "__main__":
     print(f"Embedding Provider: {settings.embedding.provider}")
     print(f"Embedding Model: {settings.embedding.model_name}")
     print(f"Embedding Device: {settings.embedding.device}")
-    
+
     # Vector Store & Database
     print("\nStorage Configurations:")
     print(f"Vector Store Provider: {settings.vector_store.provider}")
     print(f"Database Provider: {settings.database.provider}")
-    
+
     # Paths
     print("\nPaths:")
     print(f"Base Directory: {settings.paths.base_dir}")
     print(f"Upload Directory: {settings.paths.upload_dir}")
     print(f"Vector Store Directory: {settings.paths.vector_store_dir}")
-    
+
     print("=" * 50)

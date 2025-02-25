@@ -3,7 +3,7 @@ import json
 import logging
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import List, Optional
 
 from simba.core.config import settings
 from simba.core.factories.vector_store_factory import VectorStoreFactory
@@ -11,7 +11,8 @@ from simba.models.simbadoc import SimbaDoc
 
 logger = logging.getLogger(__name__)
 
-class LiteDocumentDB():
+
+class LiteDocumentDB:
     def __init__(self):
         """Initialize the database"""
         self.db_path = Path(settings.paths.upload_dir) / "documents.db"
@@ -25,12 +26,14 @@ class LiteDocumentDB():
             self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
             # Enable JSON serialization
             self._conn.row_factory = sqlite3.Row
-            
+
             # Create table with a single JSON column
-            self._conn.execute('''
+            self._conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS documents
                 (id TEXT PRIMARY KEY, data JSON)
-            ''')
+            """
+            )
             self._conn.commit()
             logger.info(f"Initialized LiteDB at {self.db_path}")
         except Exception as e:
@@ -59,14 +62,14 @@ class LiteDocumentDB():
         try:
             if not isinstance(documents, list):
                 documents = [documents]
-            
+
             cursor = self.conn.cursor()
             for doc in documents:
                 cursor.execute(
-                    'INSERT INTO documents (id, data) VALUES (?, ?)',
-                    (doc.id, json.dumps(doc.dict()))
+                    "INSERT INTO documents (id, data) VALUES (?, ?)",
+                    (doc.id, json.dumps(doc.dict())),
                 )
-            
+
             self.conn.commit()
             return [doc.id for doc in documents]
         except Exception as e:
@@ -82,24 +85,25 @@ class LiteDocumentDB():
         try:
             cursor = self.conn.cursor()
             logger.info(f"Fetching document with ID: {document_id}")
-            
+
             result = cursor.execute(
-                'SELECT data FROM documents WHERE id = ?', 
-                (document_id,)
+                "SELECT data FROM documents WHERE id = ?", (document_id,)
             ).fetchone()
-            
+
             if result:
                 logger.info(f"Document found with ID: {document_id}")
                 try:
                     doc_data = json.loads(result[0])
                     return SimbaDoc(**doc_data)
                 except json.JSONDecodeError as je:
-                    logger.error(f"Failed to parse document data for ID {document_id}: {je}")
+                    logger.error(
+                        f"Failed to parse document data for ID {document_id}: {je}"
+                    )
                     return None
             else:
                 logger.warning(f"No document found with ID: {document_id}")
                 return None
-                
+
         except Exception as e:
             logger.error(f"Failed to get document {document_id}: {e}")
             self._initialize()  # Re-initialize connection on error
@@ -113,7 +117,7 @@ class LiteDocumentDB():
         cursor = None
         try:
             cursor = self.conn.cursor()
-            results = cursor.execute('SELECT data FROM documents').fetchall()
+            results = cursor.execute("SELECT data FROM documents").fetchall()
             return [SimbaDoc(**json.loads(row[0])) for row in results]
         except Exception as e:
             logger.error(f"Failed to get all documents: {e}")
@@ -127,10 +131,9 @@ class LiteDocumentDB():
         cursor = None
         try:
             cursor = self.conn.cursor()
-            placeholders = ','.join(['?' for _ in document_ids])
+            placeholders = ",".join(["?" for _ in document_ids])
             cursor.execute(
-                f'DELETE FROM documents WHERE id IN ({placeholders})', 
-                document_ids
+                f"DELETE FROM documents WHERE id IN ({placeholders})", document_ids
             )
             self.conn.commit()
             return cursor.rowcount > 0
@@ -148,32 +151,30 @@ class LiteDocumentDB():
         cursor = None
         try:
             cursor = self.conn.cursor()
-            
+
             # First check if document exists
             existing = cursor.execute(
-                'SELECT 1 FROM documents WHERE id = ?',
-                (document_id,)
+                "SELECT 1 FROM documents WHERE id = ?", (document_id,)
             ).fetchone()
-            
+
             if not existing:
                 logger.warning(f"No document found with ID {document_id}")
                 return False
-            
+
             # Convert document to JSON, preserving all fields
             doc_json = newDocument.model_dump_json()
-            
+
             # Update the document
             cursor.execute(
-                'UPDATE documents SET data = ? WHERE id = ?',
-                (doc_json, document_id)
+                "UPDATE documents SET data = ? WHERE id = ?", (doc_json, document_id)
             )
-            
+
             # Force commit
             self.conn.commit()
-            
+
             logger.info(f"Document {document_id} updated successfully")
             return True
-            
+
         except Exception as e:
             if self.conn:
                 self.conn.rollback()
@@ -188,9 +189,9 @@ class LiteDocumentDB():
         cursor = None
         try:
             cursor = self.conn.cursor()
-            cursor.execute('DELETE FROM documents')
+            cursor.execute("DELETE FROM documents")
             self.conn.commit()
-            logger.info("Database cleared") 
+            logger.info("Database cleared")
             return True
         except Exception as e:
             logger.error(f"Failed to clear database: {e}")
@@ -206,7 +207,7 @@ class LiteDocumentDB():
         3. Performing the necessary delete and add operations
         """
         try:
-            #we should remove orphan chunks from vector store
+            # we should remove orphan chunks from vector store
 
             # Get all documents from DB
             documents = self.get_all_documents()
@@ -218,20 +219,15 @@ class LiteDocumentDB():
             all_embedded_docs = vector_store.get_documents()
             store_document_ids = [doc.id for doc in all_embedded_docs]
 
-            #oprhan chunks 
+            # oprhan chunks
             orphan_chunks = set(store_document_ids) - set(db_document_ids)
             logger.info(f"Orphan chunks: {orphan_chunks}")
             logger.info(f"Found {len(orphan_chunks)} orphan chunks in vector store")
 
-            #delete orphan chunks
+            # delete orphan chunks
             vector_store.delete_documents(list(orphan_chunks))
             logger.info(f"Deleted {len(orphan_chunks)} orphan chunks from vector store")
-            
 
-            
-            
-            
         except Exception as e:
             logger.error(f"Failed to sync database with vector store: {e}")
             raise
-

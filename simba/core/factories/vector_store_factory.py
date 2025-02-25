@@ -1,15 +1,18 @@
-from simba.vector_store import VectorStoreService
 import logging
 import os
+
 import faiss
-from simba.core.config import settings
-from simba.core.factories.embeddings_factory import get_embeddings
 from langchain.schema import Document
 from langchain_community.docstore.in_memory import InMemoryDocstore
-from langchain_community.vectorstores.faiss import FAISS
 from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores.faiss import FAISS
+
+from simba.core.config import settings
+from simba.core.factories.embeddings_factory import get_embeddings
+from simba.vector_store import VectorStoreService
 
 logger = logging.getLogger(__name__)
+
 
 class VectorStoreFactory:
     _instance = None
@@ -33,38 +36,49 @@ class VectorStoreFactory:
         elif settings.vector_store.provider == "chroma":
             self._vector_store = self._initialize_chroma(embeddings)
         else:
-            raise ValueError(f"Unsupported vector store provider: {settings.vector_store.provider}")
+            raise ValueError(
+                f"Unsupported vector store provider: {settings.vector_store.provider}"
+            )
 
     def _initialize_faiss(self, embeddings):
 
         # Get actual embedding dimension from the model
         try:
             # Try to get dimension from HuggingFace embeddings
-            if hasattr(embeddings, 'client') and hasattr(embeddings.client, 'dimension'):
+            if hasattr(embeddings, "client") and hasattr(
+                embeddings.client, "dimension"
+            ):
                 embedding_dim = embeddings.client.dimension
-            elif hasattr(embeddings, 'model') and hasattr(embeddings.model, 'config'):
+            elif hasattr(embeddings, "model") and hasattr(embeddings.model, "config"):
                 embedding_dim = embeddings.model.config.hidden_size
             else:
                 # Fallback for other embedding types: compute dimension from a test embedding
                 embedding_dim = len(embeddings.embed_query("test"))
-            
+
             logger.info(f"Using embedding dimension: {embedding_dim}")
         except Exception as e:
             logger.error(f"Error determining embedding dimension: {e}")
             # Fallback to computing dimension
             embedding_dim = len(embeddings.embed_query("test"))
-            logger.info(f"Fallback: Using computed embedding dimension: {embedding_dim}")
-        
-        if os.path.exists(settings.paths.faiss_index_dir) and len(os.listdir(settings.paths.faiss_index_dir)) > 0:
+            logger.info(
+                f"Fallback: Using computed embedding dimension: {embedding_dim}"
+            )
+
+        if (
+            os.path.exists(settings.paths.faiss_index_dir)
+            and len(os.listdir(settings.paths.faiss_index_dir)) > 0
+        ):
             logging.info("Loading existing FAISS vector store")
             store = FAISS.load_local(
                 settings.paths.faiss_index_dir,
                 embeddings,
-                allow_dangerous_deserialization=True
+                allow_dangerous_deserialization=True,
             )
             # Verify dimension match
             if store.index.d != embedding_dim:
-                raise ValueError(f"Embedding dimension mismatch: Index has {store.index.d}D vs Model has {embedding_dim}D")
+                raise ValueError(
+                    f"Embedding dimension mismatch: Index has {store.index.d}D vs Model has {embedding_dim}D"
+                )
         else:
             logging.info(f"Initializing new FAISS index with dimension {embedding_dim}")
             index = faiss.IndexFlatL2(embedding_dim)
@@ -79,22 +93,24 @@ class VectorStoreFactory:
 
     def _initialize_chroma(self, embeddings):
         logging.info("Initializing Chroma vector store")
-        
+
         try:
             # Ensure embeddings are initialized
             if embeddings is None:
-                raise ValueError("Embeddings must be provided for Chroma initialization")
+                raise ValueError(
+                    "Embeddings must be provided for Chroma initialization"
+                )
 
             # Ensure directory exists
             os.makedirs(settings.paths.vector_store_dir, exist_ok=True)
-            
+
             # Try to load existing store first
             try:
                 logging.info("Attempting to load existing Chroma store")
                 store = Chroma(
                     persist_directory=str(settings.paths.vector_store_dir),
                     embedding_function=embeddings,
-                    collection_name=settings.vector_store.collection_name
+                    collection_name=settings.vector_store.collection_name,
                 )
                 # Test the store
                 store.similarity_search("test", k=1)
@@ -106,13 +122,13 @@ class VectorStoreFactory:
                     documents=[Document(page_content="test", metadata={})],
                     embedding_function=embeddings,
                     persist_directory=str(settings.paths.vector_store_dir),
-                    collection_name=settings.vector_store.collection_name
+                    collection_name=settings.vector_store.collection_name,
                 )
                 store.persist()
                 logging.info("Successfully created new Chroma store")
 
             return VectorStoreService(store=store, embeddings=embeddings)
-            
+
         except Exception as e:
             logger.error(f"Error initializing Chroma store: {e}", exc_info=True)
             raise ValueError(f"Failed to initialize Chroma vector store: {str(e)}")
@@ -125,4 +141,4 @@ class VectorStoreFactory:
     def reset(cls):
         """For testing purposes only"""
         cls._instance = None
-        cls._initialized = False 
+        cls._initialized = False

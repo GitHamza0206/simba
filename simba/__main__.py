@@ -1,19 +1,20 @@
 def create_app():
     """Create and configure the FastAPI application."""
-    import os
-    import multiprocessing
     import logging
+    import multiprocessing
+    import os
+
+    from dotenv import load_dotenv
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
-    from dotenv import load_dotenv
 
     # Set environment variables early
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
     # Set multiprocessing start method if not Windows
-    if os.name != 'nt' and multiprocessing.get_start_method(allow_none=True) != 'spawn':
-        multiprocessing.set_start_method('spawn')
+    if os.name != "nt" and multiprocessing.get_start_method(allow_none=True) != "spawn":
+        multiprocessing.set_start_method("spawn")
 
     # Load environment variables
     load_dotenv()
@@ -89,4 +90,3 @@ def create_app():
     app.include_router(retriever_route)
 
     return app
-

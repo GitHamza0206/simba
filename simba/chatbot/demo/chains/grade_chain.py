@@ -1,6 +1,7 @@
-from simba.core.factories.llm_factory import get_llm
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
+
+from simba.core.factories.llm_factory import get_llm
 
 
 # Data model
@@ -10,6 +11,7 @@ class GradeDocuments(BaseModel):
     binary_score: str = Field(
         description="Documents are relevant to the question, 'yes' or 'no'"
     )
+
 
 llm = get_llm()
 structured_llm_grader = llm.with_structured_output(GradeDocuments)
