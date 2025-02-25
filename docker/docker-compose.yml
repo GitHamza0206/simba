@@ -1,0 +1,102 @@
+version: "3.9"
+
+services:
+  server:
+    image: ${IMAGE_NAME:-simba}:${IMAGE_TAG:-latest}
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - PYTHONPATH=/app
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY:-}
+      - DEVICE=${DEVICE:-cpu}
+      - OLLAMA_HOST=ollama:11434
+    volumes:
+      - ../config.yaml:/app/config.yaml
+      - ../uploads:/app/uploads:rw
+      - ../markdown:/app/markdown:rw
+      - ../vector_stores:/app/vector_stores:rw
+    depends_on:
+      - redis
+    networks:
+      - simba_network
+    runtime: ${RUNTIME:+${RUNTIME}}
+    command: ["python", "-m", "uvicorn", "simba.__main__:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"]
+
+  celery_worker:
+    image: ${IMAGE_NAME:-simba}:${IMAGE_TAG:-latest}
+    environment:
+      - REDIS_HOST=redis
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - PYTHONPATH=/app
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DEVICE=${DEVICE:-cpu}
+    volumes:
+      - ../config.yaml:/app/config.yaml
+      - ../uploads:/app/uploads:rw
+      - ../vector_stores:/app/vector_stores:rw
+    depends_on:
+      - redis
+    networks:
+      - simba_network
+    runtime: ${RUNTIME:+${RUNTIME}}
+    command: ["celery", "-A", "simba.core.celery_config.celery_app", "worker", "--loglevel=info", "-Q", "parsing"]
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - simba_network
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - NODE_ENV=development
+    networks:
+      - simba_network
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    environment:
+      - OLLAMA_ORIGINS=*
+    volumes:
+      - ollama_models:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - simba_network
+    runtime: ${RUNTIME:+${RUNTIME}}
+    profiles:
+      - ${RUN_OLLAMA:-default}
+
+networks:
+  simba_network:
+    name: simba_network
+    driver: bridge
+    external: true
+
+volumes:
+  redis_data:
+  ollama_models:

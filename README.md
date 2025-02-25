@@ -45,6 +45,8 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
     - [📦 Installation](#-installation)
     - [🔑 Configuration](#-configuration)
     - [🚀 Run Simba](#-run-simba)
+    - [🐳 Docker Deployment](#-docker-deployment)
+      - [Run on Specific Hardware](#run-on-specific-hardware)
   - [🏁 Roadmap](#-roadmap)
   - [🤝 Contributing](#-contributing)
   - [💬 Support \& Contact](#-support--contact)
@@ -87,8 +89,9 @@ Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/GitHamza0206/simba.git
 cd simba
+poetry config virtualenvs.in-project true
 poetry install
-poetry shell
+source .venv/bin/activate 
 ```
 
 ### 🔑 Configuration
@@ -168,13 +171,44 @@ Run the parsers:
 ```bash
 simba parsers
 ```
+### 🐳 Docker Deployment
 
+
+#### Run on Specific Hardware
+
+**For CPU:**
+```bash
+DEVICE=cpu make up
+```
+
+**For NVIDIA GPU with Ollama:**
+```bash
+DEVICE=cuda make up
+```
+
+**For Apple Silicon:**
+```bash
+DEVICE=mps make up
+```
+
+**Run with Ollama service (for CPU/MPS):**
+```bash
+DEVICE=mps ENABLE_OLLAMA=true make up
+```
+
+**Run in background mode:**
+```bash
+# All commands run in detached mode by default
+```
+
+
+For detailed Docker instructions, see the [Docker deployment guide](docker/README).
 
 
 
 ## 🏁 Roadmap
  
-- [ ] 💻 pip install simba
+- [ ] 💻 pip install simba-core
 - [ ] 🔧 pip install simba-sdk
 - [ ] 🌐 www.simba-docs.com 
 - [ ] 🔒 Adding Auth & access management

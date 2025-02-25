@@ -10,9 +10,9 @@ RUN apt-get update && \
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies with platform-specific binaries
+
+# Install dependencies and the Rollup binary
 RUN npm ci && \
-    npm install --platform=linux --arch=x64 && \
     npm install @rollup/rollup-linux-x64-gnu
 
 # Add node_modules/.bin to PATH
