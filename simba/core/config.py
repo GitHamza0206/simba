@@ -58,7 +58,11 @@ class PathConfig(BaseModel):
         self.upload_dir = self.base_dir / self.upload_dir
 
         # Create directories if they don't exist
-        for path in [self.faiss_index_dir, self.vector_store_dir, self.upload_dir]:
+        for path in [
+            self.faiss_index_dir,
+            self.vector_store_dir,
+            self.upload_dir,
+        ]:
             path.mkdir(parents=True, exist_ok=True)
             logger.info(f"Ensured directory exists: {path}")
 

@@ -2,9 +2,7 @@ import logging
 
 import torch
 
-from simba.core.celery_config import (
-    celery_app as celery,  # Rename for backward compatibility
-)
+from simba.core.celery_config import celery_app as celery  # Rename for backward compatibility
 from simba.core.factories.database_factory import get_database
 from simba.core.factories.vector_store_factory import VectorStoreFactory
 from simba.parsing.docling_parser import DoclingParser

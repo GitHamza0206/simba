@@ -96,9 +96,7 @@ class LiteDocumentDB:
                     doc_data = json.loads(result[0])
                     return SimbaDoc(**doc_data)
                 except json.JSONDecodeError as je:
-                    logger.error(
-                        f"Failed to parse document data for ID {document_id}: {je}"
-                    )
+                    logger.error(f"Failed to parse document data for ID {document_id}: {je}")
                     return None
             else:
                 logger.warning(f"No document found with ID: {document_id}")
@@ -133,7 +131,8 @@ class LiteDocumentDB:
             cursor = self.conn.cursor()
             placeholders = ",".join(["?" for _ in document_ids])
             cursor.execute(
-                f"DELETE FROM documents WHERE id IN ({placeholders})", document_ids
+                f"DELETE FROM documents WHERE id IN ({placeholders})",
+                document_ids,
             )
             self.conn.commit()
             return cursor.rowcount > 0
@@ -166,7 +165,8 @@ class LiteDocumentDB:
 
             # Update the document
             cursor.execute(
-                "UPDATE documents SET data = ? WHERE id = ?", (doc_json, document_id)
+                "UPDATE documents SET data = ? WHERE id = ?",
+                (doc_json, document_id),
             )
 
             # Force commit

@@ -48,9 +48,7 @@ def create_celery_app():
 
     @worker_init.connect
     def init_worker(sender=None, **kwargs):
-        logger.info(
-            f"🚀 Starting Celery worker with broker: {settings.celery.broker_url}"
-        )
+        logger.info(f"🚀 Starting Celery worker with broker: {settings.celery.broker_url}")
 
     @worker_shutting_down.connect
     def handle_shutdown(sender=None, **kwargs):

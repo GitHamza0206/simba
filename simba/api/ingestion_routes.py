@@ -32,9 +32,7 @@ store = VectorStoreFactory.get_vector_store()
 @ingestion.post("/ingestion")
 async def ingest_document(
     files: List[UploadFile] = File(...),
-    folder_path: str = Query(
-        default="/", description="Folder path to store the document"
-    ),
+    folder_path: str = Query(default="/", description="Folder path to store the document"),
 ):
     """Ingest a document into the vector store"""
     try:
@@ -122,7 +120,9 @@ async def delete_document(uids: List[str]):
 @ingestion.get("/loaders")
 async def get_loaders():
     """Get supported document loaders"""
-    return {"loaders": [l.__name__ for l in loader.SUPPORTED_EXTENSIONS.values()]}
+    return {
+        "loaders": [loader_name.__name__ for loader_name in loader.SUPPORTED_EXTENSIONS.values()]
+    }
 
 
 @ingestion.get("/parsers")

@@ -76,8 +76,9 @@ async def get_all_tasks():
             stats = celery.control.inspect().stats()
             if stats:
                 tasks["stats"] = stats
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"Error fetching tasks stats: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
 
         return tasks
     except Exception as e:

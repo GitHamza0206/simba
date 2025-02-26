@@ -118,9 +118,7 @@ class SQLiteDocumentDB:
         """Update a document by ID"""
         try:
             session = self.Session()
-            result = (
-                session.query(DocumentModel).filter_by(id=document_id).update(updates)
-            )
+            result = session.query(DocumentModel).filter_by(id=document_id).update(updates)
             session.commit()
             return result > 0
         except Exception as e:

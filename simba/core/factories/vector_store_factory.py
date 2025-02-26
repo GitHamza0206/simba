@@ -36,18 +36,14 @@ class VectorStoreFactory:
         elif settings.vector_store.provider == "chroma":
             self._vector_store = self._initialize_chroma(embeddings)
         else:
-            raise ValueError(
-                f"Unsupported vector store provider: {settings.vector_store.provider}"
-            )
+            raise ValueError(f"Unsupported vector store provider: {settings.vector_store.provider}")
 
     def _initialize_faiss(self, embeddings):
 
         # Get actual embedding dimension from the model
         try:
             # Try to get dimension from HuggingFace embeddings
-            if hasattr(embeddings, "client") and hasattr(
-                embeddings.client, "dimension"
-            ):
+            if hasattr(embeddings, "client") and hasattr(embeddings.client, "dimension"):
                 embedding_dim = embeddings.client.dimension
             elif hasattr(embeddings, "model") and hasattr(embeddings.model, "config"):
                 embedding_dim = embeddings.model.config.hidden_size
@@ -60,9 +56,7 @@ class VectorStoreFactory:
             logger.error(f"Error determining embedding dimension: {e}")
             # Fallback to computing dimension
             embedding_dim = len(embeddings.embed_query("test"))
-            logger.info(
-                f"Fallback: Using computed embedding dimension: {embedding_dim}"
-            )
+            logger.info(f"Fallback: Using computed embedding dimension: {embedding_dim}")
 
         if (
             os.path.exists(settings.paths.faiss_index_dir)
@@ -97,9 +91,7 @@ class VectorStoreFactory:
         try:
             # Ensure embeddings are initialized
             if embeddings is None:
-                raise ValueError(
-                    "Embeddings must be provided for Chroma initialization"
-                )
+                raise ValueError("Embeddings must be provided for Chroma initialization")
 
             # Ensure directory exists
             os.makedirs(settings.paths.vector_store_dir, exist_ok=True)

@@ -66,6 +66,17 @@ autoflake = "^2.3.1"
 pre-commit = "^4.1.0"
 flake8 = "^7.1.2"
 black = "^25.1.0"
+uv = "^0.6.3"
+pytest = "^8.3.4"
+pytest-cov = "^6.0.0"
+mypy = "^1.15.0"
+bandit = "^1.8.3"
+safety = "^3.3.1"
+sphinx = "^8.2.1"
+sphinx-rtd-theme = "^3.0.2"
+twine = "^6.1.0"
+build = "^1.2.2.post1"
+
 
 [tool.isort]
 profile = "black"
@@ -74,9 +85,12 @@ include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
-line_length = 88
+line_length = 100
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 skip = [".git", "venv", ".venv", "env", ".env", "__pycache__", "dist", "build"]
+
+[tool.black]
+line-length = 100
 
 [build-system]
 requires = ["poetry-core"]
@@ -84,4 +98,3 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 simba = "simba.cli:main"
-

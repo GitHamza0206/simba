@@ -4,9 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from simba.core.factories.database_factory import get_database
 from simba.core.factories.vector_store_factory import VectorStoreFactory
-from simba.ingestion.document_ingestion import (
-    DocumentIngestionService,
-)
+from simba.ingestion.document_ingestion import DocumentIngestionService
 from simba.models.simbadoc import SimbaDoc
 from simba.splitting import Splitter
 
@@ -24,9 +22,7 @@ async def embed_documents():
         all_documents = db.get_all_documents()
         simba_documents = [cast(SimbaDoc, doc) for doc in all_documents]
         # to Langchain documents
-        langchain_documents = [
-            doc for simbadoc in simba_documents for doc in simbadoc.documents
-        ]
+        langchain_documents = [doc for simbadoc in simba_documents for doc in simbadoc.documents]
         store.add_documents(langchain_documents)
         # Update enabled status for each document
         for doc in simba_documents:

@@ -31,9 +31,7 @@ class Splitter:
         else:
             raise ValueError(f"Invalid strategy: {self.strategy}")
 
-    def recursive_character_text_splitter(
-        self, documents: List[Document]
-    ) -> List[Document]:
+    def recursive_character_text_splitter(self, documents: List[Document]) -> List[Document]:
 
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1500, chunk_overlap=400

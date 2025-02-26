@@ -32,6 +32,4 @@ class Loader:
     async def aload(self, file_path: str) -> List[Document]:
         file_extension = f".{file_path.split('.')[-1].lower()}"
         self.current_loader = self.SUPPORTED_EXTENSIONS[file_extension]
-        return await asyncio.to_thread(
-            lambda: self.current_loader(file_path=str(file_path)).load()
-        )
+        return await asyncio.to_thread(lambda: self.current_loader(file_path=str(file_path)).load())

@@ -16,12 +16,9 @@ class Retriever:
 
         self.store.save()
 
-        retriever = self.store.as_retriever(
-            search_type="similarity", search_kwargs={"k": 5}
-        )
+        retriever = self.store.as_retriever(search_type="similarity", search_kwargs={"k": 5})
         keyword_retriever = BM25Retriever.from_documents(
-            documents, preprocess_func=lambda text: text.lower()  # Simple preprocessing
+            documents,
+            preprocess_func=lambda text: text.lower(),  # Simple preprocessing
         )
-        return EnsembleRetriever(
-            retrievers=[retriever, keyword_retriever], weights=[0.7, 0.3]
-        )
+        return EnsembleRetriever(retrievers=[retriever, keyword_retriever], weights=[0.7, 0.3])

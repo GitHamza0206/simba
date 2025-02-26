@@ -28,7 +28,6 @@ class MetadataType(BaseModel):
             "page_number": self.page_number,
             "chunk_number": self.chunk_number,
             "enabled": self.enabled,
-            "parsing_status": self.parsing_status,
             "size": self.size,
             "loader": self.loader,
             "parser": self.parser or "no parser",

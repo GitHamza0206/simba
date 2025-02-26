@@ -36,9 +36,7 @@ class DoclingParser(BaseParser):
             document.metadata.parser = "docling"
             document.metadata.parsed_at = datetime.now()
 
-            new_document = SimbaDoc(
-                id=document.id, documents=docs, metadata=document.metadata
-            )
+            new_document = SimbaDoc(id=document.id, documents=docs, metadata=document.metadata)
             return new_document
 
         except Exception:

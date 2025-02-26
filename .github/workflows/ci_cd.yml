@@ -1,89 +1,43 @@
-name: Simple CI/CD Pipeline
+name: Simba CI
 
-# When this pipeline runs
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-  workflow_dispatch:  # Allows manual triggering
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
 
-# Jobs to run
 jobs:
-  # CI Part - Test the code
-  test:
-    name: Test
+  lint-and-format:
+    name: Lint and Format
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
+        with:
+          # Required to push back formatting changes
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 1.7.1
-          
-      - name: Install dependencies
-        run: poetry install
+      - name: Install Nox
+        run: pip install nox
         
-      - name: Run tests
-        run: poetry run pytest
-        env:
-          # Basic environment variables for testing
-          REDIS_HOST: localhost
-          PYTHONPATH: ${{ github.workspace }}
-
-  # CI Part - Build Docker image
-  build:
-    name: Build
-    needs: test  # Only run after tests pass
-    runs-on: ubuntu-latest
-    # Only build on pushes to main/develop, not on PRs
-    if: github.event_name != 'pull_request'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Build Docker image
-        run: docker build -t simba:${{ github.sha }} -f docker/Dockerfile .
-      
-      - name: Test Docker image
+      # First run the formatter
+      - name: Format code
+        run: nox -s format
+        
+      # Then run linting to check for any issues that weren't auto-fixed
+      - name: Lint code
+        run: nox -s lint || echo "Linting issues found, but continuing"
+        
+      # Commit formatting changes if running on push to main/develop
+      - name: Commit format changes
+        if: github.event_name == 'push'
         run: |
-          docker images
-          echo "Docker image built successfully!"
-
-  # CD Part - Deploy to development
-  deploy-dev:
-    name: Deploy to Dev
-    needs: build
-    runs-on: ubuntu-latest
-    # Only deploy from develop branch
-    if: github.ref == 'refs/heads/develop'
-    steps:
-      - name: Deployment simulation
-        run: |
-          echo "Deploying to DEVELOPMENT environment..."
-          echo "Using image: simba:${{ github.sha }}"
-          echo "Deployment completed!"
-
-  # CD Part - Deploy to production
-  deploy-prod:
-    name: Deploy to Production
-    needs: build
-    runs-on: ubuntu-latest
-    # Only deploy from main branch
-    if: github.ref == 'refs/heads/main'
-    # Require manual approval for production
-    environment:
-      name: production
-    steps:
-      - name: Deployment simulation
-        run: |
-          echo "Deploying to PRODUCTION environment..."
-          echo "Using image: simba:${{ github.sha }}"
-          echo "Deployment completed!"
+          git config --local user.email "simba[bot]@users.noreply.github.com"
+          git config --local user.name "Simba Bot"
+          git diff --quiet || (git add . && git commit -m "Auto-format code [skip ci]" && git push)

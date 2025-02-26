@@ -53,9 +53,7 @@ def test_update_document_enabled_status(db, sample_doc):
 
 def test_update_nonexistent_document(db):
     """Test updating a document that doesn't exist"""
-    fake_doc = SimbaDoc(
-        id="nonexistent", documents=[], metadata=MetadataType(enabled=True)
-    )
+    fake_doc = SimbaDoc(id="nonexistent", documents=[], metadata=MetadataType(enabled=True))
 
     with pytest.raises(Exception):
         db.update_document("nonexistent", fake_doc)
@@ -82,9 +80,7 @@ def test_update_document_preserves_data(db, sample_doc):
     assert retrieved_doc.metadata.enabled is False
     assert retrieved_doc.metadata.file_name == "updated.pdf"
     assert retrieved_doc.documents[0].page_content == "updated content"
-    assert (
-        retrieved_doc.metadata.file_path == sample_doc.metadata.file_path
-    )  # Unchanged field
+    assert retrieved_doc.metadata.file_path == sample_doc.metadata.file_path  # Unchanged field
 
 
 def test_update_document_with_refresh(db, sample_doc):

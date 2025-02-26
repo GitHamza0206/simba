@@ -28,9 +28,7 @@ class DummyDB:
 
 # A dummy load method that simulates returning parsed content.
 def dummy_load(self):
-    dummy_parsed_doc = Document(
-        page_content="dummy parsed content", metadata={"source": "dummy"}
-    )
+    dummy_parsed_doc = Document(page_content="dummy parsed content", metadata={"source": "dummy"})
     return [dummy_parsed_doc]
 
 
