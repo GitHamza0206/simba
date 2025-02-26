@@ -40,4 +40,4 @@ jobs:
         run: |
           git config --local user.email "simba[bot]@users.noreply.github.com"
           git config --local user.name "Simba Bot"
-          git diff --quiet || (git add . && git commit -m "Auto-format code [skip ci]" && git push)
+          git diff --quiet || (git add . && git commit -m "🎨 Auto-format code [skip ci]" && git push)
