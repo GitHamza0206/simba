@@ -25,3 +25,12 @@ backend/*
 **/vector_stores/
 
 dump.rdb
+
+.nox 
+
+.coverage
+
+.mypy_cache
+
+.ruff_cache
+

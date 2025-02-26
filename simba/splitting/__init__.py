@@ -1,3 +1,3 @@
 from .splitter import Splitter
 
-__all__ = ['Splitter']
+__all__ = ["Splitter"]

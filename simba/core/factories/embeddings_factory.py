@@ -1,13 +1,13 @@
 import logging
 from functools import lru_cache
-from typing import Optional
 
-from simba.core.config import settings
 from langchain.schema.embeddings import Embeddings
 from langchain_community.embeddings import CohereEmbeddings
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
+
+from simba.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ SUPPORTED_PROVIDERS = {
     "huggingface": HuggingFaceEmbeddings,
     "cohere": CohereEmbeddings,
 }
+
 
 @lru_cache()
 def get_embeddings(**kwargs) -> Embeddings:
@@ -37,8 +38,8 @@ def get_embeddings(**kwargs) -> Embeddings:
         >>> embeddings = get_embeddings("openai", dimensions=384)
     """
 
-    #TODO: integrate litellm 
-    
+    # TODO: integrate litellm
+
     # Use settings if not explicitly provided
 
     if settings.embedding.provider not in SUPPORTED_PROVIDERS:
@@ -52,30 +53,29 @@ def get_embeddings(**kwargs) -> Embeddings:
             return OpenAIEmbeddings(
                 model=settings.embedding.model_name,
                 **settings.embedding.additional_params,
-                **kwargs
+                **kwargs,
             )
 
         elif settings.embedding.provider == "huggingface":
             return HuggingFaceEmbeddings(
                 model_name=settings.embedding.model_name,
-                model_kwargs={'device': settings.embedding.device},
+                model_kwargs={"device": settings.embedding.device},
                 **settings.embedding.additional_params,
-                **kwargs
+                **kwargs,
             )
-
 
         elif settings.embedding.provider == "ollama":
             return OllamaEmbeddings(
                 model_name=settings.embedding.model_name or "nomic-embed-text",
                 **settings.embedding.additional_params,
-                **kwargs
+                **kwargs,
             )
 
         elif settings.embedding.provider == "cohere":
             return CohereEmbeddings(
                 model=settings.embedding.model_name or "embed-english-v3.0",
                 **settings.embedding.additional_params,
-                **kwargs
+                **kwargs,
             )
 
     except Exception as e:

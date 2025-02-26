@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from simba.chatbot.demo.graph import graph
 from simba.chatbot.demo.state import State, for_client
 
-chat = APIRouter(prefix="/chat", tags=["chat"])    
+chat = APIRouter(prefix="/chat", tags=["chat"])
+
 
 # request input format
 class Query(BaseModel):
@@ -19,25 +20,23 @@ class Query(BaseModel):
 async def invoke_graph(query: Query = Body(...)):
     """Invoke the graph workflow with a message"""
 
-    
     config = {"configurable": {"thread_id": "2"}}
     state = State()
     state["messages"] = [HumanMessage(content=query.message)]
 
-
     # Helper function to check if string is numeric (including . and ,)
     def is_numeric(s):
         import re
-        return bool(re.match(r'^[\d ]+$', s.strip()))
-    
-    
+
+        return bool(re.match(r"^[\d ]+$", s.strip()))
+
     async def generate_response():
         try:
             buffer = ""
             last_state = None
 
-            async for event in graph.astream_events(state, version="v2", config=config ):
-                metadata = event.get("metadata", {})
+            async for event in graph.astream_events(state, version="v2", config=config):
+                event.get("metadata", {})
                 event_type = event.get("event")
 
                 # Handle retriever node completion
@@ -50,7 +49,7 @@ async def invoke_graph(query: Query = Body(...)):
                     chunk = event["data"]["chunk"].content
                     state_snapshot = for_client(state)
                     last_state = state_snapshot  # Keep track of latest state
-                    
+
                     # Buffer numeric chunks logic
                     if is_numeric(chunk) or (buffer and chunk in [" ", ",", "."]):
                         buffer += chunk
@@ -79,4 +78,3 @@ async def invoke_graph(query: Query = Body(...)):
 async def health():
     """Check the api is running"""
     return {"status": "🤙"}
-    

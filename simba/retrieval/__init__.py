@@ -1,3 +1,3 @@
 from .retriever import Retriever
 
-__all__ = ['Retriever']
+__all__ = ["Retriever"]

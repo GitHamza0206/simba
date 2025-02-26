@@ -2,13 +2,15 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from tinydb import Query, TinyDB
+
 from simba.core.config import settings
 from simba.models.simbadoc import SimbaDoc
-from tinydb import Query, TinyDB
 
 logger = logging.getLogger(__name__)
 
-class TinyDocumentDB():
+
+class TinyDocumentDB:
     _instance = None
 
     def __new__(cls):
@@ -20,9 +22,11 @@ class TinyDocumentDB():
     def _initialize(self):
         """Initialize the TinyDB connection"""
         try:
-            db_path = Path(settings.paths.upload_dir) / "documents.json" #TODO: make that configurable
+            db_path = (
+                Path(settings.paths.upload_dir) / "documents.json"
+            )  # TODO: make that configurable
             self.db = TinyDB(db_path)
-            self.docs_table = self.db.table('documents')
+            self.docs_table = self.db.table("documents")
             logger.info(f"Initialized TinyDB at {db_path}")
         except Exception as e:
             logger.error(f"Failed to initialize TinyDB: {e}")
@@ -83,6 +87,7 @@ class TinyDocumentDB():
         except Exception as e:
             logger.error(f"Failed to update document {document_id}: {e}")
             return False
+
 
 if __name__ == "__main__":
     pass

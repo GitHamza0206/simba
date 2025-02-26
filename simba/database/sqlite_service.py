@@ -2,41 +2,40 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from simba.core.config import settings
-from simba.models.simbadoc import SimbaDoc
 from sqlalchemy import JSON, Column, String, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
+from simba.core.config import settings
+from simba.models.simbadoc import SimbaDoc
 
 logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
+
 # Separate SQLAlchemy model
-class DocumentModel():
-    __tablename__ = 'documents'
-    
+class DocumentModel:
+    __tablename__ = "documents"
+
     id = Column(String, primary_key=True)
     documents = Column(JSON)
     metadata = Column(JSON)
 
     def to_simba_doc(self) -> SimbaDoc:
         """Convert to SimbaDoc"""
-        return SimbaDoc(
-            id=self.id,
-            documents=self.documents,
-            metadata=self.metadata
-        )
+        return SimbaDoc(id=self.id, documents=self.documents, metadata=self.metadata)
 
     @classmethod
-    def from_simba_doc(cls, doc: SimbaDoc) -> 'DocumentModel':
+    def from_simba_doc(cls, doc: SimbaDoc) -> "DocumentModel":
         """Create from SimbaDoc"""
         return cls(
             id=doc.id,
             documents=[d.dict() for d in doc.documents],
-            metadata=doc.metadata.dict()
+            metadata=doc.metadata.dict(),
         )
 
-class SQLiteDocumentDB():
+
+class SQLiteDocumentDB:
     _instance = None
 
     def __new__(cls):
@@ -49,7 +48,7 @@ class SQLiteDocumentDB():
         """Initialize the SQLite database"""
         try:
             db_path = Path(settings.paths.upload_dir) / "documents.db"
-            self.engine = create_engine(f'sqlite:///{db_path}')
+            self.engine = create_engine(f"sqlite:///{db_path}")
             Base.metadata.create_all(self.engine)
             self.Session = sessionmaker(bind=self.engine)
             logger.info(f"Initialized SQLite DB at {db_path}")
@@ -63,11 +62,11 @@ class SQLiteDocumentDB():
             session = self.Session()
             if not isinstance(documents, list):
                 documents = [documents]
-            
+
             db_docs = [DocumentModel.from_simba_doc(doc) for doc in documents]
             for doc in db_docs:
                 session.add(doc)
-            
+
             session.commit()
             return [doc.id for doc in documents]
         except Exception as e:
@@ -128,4 +127,3 @@ class SQLiteDocumentDB():
             return False
         finally:
             session.close()
-

@@ -13,6 +13,8 @@
 </p>
 
 <p align="center">
+
+
 <a href="https://github.com/GitHamza0206/simba/blob/main/LICENSE">
 <img src="https://img.shields.io/github/license/GitHamza0206/simba" alt="License">
 </a>
@@ -28,6 +30,7 @@
 <a href="https://github.com/GitHamza0206/simba/pulls">
 <img src="https://img.shields.io/github/issues-pr/GitHamza0206/simba" alt="Pull Requests">
 </a>
+<a href="https://pepy.tech/projects/simba-core"><img src="https://static.pepy.tech/badge/simba-core" alt="PyPI Downloads"></a>
 </p>
 
 <!-- <a href="https://ibb.co/RHkRGcs"><img src="https://i.ibb.co/ryRDKHz/logo.jpg" alt="logo" border="0"></a> -->

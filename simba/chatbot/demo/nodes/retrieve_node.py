@@ -19,7 +19,7 @@ def retrieve(state):
         ensemble_retriever = retriever.as_retriever()
         documents = ensemble_retriever.invoke(question)
         print(f"Retrieved {len(documents)} documents")
-        
+
         return {"documents": documents, "question": question}
     except KeyError as e:
         print(f"Error retrieving documents: {e}")

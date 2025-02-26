@@ -1,0 +1,43 @@
+name: Simba CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
+
+jobs:
+  lint-and-format:
+    name: Lint and Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          # Required to push back formatting changes
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          
+      - name: Install Nox
+        run: pip install nox "nox[uv]" uv
+        
+      # First run the formatter
+      - name: Format code
+        run: nox -s format
+        
+      # Then run linting to check for any issues that weren't auto-fixed
+      - name: Lint code
+        run: nox -s lint || echo "Linting issues found, but continuing"
+        
+      # Commit formatting changes if running on push to main/develop
+      - name: Commit format changes
+        if: github.event_name == 'push'
+        run: |
+          git config --local user.email "simba[bot]@users.noreply.github.com"
+          git config --local user.name "Simba Bot"
+          git diff --quiet || (git add . && git commit -m "Auto-format code [skip ci]" && git push)

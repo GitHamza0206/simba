@@ -1,5 +1,3 @@
-from pydantic import BaseModel
-
 from simba.chatbot.demo.chains.grade_chain import grade_chain
 
 
@@ -21,9 +19,7 @@ def grade(state):
     # Score each doc
     filtered_docs = []
     for d in documents:
-        score = grade_chain.invoke(
-            {"question": question, "document": d.page_content}
-        )
+        score = grade_chain.invoke({"question": question, "document": d.page_content})
         grade = score.binary_score
         if grade == "yes":
             print("---GRADE: DOCUMENT RELEVANT---")
@@ -31,5 +27,5 @@ def grade(state):
         else:
             print("---GRADE: DOCUMENT NOT RELEVANT---")
             continue
-    
+
     return {"documents": filtered_docs, "question": question}
