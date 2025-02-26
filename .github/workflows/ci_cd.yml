@@ -24,8 +24,7 @@ jobs:
           python-version: '3.12'
           
       - name: Install Nox
-        run: pip install nox
-        run: pip install nox "nox[uv]" uv 
+        run: pip install nox "nox[uv]" uv
         
       # First run the formatter
       - name: Format code
