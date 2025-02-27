@@ -198,9 +198,6 @@ DEVICE=cuda make up
 DEVICE=cpu make build
 DEVICE=cpu make up
 
-# To use MPS acceleration, you must run directly on the host:
-# pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cpu
-# DEVICE=mps python -m uvicorn simba.__main__:create_app --host 0.0.0.0 --port 8000 --factory
 ```
 
 **Run with Ollama service (for CPU):**

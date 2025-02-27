@@ -11,6 +11,9 @@ jobs:
   lint-and-format:
     name: Lint and Format
     runs-on: ubuntu-latest
+    # Add job-level permissions
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
