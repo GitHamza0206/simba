@@ -10,7 +10,7 @@ IMAGE_TAG ?= latest
 ifeq ($(DEVICE),auto)
 	ifeq ($(shell uname -m),arm64)
 		ifeq ($(shell uname -s),Darwin)
-			DEVICE := mps
+			DEVICE := cpu
 		else
 			DEVICE := cpu
 		endif
@@ -46,11 +46,11 @@ ifeq ($(DEVICE),cuda)
 		$(error CUDA device is not supported on ARM architecture)
 	endif
 else ifeq ($(DEVICE),mps)
-	USE_GPU := true
+	# Show warning for MPS
+	$(warning MPS device requested but Docker containers cannot access Metal framework on macOS. Setting to CPU mode.)
+	DEVICE := cpu
+	USE_GPU := false
 	RUNTIME :=
-	ifneq ($(DOCKER_PLATFORM),linux/arm64)
-		$(error MPS device is only supported on ARM architecture)
-	endif
 else
 	USE_GPU := false
 	RUNTIME :=
@@ -58,6 +58,12 @@ endif
 
 # Derived variables
 FULL_IMAGE_NAME = $(IMAGE_NAME):$(IMAGE_TAG)
+
+# Free up Docker storage before building
+docker-prune:
+	@echo "Cleaning Docker resources to free up storage..."
+	@docker system prune -f
+	@docker builder prune -f
 
 # Simple network setup
 setup-network:
@@ -76,13 +82,15 @@ setup-builder:
 		--bootstrap --use
 
 # Build image
-build: setup-network setup-builder
+build: docker-prune setup-network setup-builder
 	@echo "Building Docker image..."
 	@docker buildx build --builder simba-builder \
 		--platform ${DOCKER_PLATFORM} \
 		--build-arg USE_GPU=${USE_GPU} \
 		--build-arg TARGETARCH=${TARGETARCH} \
 		--build-arg BUILDKIT_INLINE_CACHE=1 \
+		--progress=plain \
+		--no-cache \
 		-t ${IMAGE_NAME}:${IMAGE_TAG} \
 		-f docker/Dockerfile \
 		--load \
@@ -117,6 +125,7 @@ clean: down
 	@echo "Cleaning Docker resources..."
 	@docker network rm simba_network 2>/dev/null || true
 	@docker volume rm docker_redis_data docker_ollama_models 2>/dev/null || true
+	@docker system prune -af --volumes
 	@echo "Cleanup complete!"
 
 # Show logs
@@ -137,15 +146,10 @@ help:
 	@echo "  make logs          - View logs"
 	@echo ""
 	@echo "Options:"
-	@echo "  DEVICE=cpu|cuda|mps|auto   (current: $(DEVICE))"
+	@echo "  DEVICE=cpu|cuda|auto   (current: $(DEVICE))"
 	@echo "  PLATFORM=amd64|arm64|auto  (current: $(PLATFORM))"
 	@echo "  Current platform: $(DOCKER_PLATFORM)"
+	@echo ""
+	@echo "Note: MPS (Metal Performance Shaders) is not supported in Docker containers."
 
-# Add these commands for convenience
-ollama-enable:
-	@ENABLE_OLLAMA=true $(MAKE) up
-
-ollama-disable:
-	@ENABLE_OLLAMA=false $(MAKE) up
-
-.PHONY: setup-network setup-builder build up down restart clean logs run help ollama-enable ollama-disable
+.PHONY: setup-network setup-builder build up down restart clean logs run help ollama-enable ollama-disable docker-prune

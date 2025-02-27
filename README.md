@@ -181,22 +181,31 @@ simba parsers
 
 **For CPU:**
 ```bash
+DEVICE=cpu make build
 DEVICE=cpu make up
 ```
 
 **For NVIDIA GPU with Ollama:**
 ```bash
+DEVICE=cuda make build
 DEVICE=cuda make up
 ```
 
 **For Apple Silicon:**
 ```bash
-DEVICE=mps make up
+# Note: MPS (Metal Performance Shaders) is NOT supported in Docker containers
+# For Docker, always use CPU mode even on Apple Silicon:
+DEVICE=cpu make build
+DEVICE=cpu make up
+
+# To use MPS acceleration, you must run directly on the host:
+# pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cpu
+# DEVICE=mps python -m uvicorn simba.__main__:create_app --host 0.0.0.0 --port 8000 --factory
 ```
 
-**Run with Ollama service (for CPU/MPS):**
+**Run with Ollama service (for CPU):**
 ```bash
-DEVICE=mps ENABLE_OLLAMA=true make up
+DEVICE=cpu ENABLE_OLLAMA=true make up
 ```
 
 **Run in background mode:**

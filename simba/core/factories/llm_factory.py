@@ -45,7 +45,7 @@ def get_llm(LLMConfig: Optional[LLMConfig] = None):
             raise e
 
     elif settings.llm.provider == "ollama":
-        base_url = os.environ.get("OLLAMA_BASE_URL", settings.llm.base_url)
+        base_url = os.environ.get("OLLAMA_HOST", settings.llm.base_url)
         print(f"Using Ollama base_url: {base_url}")
         return ChatOllama(
             model=settings.llm.model_name,

@@ -76,6 +76,7 @@ sphinx = "^8.2.1"
 sphinx-rtd-theme = "^3.0.2"
 twine = "^6.1.0"
 build = "^1.2.2.post1"
+python-semantic-release = "^9.21.0"
 
 
 [tool.isort]

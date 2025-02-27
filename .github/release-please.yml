@@ -1,0 +1,12 @@
+# .github/release-please.yml
+release-type: python
+package-name: simba
+bump-minor-pre-major: true
+changelog-types:
+  feat: "✨ Features"
+  fix: "🐛 Fixes"
+  docs: "📚 Documentation"
+  chore: "🔧 Maintenance"
+  refactor: "♻️ Refactoring"
+  test: "🧪 Tests"
+  ci: "🔨 CI/CD"

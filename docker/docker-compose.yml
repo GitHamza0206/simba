@@ -3,6 +3,8 @@ version: "3.9"
 services:
   server:
     image: ${IMAGE_NAME:-simba}:${IMAGE_TAG:-latest}
+    env_file:
+      - ../.env
     ports:
       - "8000:8000"
     environment:
@@ -29,6 +31,8 @@ services:
 
   celery_worker:
     image: ${IMAGE_NAME:-simba}:${IMAGE_TAG:-latest}
+    env_file:
+      - ../.env
     environment:
       - REDIS_HOST=redis
       - CELERY_BROKER_URL=redis://redis:6379/0
