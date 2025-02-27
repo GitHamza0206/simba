@@ -52,10 +52,12 @@ def get_embeddings(**kwargs) -> Embeddings:
     # Check if running in Docker - always use CPU if in Docker
     in_docker = os.path.exists("/.dockerenv")
     device = settings.embedding.device
-    
+
     # Override device to CPU if in Docker and MPS was requested
     if in_docker and device == "mps":
-        logger.warning("MPS device requested but running in Docker. Metal framework is not accessible within Docker containers. Falling back to CPU.")
+        logger.warning(
+            "MPS device requested but running in Docker. Metal framework is not accessible within Docker containers. Falling back to CPU."
+        )
         device = "cpu"
 
     try:
