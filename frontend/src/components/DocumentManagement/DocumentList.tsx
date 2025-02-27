@@ -64,6 +64,9 @@ interface DocumentListProps {
   onPreview: (document: SimbaDoc) => void;
   fetchDocuments: () => Promise<void>;
   onDocumentUpdate: (document: SimbaDoc) => void;
+  onParse: (document: SimbaDoc) => void;
+  onDisable: (document: SimbaDoc) => void;
+  onEnable: (document: SimbaDoc) => void;
 }
 
 const PARSING_TASKS_STORAGE_KEY = 'parsing_tasks';
@@ -77,6 +80,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
   onPreview,
   fetchDocuments,
   onDocumentUpdate,
+  onParse,
+  onDisable,
+  onEnable,
 }) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [showReindexDialog, setShowReindexDialog] = useState(false);
@@ -371,9 +377,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
         [document.id]: true
       }));
 
-      // If document is enabled, simulate disable/enable cycle first
+      // If document is enabled, disable it first
       if (document.metadata.enabled) {
-        // First simulate clicking disable
         const disabledDoc = {
           ...document,
           metadata: {
@@ -383,10 +388,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
         };
         onDocumentUpdate(disabledDoc);
         
-        // Wait 0.5 seconds to simulate user interaction
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Then simulate clicking enable again
         const enabledDoc = {
           ...document,
           metadata: {
@@ -397,7 +400,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
         };
         onDocumentUpdate(enabledDoc);
 
-        // Delete the embeddings after simulating the UI interaction
         await embeddingApi.delete_document(document.id);
       }
 
@@ -419,7 +421,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
         variant: "destructive"
       });
     } finally {
-      // Re-enable the button
       setParsingButtonStates(prev => ({
         ...prev,
         [document.id]: false
@@ -476,6 +477,38 @@ const DocumentList: React.FC<DocumentListProps> = ({
     });
   };
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Add a new state for tracking the last selected index
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+
+  // New handler for checkbox clicks to support shift-range selection
+  const handleCheckboxClick = (docId: string, index: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const isSelected = selectedIds.has(docId);
+
+    if (event.shiftKey && lastSelectedIndex !== null) {
+      // Select range from lastSelectedIndex to current index
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
+      const newSet = new Set(selectedIds);
+      for (let i = start; i <= end; i++) {
+        newSet.add(documents[i].id);
+      }
+      setSelectedIds(newSet);
+    } else {
+      // Toggle current selection
+      const newSet = new Set(selectedIds);
+      if (isSelected) {
+        newSet.delete(docId);
+      } else {
+        newSet.add(docId);
+      }
+      setSelectedIds(newSet);
+      setLastSelectedIndex(index);
+    }
+  };
+
   return (
     <div className="relative">
       <CardContent>
@@ -524,8 +557,17 @@ const DocumentList: React.FC<DocumentListProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[30px]">
-                <Checkbox />
+              <TableHead className="w-8">
+                <Checkbox 
+                  checked={selectedIds.size === documents.length && documents.length > 0}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedIds(new Set(documents.map(doc => doc.id)));
+                    } else {
+                      setSelectedIds(new Set());
+                    }
+                  }}
+                />
               </TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Chunk Number</TableHead>
@@ -545,10 +587,15 @@ const DocumentList: React.FC<DocumentListProps> = ({
               </TableCell>
             </TableRow>
             
-            {documents.map((doc) => (
+            {documents.map((doc, index) => (
               <TableRow key={doc.id} className="hover:bg-gray-50">
-                <TableCell>
-                  <Checkbox />
+                <TableCell className="w-8">
+                  <div onClick={(e) => handleCheckboxClick(doc.id, index, e)}>
+                    <Checkbox 
+                      checked={selectedIds.has(doc.id)}
+                      readOnly
+                    />
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -595,9 +642,10 @@ const DocumentList: React.FC<DocumentListProps> = ({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
+                            id={`parse-button-${doc.id}`}
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleParseClick(doc)}
+                            onClick={(e) => { e.stopPropagation(); handleParseClick(doc); }}
                             className="h-8 w-8"
                             disabled={!!parsingTasks[doc.id] || parsingButtonStates[doc.id]}
                           >
@@ -618,16 +666,17 @@ const DocumentList: React.FC<DocumentListProps> = ({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
+                            id={`enable-button-${doc.id}`}
                             variant="ghost"
                             size="icon"
-                            onClick={() => onPreview(doc)}
+                            onClick={(e) => { e.stopPropagation(); enableDocument(doc, true); }}
                             className="h-8 w-8"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Preview document</p>
+                          <p>Enable document</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -636,16 +685,17 @@ const DocumentList: React.FC<DocumentListProps> = ({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
+                            id={`disable-button-${doc.id}`}
                             variant="ghost"
                             size="icon"
-                            onClick={() => onDelete(doc.id)}
+                            onClick={(e) => { e.stopPropagation(); enableDocument(doc, false); }}
                             className="h-8 w-8 hover:bg-red-100 hover:text-red-600"
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Delete document</p>
+                          <p>Disable document</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -655,7 +705,61 @@ const DocumentList: React.FC<DocumentListProps> = ({
             ))}
           </TableBody>
         </Table>
-        
+
+        {/* Bottom action bar */}
+        {selectedIds.size > 0 && (
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white border rounded-lg px-6 py-4 shadow-lg flex justify-between items-center gap-8 z-50">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">
+                {selectedIds.size} {selectedIds.size === 1 ? 'document' : 'documents'} selected
+              </span>
+            </div>
+            <div className="flex gap-4">
+              <Button 
+                size="lg"
+                variant="outline"
+                onClick={() => {
+                  const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
+                  selectedDocs.forEach(doc => handleParseClick(doc));
+                }}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Parse Selected
+              </Button>
+              <Button 
+                size="lg"
+                variant="outline"
+                onClick={() => {
+                  const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
+                  selectedDocs.forEach(doc => {
+                    const enableButton = document.querySelector(`#enable-button-${doc.id}`);
+                    if (enableButton) {
+                      enableButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    }
+                  });
+                }}
+              >
+                Enable Selected
+              </Button>
+              <Button 
+                size="lg"
+                variant="outline"
+                onClick={() => {
+                  const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
+                  selectedDocs.forEach(doc => {
+                    const disableButton = document.querySelector(`#disable-button-${doc.id}`);
+                    if (disableButton) {
+                      disableButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    }
+                  });
+                }}
+              >
+                Disable Selected
+              </Button>
+            </div>
+          </div>
+        )}
+
         <CreateFolderDialog
           isOpen={showCreateFolderDialog}
           onClose={() => setShowCreateFolderDialog(false)}
