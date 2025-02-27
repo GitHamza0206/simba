@@ -43,8 +43,11 @@ COPY README.md pyproject.toml poetry.lock ./
 RUN poetry install --no-interaction --no-ansi --no-root && \
     rm -rf ~/.cache/pypoetry/cache ~/.cache/pypoetry/artifacts
 
-# Copy application code (smaller layers at the end)
-COPY . .
+# Copy only necessary application code instead of everything
+COPY simba/ /app/simba/
+COPY simba_sdk/ /app/simba_sdk/
+COPY scripts/ /app/scripts/
+COPY config.yaml /app/
 
 # Create required directories
 RUN mkdir -p /app/uploads /app/markdown /app/vector_stores && \

@@ -1,4 +1,5 @@
 import logging
+import os
 from functools import lru_cache
 
 from langchain.schema.embeddings import Embeddings
@@ -48,6 +49,17 @@ def get_embeddings(**kwargs) -> Embeddings:
             f"Supported providers: {list(SUPPORTED_PROVIDERS.keys())}"
         )
 
+    # Check if running in Docker - always use CPU if in Docker
+    in_docker = os.path.exists("/.dockerenv")
+    device = settings.embedding.device
+
+    # Override device to CPU if in Docker and MPS was requested
+    if in_docker and device == "mps":
+        logger.warning(
+            "MPS device requested but running in Docker. Metal framework is not accessible within Docker containers. Falling back to CPU."
+        )
+        device = "cpu"
+
     try:
         if settings.embedding.provider == "openai":
             return OpenAIEmbeddings(
@@ -59,7 +71,7 @@ def get_embeddings(**kwargs) -> Embeddings:
         elif settings.embedding.provider == "huggingface":
             return HuggingFaceEmbeddings(
                 model_name=settings.embedding.model_name,
-                model_kwargs={"device": settings.embedding.device},
+                model_kwargs={"device": device},  # Use the potentially overridden device
                 **settings.embedding.additional_params,
                 **kwargs,
             )

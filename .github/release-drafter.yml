@@ -1,0 +1,17 @@
+name-template: 'v$NEXT_PATCH_VERSION'
+tag-template: 'v$NEXT_PATCH_VERSION'
+categories:
+  - title: '✨ New Features'
+    labels: [ "feat", "feature" ]
+  - title: '🐛 Bug Fixes'
+    labels: [ "fix" ]
+  - title: '🔨 Refactoring'
+    labels: [ "refactor" ]
+  - title: '🧪 Tests'
+    labels: [ "test" ]
+  - title: '📚 Documentation'
+    labels: [ "docs" ]
+change-template: '- $TITLE ([#$NUMBER]($URL))'
+template: |
+  ## Changes
+  $CHANGES

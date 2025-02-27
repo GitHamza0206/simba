@@ -1,20 +1,70 @@
-**/__pycache__
-**/.venv
-**/.git
-**/.vscode
-**/.idea
-**/node_modules
-**/test
-**/tests
-**/examples
-**/*.log
-**/.env
-**/local_data
-**/uploads/*
-!**/uploads/.gitkeep
-MANIFEST.in
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
 
-# Don't ignore these files
-!pyproject.toml
-!poetry.lock
-!README.md
+.mypy_cache/
+.nox/
+
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Version control
+.git
+.gitignore
+.github
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Node modules (for frontend)
+frontend/node_modules/
+node_modules/
+
+# Large data files
+uploads/
+markdown/
+vector_stores/
+*.h5
+*.pth
+*.onnx
+*.weights
+*.pt
+
+.env 
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+

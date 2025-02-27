@@ -1,0 +1,16 @@
+name: Release Please
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Release Please
+        uses: google-github-actions/release-please-action@v3
+        with:
+          config-file: .github/release-please.yml
+          token: ${{ secrets.GITHUB_TOKEN }}
