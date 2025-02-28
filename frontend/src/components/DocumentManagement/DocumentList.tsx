@@ -10,7 +10,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { DocumentType } from '@/types/document';
-import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play, Loader2 } from 'lucide-react';
+import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play, Loader2, Pencil } from 'lucide-react';
 import { Button } from '../ui/button';
 import { 
   DropdownMenu,
@@ -54,6 +54,13 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+interface Folder {
+  id: string;
+  name: string;
+  parentId: string | null;
+}
 
 interface DocumentListProps {
   documents: SimbaDoc[];
@@ -70,6 +77,7 @@ interface DocumentListProps {
 }
 
 const PARSING_TASKS_STORAGE_KEY = 'parsing_tasks';
+const FOLDERS_STORAGE_KEY = 'document_folders';
 
 const DocumentList: React.FC<DocumentListProps> = ({
   documents,
@@ -271,21 +279,151 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
-  const handleCreateFolder = async (folderName: string) => {
-    try {
-      await folderApi.createFolder(folderName, currentPath);
-      toast({
-        title: "Success",
-        description: `Folder "${folderName}" created successfully`,
-      });
-      await fetchDocuments();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create folder",
-        variant: "destructive",
-      });
+  const [isRenamingId, setIsRenamingId] = useState<string | null>(null);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
+
+  // Initialize folders from localStorage
+  const [folders, setFolders] = useState<Folder[]>(() => {
+    const savedFolders = localStorage.getItem(FOLDERS_STORAGE_KEY);
+    return savedFolders ? JSON.parse(savedFolders) : [];
+  });
+
+  // Save folders to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
+  }, [folders]);
+
+  // Frontend-only folder operations
+  const handleCreateFolder = () => {
+    const newFolder: Folder = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: newFolderName,
+      parentId: currentFolderId
+    };
+    setFolders([...folders, newFolder]);
+    setNewFolderName("");
+    setShowCreateFolderDialog(false);
+    toast({
+      title: "Success",
+      description: "Folder created"
+    });
+  };
+
+  const handleRenameFolder = (folderId: string, newName: string) => {
+    setFolders(folders.map(folder => 
+      folder.id === folderId ? { ...folder, name: newName } : folder
+    ));
+    setIsRenamingId(null);
+    toast({
+      title: "Success",
+      description: "Folder renamed successfully"
+    });
+  };
+
+  const handleRenameDocument = (docId: string, newName: string) => {
+    // Check if it's a folder
+    const folder = folders.find(f => f.id === docId);
+    if (folder) {
+      handleRenameFolder(docId, newName);
+      return;
     }
+    
+    // For regular documents - show toast for now
+    setIsRenamingId(null);
+    toast({
+      title: "Info",
+      description: "Document renaming will be implemented with backend support"
+    });
+  };
+
+  const handleMoveDocument = (docId: string, targetFolderId: string | null) => {
+    // For real documents, we'd update their folder_id in the backend
+    // For frontend-only simulation, we'll just show a toast message
+    toast({
+      title: "Info",
+      description: `Moved document to ${targetFolderId ? 'folder' : 'root'}`
+    });
+  };
+
+  // Get current folder's documents
+  const getCurrentFolderDocuments = () => {
+    // Filter real documents that are in the current folder
+    const filteredDocs = documents.filter(doc => {
+      // For now, we don't have folder structure in backend documents
+      // So all docs are in the root folder if currentFolderId is null
+      return currentFolderId === null;
+    });
+    
+    // Create folder items that should be in the current folder
+    const folderItems = folders
+      .filter(folder => folder.parentId === currentFolderId)
+      .map(folder => ({
+        id: folder.id,
+        metadata: {
+          filename: folder.name,
+          is_folder: true,
+          enabled: false,
+          file_path: `/${folder.name}`,
+          parsing_status: '',
+          uploadedAt: new Date().toISOString(),
+        },
+        documents: [],
+        chunks: []
+      } as SimbaDoc)); // Cast to SimbaDoc to ensure TypeScript is happy
+    
+    // Combine and return folders first, then documents
+    return [...folderItems, ...filteredDocs];
+  };
+
+  // Get folder path for display
+  const getFolderPath = (folderId: string | null): string => {
+    if (!folderId) return '/';
+    
+    // Build full path by traversing up the folder tree
+    const buildPath = (id: string, path: string = ''): string => {
+      const folder = folders.find(f => f.id === id);
+      if (!folder) return path;
+      
+      const currentPath = `/${folder.name}${path}`;
+      
+      if (folder.parentId) {
+        return buildPath(folder.parentId, currentPath);
+      }
+      
+      return currentPath;
+    };
+    
+    return buildPath(folderId);
+  };
+
+  // Get breadcrumb navigation
+  const getBreadcrumbs = () => {
+    if (!currentFolderId) return [{ id: null, name: 'Home' }];
+    
+    const result: Array<{ id: string | null, name: string }> = [{ id: null, name: 'Home' }];
+    let current = folders.find(f => f.id === currentFolderId);
+    
+    // For the current folder
+    if (current) {
+      result.push({ id: current.id, name: current.name });
+    }
+    
+    // Build breadcrumbs in reverse order (from current to root)
+    while (current && current.parentId) {
+      const parent = folders.find(f => f.id === current!.parentId);
+      if (parent) {
+        // Insert after Home but before other crumbs
+        result.splice(1, 0, { id: parent.id, name: parent.name });
+        current = parent;
+      } else {
+        break;
+      }
+    }
+    
+    return result;
   };
 
   const enableDocument = async (doc: SimbaDoc, checked: boolean) => {
@@ -509,6 +647,63 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
+  // When clicking on a folder
+  const handleFolderClick = (folderId: string) => {
+    setCurrentFolderId(folderId);
+  };
+
+  // To navigate back to parent folder
+  const navigateToParent = () => {
+    if (currentFolderId === null) return;
+    
+    const currentFolder = folders.find(f => f.id === currentFolderId);
+    setCurrentFolderId(currentFolder?.parentId || null);
+  };
+
+  // Add delete folder functionality
+  const handleDeleteFolder = (folderId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    // Check if folder is empty
+    const hasDocuments = documents.some(doc => doc.metadata.folder_id === folderId);
+    const hasSubfolders = folders.some(folder => folder.parentId === folderId);
+    
+    if (hasDocuments || hasSubfolders) {
+      toast({
+        title: "Cannot Delete Folder",
+        description: "Folder is not empty. Please move or delete all items first.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Remove the folder
+    setFolders(folders.filter(f => f.id !== folderId));
+    toast({
+      title: "Success",
+      description: "Folder deleted successfully"
+    });
+  };
+
+  // For drag and drop folder functionality
+  const handleDragOver = (doc: SimbaDoc, e: React.DragEvent) => {
+    if (doc.metadata.is_folder) {
+      e.preventDefault();
+      e.currentTarget.classList.add('bg-blue-50');
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.currentTarget.classList.remove('bg-blue-50');
+  };
+
+  const handleDrop = (doc: SimbaDoc, e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('bg-blue-50');
+    if (draggedDocId && doc.metadata.is_folder) {
+      handleMoveDocument(draggedDocId, doc.id);
+    }
+  };
+
   return (
     <div className="relative">
       <CardContent>
@@ -521,6 +716,15 @@ const DocumentList: React.FC<DocumentListProps> = ({
             />
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={() => setShowCreateFolderDialog(true)}
+            >
+              <FolderPlus className="h-4 w-4 mr-2" />
+              New Folder
+            </Button>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -579,16 +783,53 @@ const DocumentList: React.FC<DocumentListProps> = ({
           </TableHeader>
           <TableBody>
             <TableRow className="h-8 text-xs border-b border-muted">
-              <TableCell colSpan={6}>
+              <TableCell colSpan={7}>
                 <div className="flex items-center text-muted-foreground">
-                  <FolderOpen className="h-3 w-3 mr-1" />
-                  <code className="text-[10px]">{uploadDir}</code>
+                  <div className="flex items-center gap-1">
+                    {getBreadcrumbs().map((crumb, i, arr) => (
+                      <React.Fragment key={crumb.id || 'root'}>
+                        <button 
+                          className={cn(
+                            "hover:text-blue-500 text-xs px-1",
+                            i === arr.length - 1 && "font-medium text-blue-600"
+                          )}
+                          onClick={() => setCurrentFolderId(crumb.id)}
+                        >
+                          {i === 0 ? <FolderOpen className="h-3 w-3 inline mr-1" /> : null}
+                          {crumb.name}
+                        </button>
+                        {i < arr.length - 1 && <span className="text-gray-400">/</span>}
+                      </React.Fragment>
+                    ))}
+                  </div>
                 </div>
               </TableCell>
             </TableRow>
             
-            {documents.map((doc, index) => (
-              <TableRow key={doc.id} className="hover:bg-gray-50">
+            {getCurrentFolderDocuments().map((doc, index) => (
+              <TableRow 
+                key={doc.id} 
+                className={cn(
+                  "hover:bg-gray-50",
+                  doc.metadata.is_folder && "cursor-pointer"
+                )}
+                draggable={!doc.metadata.is_folder}
+                onDragStart={(e) => {
+                  if (!doc.metadata.is_folder) {
+                    setDraggedDocId(doc.id);
+                    e.dataTransfer.setData('text/plain', doc.id);
+                  }
+                }}
+                onDragEnd={() => setDraggedDocId(null)}
+                onDragOver={(e) => handleDragOver(doc, e)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(doc, e)}
+                onClick={() => {
+                  if (doc.metadata.is_folder) {
+                    handleFolderClick(doc.id);
+                  }
+                }}
+              >
                 <TableCell className="w-8">
                   <div onClick={(e) => handleCheckboxClick(doc.id, index, e)}>
                     <Checkbox 
@@ -600,7 +841,45 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     {React.createElement(getFileIcon(doc.metadata))}
-                    <span>{doc.metadata.filename}</span>
+                    {isRenamingId === doc.id ? (
+                      <Input
+                        autoFocus
+                        defaultValue={doc.metadata.filename}
+                        className="h-8 w-[200px]"
+                        onBlur={(e) => handleRenameDocument(doc.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleRenameDocument(doc.id, e.currentTarget.value);
+                          } else if (e.key === 'Escape') {
+                            setIsRenamingId(null);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className={cn("cursor-pointer", doc.metadata.is_folder && "font-medium text-blue-600 hover:underline")}
+                          onClick={() => {
+                            if (doc.metadata.is_folder) {
+                              handleFolderClick(doc.id);
+                            }
+                          }}
+                        >
+                          {doc.metadata.filename}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsRenamingId(doc.id);
+                          }}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -637,69 +916,114 @@ const DocumentList: React.FC<DocumentListProps> = ({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center justify-center gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            id={`parse-button-${doc.id}`}
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => { e.stopPropagation(); handleParseClick(doc); }}
-                            className="h-8 w-8"
-                            disabled={!!parsingTasks[doc.id] || parsingButtonStates[doc.id]}
-                          >
-                            {parsingButtonStates[doc.id] ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Play className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{doc.metadata.parsing_status === 'SUCCESS' ? 'Re-parse document' : 'Parse document'}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                  {doc.metadata.is_folder ? (
+                    // For folders, show folder-specific actions
+                    <div className="flex items-center justify-center gap-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setIsRenamingId(doc.id);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Rename folder</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
 
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            id={`enable-button-${doc.id}`}
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => { e.stopPropagation(); enableDocument(doc, true); }}
-                            className="h-8 w-8"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Enable document</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => handleDeleteFolder(doc.id, e)}
+                              className="h-8 w-8 hover:bg-red-100 hover:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Delete folder</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  ) : (
+                    // For documents, show the existing document actions
+                    <div className="flex items-center justify-center gap-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              id={`parse-button-${doc.id}`}
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => { e.stopPropagation(); handleParseClick(doc); }}
+                              className="h-8 w-8"
+                              disabled={!!parsingTasks[doc.id] || parsingButtonStates[doc.id]}
+                            >
+                              {parsingButtonStates[doc.id] ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Play className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{doc.metadata.parsing_status === 'SUCCESS' ? 'Re-parse document' : 'Parse document'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
 
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            id={`disable-button-${doc.id}`}
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => { e.stopPropagation(); enableDocument(doc, false); }}
-                            className="h-8 w-8 hover:bg-red-100 hover:text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Disable document</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              id={`enable-button-${doc.id}`}
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => { e.stopPropagation(); enableDocument(doc, true); }}
+                              className="h-8 w-8"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Enable document</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              id={`disable-button-${doc.id}`}
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => { e.stopPropagation(); enableDocument(doc, false); }}
+                              className="h-8 w-8 hover:bg-red-100 hover:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Disable document</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -760,12 +1084,33 @@ const DocumentList: React.FC<DocumentListProps> = ({
           </div>
         )}
 
-        <CreateFolderDialog
-          isOpen={showCreateFolderDialog}
-          onClose={() => setShowCreateFolderDialog(false)}
-          onCreateFolder={handleCreateFolder}
-          currentPath={currentPath}
-        />
+        <Dialog open={showCreateFolderDialog} onOpenChange={setShowCreateFolderDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Folder</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Input
+                placeholder="Folder name"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleCreateFolder();
+                  }
+                }}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowCreateFolderDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateFolder}>
+                Create
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <FileUploadModal
           isOpen={isUploadModalOpen}
