@@ -15,9 +15,17 @@ interface FileUploadModalProps {
   isOpen: boolean
   onClose: () => void
   onUpload: (files: FileList) => void
+  currentFolderId?: string | null
+  folderName?: string
 }
 
-export function FileUploadModal({ isOpen, onClose, onUpload }: FileUploadModalProps) {
+export function FileUploadModal({ 
+  isOpen, 
+  onClose, 
+  onUpload, 
+  currentFolderId = null, 
+  folderName = 'Home' 
+}: FileUploadModalProps) {
   const [dragActive, setDragActive] = useState(false)
   const [activeTab, setActiveTab] = useState("file")
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null)
@@ -96,7 +104,7 @@ export function FileUploadModal({ isOpen, onClose, onUpload }: FileUploadModalPr
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Upload File</DialogTitle>
+          <DialogTitle>Upload File {currentFolderId ? `to ${folderName}` : ''}</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="file" className="w-full flex-1 flex flex-col">
@@ -107,6 +115,15 @@ export function FileUploadModal({ isOpen, onClose, onUpload }: FileUploadModalPr
 
           <TabsContent value="file" className="flex-1 flex flex-col min-h-0">
             <div className="mt-4 space-y-4 flex-1 flex flex-col">
+              {currentFolderId && (
+                <div className="text-sm text-blue-600 mb-2 flex items-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  Uploading to: {folderName}
+                </div>
+              )}
+              
               <div
                 className={`grid place-items-center border-2 border-dashed rounded-lg h-32 flex-shrink-0 ${
                   dragActive ? "border-primary" : "border-gray-300"

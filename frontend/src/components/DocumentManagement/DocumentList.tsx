@@ -10,7 +10,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { DocumentType } from '@/types/document';
-import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play, Loader2, Pencil } from 'lucide-react';
+import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play, Loader2, Pencil, CheckCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { 
   DropdownMenu,
@@ -106,6 +106,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
     new Set(documents.filter(doc => doc.metadata.enabled).map(doc => doc.id))
   );
   
+  // Add state to track newly uploaded files that should be associated with folders
+  const [pendingUploads, setPendingUploads] = useState<Record<string, string>>({});
+  
   // Initialize parsingTasks from localStorage
   const [parsingTasks, setParsingTasks] = useState<Record<string, string>>(() => {
     const savedTasks = localStorage.getItem(PARSING_TASKS_STORAGE_KEY);
@@ -165,6 +168,52 @@ const DocumentList: React.FC<DocumentListProps> = ({
       new Set(documents.filter(doc => doc.metadata.enabled).map(doc => doc.id))
     );
   }, [documents]);
+
+  // Add useEffect to handle associating newly uploaded documents with folders
+  useEffect(() => {
+    // This will run when documents array changes (e.g., after new uploads)
+    if (Object.keys(pendingUploads).length > 0 && documents.length > 0) {
+      // Iterate through pending uploads and check if the documents are loaded
+      const pendingCopy = { ...pendingUploads };
+      let hasChanges = false;
+      
+      // Load existing folder associations
+      const associations = loadDocumentFolderAssociations();
+      
+      documents.forEach(doc => {
+        // If this document has a pending folder assignment
+        if (pendingUploads[doc.id]) {
+          // This is a frontend-only operation since we don't have backend folder support
+          // In a real app, you would update the document's folder_id in the backend
+          console.log(`Associating document ${doc.id} with folder ${pendingUploads[doc.id]}`);
+          
+          // Update the document with the folder_id
+          const updatedDoc = {
+            ...doc,
+            metadata: {
+              ...doc.metadata,
+              folder_id: pendingUploads[doc.id]
+            }
+          };
+          
+          // Save the folder association to localStorage
+          associations[doc.id] = pendingUploads[doc.id];
+          
+          // Update the document in parent component
+          onDocumentUpdate(updatedDoc);
+          
+          // Remove from pending uploads
+          delete pendingCopy[doc.id];
+          hasChanges = true;
+        }
+      });
+      
+      if (hasChanges) {
+        setPendingUploads(pendingCopy);
+        saveDocumentFolderAssociations(associations);
+      }
+    }
+  }, [documents, pendingUploads, onDocumentUpdate]);
 
   const formatDate = (dateString: string) => {
     if (dateString === "Unknown") return dateString;
@@ -296,6 +345,77 @@ const DocumentList: React.FC<DocumentListProps> = ({
     localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
   }, [folders]);
 
+  // Store document folder associations in localStorage
+  const DOCUMENT_FOLDERS_KEY = 'document_folder_associations';
+  
+  // Save document folder associations to localStorage
+  const saveDocumentFolderAssociations = (associations: Record<string, string | null>) => {
+    localStorage.setItem(DOCUMENT_FOLDERS_KEY, JSON.stringify(associations));
+  };
+  
+  // Load document folder associations from localStorage
+  const loadDocumentFolderAssociations = (): Record<string, string | null> => {
+    const saved = localStorage.getItem(DOCUMENT_FOLDERS_KEY);
+    return saved ? JSON.parse(saved) : {};
+  };
+  
+  // Update document folder associations when documents change
+  useEffect(() => {
+    // Skip if no documents
+    if (documents.length === 0) return;
+    
+    // Load existing associations
+    const associations = loadDocumentFolderAssociations();
+    let hasChanges = false;
+    
+    // Update associations with current document folder_ids
+    documents.forEach(doc => {
+      if (doc.metadata.folder_id) {
+        associations[doc.id] = doc.metadata.folder_id;
+        hasChanges = true;
+      }
+    });
+    
+    if (hasChanges) {
+      saveDocumentFolderAssociations(associations);
+    }
+  }, [documents]);
+  
+  // Apply folder associations to documents after fetching
+  useEffect(() => {
+    // Skip if no documents
+    if (documents.length === 0) return;
+    
+    // Load associations
+    const associations = loadDocumentFolderAssociations();
+    let hasUpdates = false;
+    
+    // Check each document to see if it needs a folder_id update
+    const updatedDocs = documents.map(doc => {
+      // If document has an association but no folder_id, update it
+      if (associations[doc.id] && !doc.metadata.folder_id) {
+        hasUpdates = true;
+        return {
+          ...doc,
+          metadata: {
+            ...doc.metadata,
+            folder_id: associations[doc.id]
+          }
+        };
+      }
+      return doc;
+    });
+    
+    // Update documents if needed
+    if (hasUpdates) {
+      updatedDocs.forEach(doc => {
+        if (doc.metadata.folder_id) {
+          onDocumentUpdate(doc);
+        }
+      });
+    }
+  }, [documents, onDocumentUpdate]);
+
   // Frontend-only folder operations
   const handleCreateFolder = () => {
     const newFolder: Folder = {
@@ -339,22 +459,88 @@ const DocumentList: React.FC<DocumentListProps> = ({
     });
   };
 
-  const handleMoveDocument = (docId: string, targetFolderId: string | null) => {
-    // For real documents, we'd update their folder_id in the backend
-    // For frontend-only simulation, we'll just show a toast message
-    toast({
-      title: "Info",
-      description: `Moved document to ${targetFolderId ? 'folder' : 'root'}`
-    });
+  // Modify handleUpload to capture the current folder
+  const handleUpload = (files: FileList) => {
+    // First create a record of files that will be uploaded
+    const fileNames = Array.from(files).map(file => file.name);
+    
+    // Call the parent's onUpload function
+    onUpload(files);
+    
+    // Track that these files should be associated with the current folder
+    if (currentFolderId) {
+      // Generate a unique identifier for this upload batch
+      const uploadBatchId = Date.now().toString();
+      
+      toast({
+        title: "Files uploading",
+        description: `Uploading to folder: ${folders.find(f => f.id === currentFolderId)?.name || 'Unknown'}`
+      });
+      
+      // Check for new documents more frequently and for a longer period
+      let checkAttempts = 0;
+      const maxAttempts = 10; // Try up to 10 times
+      
+      const checkForNewUploads = () => {
+        // Find newly uploaded documents matching our filenames
+        const newlyUploaded = documents.filter(doc => {
+          // Skip documents that already have a folder_id
+          if (doc.metadata.folder_id) return false;
+          
+          // Skip folders
+          if (doc.metadata.is_folder) return false;
+          
+          // Check if the filename matches one we just uploaded
+          return fileNames.some(name => doc.metadata.filename === name);
+        });
+        
+        // Associate these documents with the current folder
+        if (newlyUploaded.length > 0) {
+          console.log(`Found ${newlyUploaded.length} new uploads to associate with folder ${currentFolderId}`);
+          
+          const updates: Record<string, string> = {};
+          
+          newlyUploaded.forEach(doc => {
+            updates[doc.id] = currentFolderId;
+          });
+          
+          // Add these to pending uploads
+          setPendingUploads(prev => ({
+            ...prev,
+            ...updates
+          }));
+          
+          // If we found some documents, but not all, continue checking
+          if (newlyUploaded.length < fileNames.length && checkAttempts < maxAttempts) {
+            checkAttempts++;
+            setTimeout(checkForNewUploads, 1000);
+          }
+        } else if (checkAttempts < maxAttempts) {
+          // If we didn't find any yet, keep checking
+          checkAttempts++;
+          setTimeout(checkForNewUploads, 1000);
+        }
+      };
+      
+      // Start checking for new uploads after a short delay
+      setTimeout(checkForNewUploads, 500);
+    }
   };
 
-  // Get current folder's documents
+  // Modify getCurrentFolderDocuments to show files uploaded to current folder
   const getCurrentFolderDocuments = () => {
     // Filter real documents that are in the current folder
     const filteredDocs = documents.filter(doc => {
-      // For now, we don't have folder structure in backend documents
-      // So all docs are in the root folder if currentFolderId is null
-      return currentFolderId === null;
+      // Skip folder items
+      if (doc.metadata.is_folder) return false;
+      
+      // If we're at root level and document doesn't have a folder_id, show it
+      if (currentFolderId === null) {
+        return !doc.metadata.folder_id;
+      }
+      
+      // If document has a folder_id matching current folder, show it
+      return doc.metadata.folder_id === currentFolderId;
     });
     
     // Create folder items that should be in the current folder
@@ -369,10 +555,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
           file_path: `/${folder.name}`,
           parsing_status: '',
           uploadedAt: new Date().toISOString(),
+          type: 'folder'  // Add type property to satisfy TypeScript
         },
         documents: [],
         chunks: []
-      } as SimbaDoc)); // Cast to SimbaDoc to ensure TypeScript is happy
+      } as SimbaDoc)); 
     
     // Combine and return folders first, then documents
     return [...folderItems, ...filteredDocs];
@@ -577,14 +764,26 @@ const DocumentList: React.FC<DocumentListProps> = ({
     // Update the document's parsing status
     const updatedDoc = documents.find(doc => doc.id === docId);
     if (updatedDoc) {
+      // Get the folder association from localStorage
+      const associations = loadDocumentFolderAssociations();
+      const folderId = associations[docId] || updatedDoc.metadata.folder_id;
+      
       const docWithNewStatus = {
         ...updatedDoc,
         metadata: {
           ...updatedDoc.metadata,
-          parsing_status: status
+          parsing_status: status,
+          folder_id: folderId // Ensure folder_id is preserved
         }
       };
+      
       onDocumentUpdate(docWithNewStatus);
+      
+      // Make sure the association is saved
+      if (folderId) {
+        associations[docId] = folderId;
+        saveDocumentFolderAssociations(associations);
+      }
     }
 
     // Show success toast if parsed successfully
@@ -701,6 +900,42 @@ const DocumentList: React.FC<DocumentListProps> = ({
     e.currentTarget.classList.remove('bg-blue-50');
     if (draggedDocId && doc.metadata.is_folder) {
       handleMoveDocument(draggedDocId, doc.id);
+    }
+  };
+
+  // When moving a document to a folder, update its folder_id
+  const handleMoveDocument = (docId: string, targetFolderId: string | null) => {
+    // Find the document in our list
+    const doc = documents.find(d => d.id === docId);
+    
+    if (doc) {
+      // In a real app, we'd update the backend here
+      // For frontend-only, we'll store this association locally
+      const updatedDoc = {
+        ...doc,
+        metadata: {
+          ...doc.metadata,
+          folder_id: targetFolderId
+        }
+      };
+      
+      // Update the document in the parent component
+      onDocumentUpdate(updatedDoc);
+      
+      // Save the folder association to localStorage
+      const associations = loadDocumentFolderAssociations();
+      associations[docId] = targetFolderId;
+      saveDocumentFolderAssociations(associations);
+      
+      toast({
+        title: "Success",
+        description: `Moved document to ${targetFolderId ? folders.find(f => f.id === targetFolderId)?.name : 'Home'}`
+      });
+    } else {
+      toast({
+        title: "Info",
+        description: `Moved document to ${targetFolderId ? 'folder' : 'root'}`
+      });
     }
   };
 
@@ -961,6 +1196,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                   ) : (
                     // For documents, show the existing document actions
                     <div className="flex items-center justify-center gap-2">
+                      {/* Parse button */}
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -985,40 +1221,42 @@ const DocumentList: React.FC<DocumentListProps> = ({
                         </Tooltip>
                       </TooltipProvider>
 
+                      {/* View button */}
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
-                              id={`enable-button-${doc.id}`}
+                              id={`view-button-${doc.id}`}
                               variant="ghost"
                               size="icon"
-                              onClick={(e) => { e.stopPropagation(); enableDocument(doc, true); }}
+                              onClick={(e) => { e.stopPropagation(); onPreview(doc); }}
                               className="h-8 w-8"
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Enable document</p>
+                            <p>View document</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
 
+                      {/* Delete button */}
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
-                              id={`disable-button-${doc.id}`}
+                              id={`delete-button-${doc.id}`}
                               variant="ghost"
                               size="icon"
-                              onClick={(e) => { e.stopPropagation(); enableDocument(doc, false); }}
+                              onClick={(e) => { e.stopPropagation(); onDelete(doc.id); }}
                               className="h-8 w-8 hover:bg-red-100 hover:text-red-600"
                             >
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Disable document</p>
+                            <p>Delete document</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1056,13 +1294,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 onClick={() => {
                   const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
                   selectedDocs.forEach(doc => {
-                    const enableButton = document.querySelector(`#enable-button-${doc.id}`);
-                    if (enableButton) {
-                      enableButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-                    }
+                    enableDocument(doc, true);
                   });
                 }}
               >
+                <CheckCircle className="h-4 w-4 mr-2" />
                 Enable Selected
               </Button>
               <Button 
@@ -1071,13 +1307,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 onClick={() => {
                   const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
                   selectedDocs.forEach(doc => {
-                    const disableButton = document.querySelector(`#disable-button-${doc.id}`);
-                    if (disableButton) {
-                      disableButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-                    }
+                    enableDocument(doc, false);
                   });
                 }}
               >
+                <Trash2 className="h-4 w-4 mr-2" />
                 Disable Selected
               </Button>
             </div>
@@ -1115,7 +1349,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
         <FileUploadModal
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
-          onUpload={onUpload}
+          onUpload={handleUpload}
+          currentFolderId={currentFolderId}
+          folderName={currentFolderId ? folders.find(f => f.id === currentFolderId)?.name : 'Home'}
         />
 
         <AlertDialog 

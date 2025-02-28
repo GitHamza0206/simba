@@ -20,6 +20,7 @@ export interface Metadata {
   is_folder?: boolean;
   enabled?: boolean;
   uploadedAt?: string;
+  folder_id?: string | null;
 }
 
 export interface Document {
