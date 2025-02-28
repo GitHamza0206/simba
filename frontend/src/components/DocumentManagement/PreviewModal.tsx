@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { useState, useEffect, useRef } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Pencil, Check, Trash2, Wand2, Download, ExternalLink, RefreshCw, AlertTriangle, Maximize } from 'lucide-react';
+import { Pencil, Trash2, Wand2, Download, ExternalLink, RefreshCw, AlertTriangle } from 'lucide-react';
 import { ingestionApi, previewApi } from "@/lib/api_services";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -30,12 +30,6 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   const [retryCount, setRetryCount] = useState(0);
   const [isFullyClosed, setIsFullyClosed] = useState(!isOpen);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [isEditingLoader, setIsEditingLoader] = useState(false);
-  const [isEditingParser, setIsEditingParser] = useState(false);
-  const [selectedLoader, setSelectedLoader] = useState(document?.metadata.loader);
-  const [confirmedLoader, setConfirmedLoader] = useState(document?.metadata.loader);
-  const [selectedParser, setSelectedParser] = useState(document?.metadata.parser);
-  const [confirmedParser, setConfirmedParser] = useState(document?.metadata.parser);
   const [loaders, setLoaders] = useState<string[]>([]);
   const [parsers, setParsers] = useState<string[]>([]);
 
@@ -89,6 +83,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
     }
   }, [document]);
 
+  // Fetch loaders and parsers for display only
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -104,50 +99,6 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
     };
     fetchData();
   }, []);
-
-  useEffect(() => {
-    setSelectedLoader(document?.metadata.loader);
-    setConfirmedLoader(document?.metadata.loader);
-    setSelectedParser(document?.metadata.parser);
-    setConfirmedParser(document?.metadata.parser);
-  }, [document]);
-
-  const handleLoaderChange = (value: string) => {
-    setSelectedLoader(value);
-  };
-
-  const handleParserChange = (value: string) => {
-    setSelectedParser(value);
-  };
-
-  const handleConfirmLoader = () => {
-    setConfirmedLoader(selectedLoader);
-    setIsEditingLoader(false);
-  };
-
-  const handleConfirmParser = () => {
-    setConfirmedParser(selectedParser);
-    setIsEditingParser(false);
-  };
-
-  const hasChanges = confirmedLoader !== document?.metadata.loader || confirmedParser !== document?.metadata.parser;
-
-  const handleSave = () => {
-    if (document) {
-      const updatedDoc = {
-        ...document,
-        metadata: {
-          ...document.metadata,
-          loader: confirmedLoader,
-          parser: confirmedParser,
-          loaderModified: confirmedLoader !== document.metadata.loader || document.metadata.loaderModified,
-          parserModified: confirmedParser !== document.metadata.parser || document.metadata.parserModified
-        }
-      };
-      onUpdate(updatedDoc);
-      onClose();
-    }
-  };
 
   // Document preview functions
   const handleRetry = () => {
@@ -427,70 +378,17 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
         <DialogHeader className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <DialogTitle>{document?.metadata.filename || 'Document Preview'}</DialogTitle>
-            {hasChanges && (
-              <Button onClick={handleSave} className="px-6">
-                Save Changes
-              </Button>
-            )}
           </div>
-            
+          
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div className="flex items-center gap-2">
-              {isEditingLoader ? (
-                <>
-                  <div className="text-sm text-muted-foreground whitespace-nowrap">Loader:</div>
-                  <Select value={selectedLoader} onValueChange={handleLoaderChange}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue>{selectedLoader}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {loaders.map(loader => (
-                        <SelectItem key={loader} value={loader}>{loader}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button size="icon" variant="ghost" onClick={handleConfirmLoader}>
-                    <Check className="h-4 w-4" />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <div className="text-sm text-muted-foreground whitespace-nowrap">Loader:</div>
-                  <div className="font-medium">{confirmedLoader}</div>
-                  <Button size="icon" variant="ghost" onClick={() => setIsEditingLoader(true)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
+              <div className="text-sm text-muted-foreground whitespace-nowrap">Loader:</div>
+              <div className="font-medium">{document?.metadata.loader}</div>
             </div>
             
             <div className="flex items-center gap-2">
-              {isEditingParser ? (
-                <>
-                  <div className="text-sm text-muted-foreground whitespace-nowrap">Parser:</div>
-                  <Select value={selectedParser} onValueChange={handleParserChange}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue>{selectedParser}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {parsers.map(parser => (
-                        <SelectItem key={parser} value={parser}>{parser}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button size="icon" variant="ghost" onClick={handleConfirmParser}>
-                    <Check className="h-4 w-4" />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <div className="text-sm text-muted-foreground whitespace-nowrap">Parser:</div>
-                  <div className="font-medium">{confirmedParser}</div>
-                  <Button size="icon" variant="ghost" onClick={() => setIsEditingParser(true)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
+              <div className="text-sm text-muted-foreground whitespace-nowrap">Parser:</div>
+              <div className="font-medium">{document?.metadata.parser}</div>
             </div>
           </div>
         </DialogHeader>

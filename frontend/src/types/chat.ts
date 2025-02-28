@@ -3,6 +3,14 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   streaming?: boolean;
-  state?: any;
+  state?: {
+    sources?: Array<{
+      file_name: string;
+      content?: string;
+      page?: number;
+      relevance?: number;
+    }>;
+    followUpQuestions?: string[];
+  };
   followUpQuestions?: string[];
 } 
