@@ -791,7 +791,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                         <button 
                           className={cn(
                             "hover:text-blue-500 text-xs px-1",
-                            i === arr.length - 1 && "font-medium text-blue-600"
+                            i === arr.length - 1 && "font-medium"
                           )}
                           onClick={() => setCurrentFolderId(crumb.id)}
                         >
@@ -858,7 +858,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     ) : (
                       <div className="flex items-center gap-2">
                         <span 
-                          className={cn("cursor-pointer", doc.metadata.is_folder && "font-medium text-blue-600 hover:underline")}
+                          className={cn("cursor-pointer", doc.metadata.is_folder && "font-medium hover:underline")}
                           onClick={() => {
                             if (doc.metadata.is_folder) {
                               handleFolderClick(doc.id);
