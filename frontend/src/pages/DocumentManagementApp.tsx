@@ -20,12 +20,27 @@ const DocumentManagementApp: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const { toast } = useToast();
-  const [previewContent, setPreviewContent] = useState<string>("");
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
   const [loadingStatus, setLoadingStatus] = useState<string>("Loading...");
 
-  
+  // New handlers for multi-select actions
+  const handleParse = async (doc: DocumentType) => {
+    console.log("Parsing document:", doc.id);
+    // TODO: implement actual parse logic
+    toast({ title: "Parsing", description: `Parsing document ${doc.id}` });
+  };
+
+  const handleDisable = async (doc: DocumentType) => {
+    console.log("Disabling document:", doc.id);
+    // TODO: implement actual disable logic
+    toast({ title: "Disable", description: `Disabling document ${doc.id}` });
+  };
+
+  const handleEnable = async (doc: DocumentType) => {
+    console.log("Enabling document:", doc.id);
+    // TODO: implement actual enable logic
+    toast({ title: "Enable", description: `Enabling document ${doc.id}` });
+  };
 
   const stats: DocumentStatsType = {
     lastQueried: "2 hours ago",
@@ -33,8 +48,6 @@ const DocumentManagementApp: React.FC = () => {
     itemsIndexed: documents.filter(doc => !doc.is_folder).length,
     createdAt: "Apr 12, 2024"
   };
-
-  
 
   const fetchDocuments = async () => {
     setIsLoading(true);
@@ -55,7 +68,7 @@ const DocumentManagementApp: React.FC = () => {
   // Fetch documents when component mounts
   useEffect(() => {
     fetchDocuments();
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
   const handleDelete = async (id: string) => {
     try {
@@ -77,7 +90,6 @@ const DocumentManagementApp: React.FC = () => {
   };
 
   const handleSearch = (query: string) => {
-    // Implement search logic
     console.log('Searching:', query);
   };
 
@@ -85,9 +97,7 @@ const DocumentManagementApp: React.FC = () => {
     setSelectedDocument(document);
   };
 
-
   const handleUpload = async (files: FileList) => {
-    // Early validation
     if (files.length === 0) return;
 
     setIsLoading(true);
@@ -95,29 +105,17 @@ const DocumentManagementApp: React.FC = () => {
     setLoadingStatus("Preparing files...");
 
     try {
-      // Convert FileList to array for our API
       const fileArray = Array.from(files);
-      
-      // Upload files using ingestion API
       setLoadingStatus("Uploading files...");
       const uploadedDocs = await ingestionApi.uploadDocuments(fileArray);
-      
-      // Update progress after upload
       setProgress(50);
       setLoadingStatus("Processing documents...");
-
-      // Wait a bit to show processing state
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Refresh document list
       await fetchDocuments();
-      
-      // Show success message with count
       toast({
         title: "Success",
         description: `${uploadedDocs.length} ${uploadedDocs.length === 1 ? 'file' : 'files'} uploaded successfully`,
       });
-
     } catch (error: any) {
       console.error('Upload error:', error);
       toast({
@@ -133,9 +131,7 @@ const DocumentManagementApp: React.FC = () => {
   };
 
   const handleDocumentUpdate = (updatedDoc: DocumentType) => {
-    setDocuments(prev => 
-      prev.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc)
-    );
+    setDocuments(prev => prev.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
   };
 
   return (
@@ -148,7 +144,7 @@ const DocumentManagementApp: React.FC = () => {
           </div>
         )}
         <Card className="bg-white shadow-xl rounded-xl h-full flex flex-col">
-          <DocumentManagementHeader stats={stats} className="flex-shrink-0" />
+          <DocumentManagementHeader stats={stats} />
           <DocumentList
             documents={documents}
             isLoading={isLoading}
@@ -158,6 +154,9 @@ const DocumentManagementApp: React.FC = () => {
             onPreview={handlePreview}
             fetchDocuments={fetchDocuments}
             onDocumentUpdate={handleDocumentUpdate}
+            onParse={handleParse}
+            onDisable={handleDisable}
+            onEnable={handleEnable}
           />
         </Card>
       </div>
@@ -166,11 +165,7 @@ const DocumentManagementApp: React.FC = () => {
         onClose={() => setSelectedDocument(null)}
         document={selectedDocument}
         onUpdate={(updatedDoc) => {
-          setDocuments(prev => 
-            prev.map(doc => 
-              doc.id === updatedDoc.id ? updatedDoc : doc
-            )
-          );
+          setDocuments(prev => prev.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
           setSelectedDocument(updatedDoc);
         }}
       />

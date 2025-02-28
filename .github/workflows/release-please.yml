@@ -9,8 +9,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Release Please
+      - name: Run Release Please
         uses: google-github-actions/release-please-action@v3
         with:
           config-file: .github/release-please.yml
           token: ${{ secrets.GITHUB_TOKEN }}
+          fork: false
+          clean: true
+          bump-minor-pre-major: false
+          bump-patch-for-minor-pre-major: false
+          changelog-host: https://github.com
+          github-api-url: https://api.github.com
+          github-graphql-url: https://api.github.com/graphql
+          monorepo-tags: false
