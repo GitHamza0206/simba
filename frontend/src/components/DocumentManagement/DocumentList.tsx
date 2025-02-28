@@ -41,13 +41,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { ingestionApi } from '@/lib/ingestion_api';
+import { embeddingApi, ingestionApi } from '@/lib/api_services';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SimbaDoc } from '@/types/document';
 import { Metadata } from '@/types/document';
-import { embeddingApi } from '@/lib/embedding_api';
 import { ParsingStatusBox } from './ParsingStatusBox';
 import {
   HoverCard,
@@ -939,6 +938,19 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
+  // Use our local preview state
+  const [previewDocument, setPreviewDocument] = useState<SimbaDoc | null>(null);
+  
+  // Handle preview click
+  const handlePreview = (doc: SimbaDoc, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPreviewDocument(doc);
+    // Call the provided onPreview 
+    if (onPreview) {
+      onPreview(doc);
+    }
+  };
+
   return (
     <div className="relative">
       <CardContent>
@@ -1229,7 +1241,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                               id={`view-button-${doc.id}`}
                               variant="ghost"
                               size="icon"
-                              onClick={(e) => { e.stopPropagation(); onPreview(doc); }}
+                              onClick={(e) => handlePreview(doc, e)}
                               className="h-8 w-8"
                             >
                               <Eye className="h-4 w-4" />
