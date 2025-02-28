@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Paperclip, X } from 'lucide-react';
+import { Send, Paperclip, X, Smile, Plus, Loader2, MessageSquare } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import { Message } from '@/types/chat';
 import Thinking from '@/components/Thinking';
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import SourcePanel from './SourcePanel';
+import { motion, AnimatePresence } from 'framer-motion';
+import { config } from '@/config';
 
 interface ChatFrameProps {
   messages: Message[];
@@ -29,6 +31,7 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [sourcePanelOpen, setSourcePanelOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const scrollToBottom = () => {
@@ -38,6 +41,13 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Focus input on load
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
 
   // Close source panel when no message is selected
   useEffect(() => {
@@ -161,28 +171,64 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
     <div className="h-full w-full flex overflow-hidden">
       {/* Chat panel */}
       <div className="h-full flex-grow overflow-hidden">
-        <Card className="h-full flex flex-col rounded-none border-l-0 border-t-0 border-b-0 shadow-none">
-          <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((message) => (
-              <ChatMessage
-                key={message.id}
-                isAi={message.role === 'assistant'}
-                message={message.content}
-                streaming={message.streaming}
-                followUpQuestions={message.followUpQuestions}
-                onFollowUpClick={handleFollowUpClick}
-                state={message.state}
-                onSourceClick={() => handleSourceClick(message)}
-                isSelected={selectedMessage?.id === message.id}
-              />
-            ))}
-            {isThinking && <Thinking />}
-            <div ref={messagesEndRef} />
-          </CardContent>
+        <Card className="h-full flex flex-col rounded-none border-l-0 border-t-0 border-b-0 border-r-0 shadow-none">
+          {messages.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-4 space-y-4 opacity-70">
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center"
+              >
+                <MessageSquare className="h-8 w-8 text-blue-500" />
+              </motion.div>
+              <div className="text-center max-w-md space-y-2">
+                <h3 className="text-lg font-medium">Welcome to {config.appName}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Ask questions, get insights, or upload documents to analyze.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <CardContent className="flex-1 overflow-y-auto p-4 space-y-5 pt-6">
+              <AnimatePresence initial={false}>
+                {messages.map((message) => (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ChatMessage
+                      isAi={message.role === 'assistant'}
+                      message={message.content}
+                      streaming={message.streaming}
+                      followUpQuestions={message.followUpQuestions}
+                      onFollowUpClick={handleFollowUpClick}
+                      state={message.state}
+                      onSourceClick={() => handleSourceClick(message)}
+                      isSelected={selectedMessage?.id === message.id}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              {isThinking && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <Thinking />
+                </motion.div>
+              )}
+              <div ref={messagesEndRef} />
+            </CardContent>
+          )}
 
-          <CardFooter className="p-4 border-t">
+          <CardFooter className="p-4 border-t bg-white">
             <form onSubmit={handleSubmit} className="flex w-full gap-2">
-              <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border bg-white">
+              <div className="flex-1 flex items-center gap-1 px-3 py-2 rounded-xl border bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -191,31 +237,57 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
                         variant="ghost"
                         size="icon"
                         onClick={onUploadClick}
-                        className="h-8 w-8 hover:bg-transparent p-0"
+                        className="h-8 w-8 rounded-full hover:bg-blue-50 hover:text-blue-600 p-0"
                       >
                         <Paperclip className="h-5 w-5 text-gray-500 rotate-45" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>
+                    <TooltipContent side="top">
                       <p>Upload document</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
 
                 <Input
+                  ref={inputRef}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   placeholder="Type a message..."
                   disabled={isLoading}
-                  className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
+                  className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-2 py-1 text-base"
                 />
+                
+                <div className="flex items-center gap-1">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          // Add emoji picker functionality here if needed
+                          className="h-8 w-8 rounded-full hover:bg-blue-50 hover:text-blue-600 p-0"
+                        >
+                          <Smile className="h-5 w-5 text-gray-500" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>Add emoji</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
               <Button 
                 type="submit" 
                 disabled={isLoading || !inputMessage.trim()}
-                className="bg-[#0066b2] hover:bg-[#0077cc]"
+                className="rounded-xl shadow-md bg-blue-600 hover:bg-blue-700 transition-all duration-200"
               >
-                <Send className="h-4 w-4" />
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
               </Button>
             </form>
           </CardFooter>
@@ -223,19 +295,32 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
       </div>
 
       {/* Source Panel - Only displayed when open */}
-      {sourcePanelOpen && selectedMessage && (
-        <div className="h-full w-[300px] sm:w-[320px] md:w-[380px] border-l flex flex-col bg-white overflow-hidden shrink-0">
-          <div className="flex justify-between items-center p-2 sm:p-3 border-b">
-            <h3 className="font-medium text-sm truncate pr-2">Sources</h3>
-            <Button variant="ghost" size="icon" onClick={closeSourcePanel} className="h-7 w-7 sm:h-8 sm:w-8 shrink-0">
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <SourcePanel message={selectedMessage} />
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {sourcePanelOpen && selectedMessage && (
+          <motion.div 
+            initial={{ x: '100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="h-full w-[300px] sm:w-[320px] md:w-[380px] border-l flex flex-col bg-white overflow-hidden shrink-0 shadow-md"
+          >
+            <div className="flex justify-between items-center p-3 border-b bg-gray-50">
+              <h3 className="font-medium text-sm truncate pr-2">Sources</h3>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={closeSourcePanel} 
+                className="h-8 w-8 rounded-full hover:bg-gray-200"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <SourcePanel message={selectedMessage} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
