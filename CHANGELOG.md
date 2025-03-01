@@ -1,0 +1,540 @@
+# Changelog
+
+
+## 1.0.1 - 2025-03-01
+
+### ✨ Features
+
+* Feat: add framer motion. [Hamza Zerouali]
+
+* Feat: add sources in chat ui frame. [Hamza Zerouali]
+
+* Feat: document preview. [Hamza Zerouali]
+
+* Feat: folder creation. [Hamza Zerouali]
+
+* Feat: UX multiple document parsing & enabling. [Hamza Zerouali]
+
+* Feat: implement close chat functionality and update frontend design. [zeroualihamid]
+
+### 🐛 Bug Fixes
+
+* Fix: parser keeps file inside folder & same for delete. [Hamza Zerouali]
+
+* Fix: change color of folder. [Hamza Zerouali]
+
+* Fix: release-please hot fix. [Hamza Zerouali]
+
+* Fix: ci auth. [Hamza Zerouali]
+
+* Fix: docker integration & add CI. [Hamza Zerouali]
+
+* Fix: ci relase draft. [Hamza Zerouali]
+
+### 🔍 Other
+
+* (fix) ci. [Hamza Zerouali]
+
+* (fix) ci. [Hamza Zerouali]
+
+* (feat) CI integration & noxfile. [Hamza Zerouali]
+
+* (feat) ci/cd pipeline. [Hamza Zerouali]
+
+* (fix) docker files multi architecture support & makefile setup. [Hamza Zerouali]
+
+* (doc) improved doc. [Hamza Zerouali]
+
+* (doc) update doc. [Hamza Zerouali]
+
+* (feat) added celery in dependecies. [Hamza Zerouali]
+
+* (feat) simba integrated with notebook. [Hamza Zerouali]
+
+* (fix) removed parserService & refacto. [Hamza Zerouali]
+
+* (doc) improve README & add changelog. [Hamza Zerouali]
+
+* (fix) fix provider error. [Hamza Zerouali]
+
+* (feat) pip install simba. [Hamza Zerouali]
+
+* (feat) add MANIFEST. [Hamza Zerouali]
+
+* (fix) front outside the core. [Hamza Zerouali]
+
+* (feat) simba is pip install. [Hamza Zerouali]
+
+* (refacto) remove /backend  & fixed vector store factory. [Hamza Zerouali]
+
+* (refacto) vector store is now factory. [Hamza Zerouali]
+
+* (feat) doc ingestion is asyncio. [Hamza Zerouali]
+
+* (fix) celery running with simpler command. [Hamza Zerouali]
+
+* (fix) parsing working with celery & new refacto. [Hamza Zerouali]
+
+* (refacto) Add base class for Parsing service. [Hamza Zerouali]
+
+* (fix) config file taken at root dir. [Hamza Zerouali]
+
+* (fix) celery not forced with cpu. [Hamza Zerouali]
+
+* (refacto) fixed import & added isort & autoflake. [Hamza Zerouali]
+
+* (refacto) break services into folders instead. [Hamza Zerouali]
+
+* (refacto) removed core. [Hamza Zerouali]
+
+* (refacto) single poetry env for sdk & core. [Hamza Zerouali]
+
+* (fix) automatic build. [Hamza Zerouali]
+
+* (refacto) factory. [Hamza Zerouali]
+
+* (docs) build setup doc. [Hamza Zerouali]
+
+* (fix) remove DS store. [Hamza Zerouali]
+
+* (fix) config file. [Hamza Zerouali]
+
+* (feat) docker build for CPU & GPU. [Hamza Zerouali]
+
+* (fix) fixing gpu cuda. [mikoba]
+
+* (doc) PH launch. [Hamza Zerouali]
+
+* Mac setup. [Hamza Zerouali]
+
+* (docs) improve readme. [Hamza Zerouali]
+
+* (docs) improve readme. [Hamza Zerouali]
+
+* (docs) improve readme. [Hamza Zerouali]
+
+* (docs) improve readme. [Hamza Zerouali]
+
+* (docs) improve readme. [Hamza Zerouali]
+
+* (fix) fix popple & tesseract issue. [Hamza Zerouali]
+
+* (doc) improve readme. [Hamza Zerouali]
+
+* (doc) improve readme. [Hamza Zerouali]
+
+* (doc) improve readme. [Hamza Zerouali]
+
+* (doc) improve readme. [Hamza Zerouali]
+
+* (doc) improve readme. [Hamza Zerouali]
+
+* (docs) add licence. [Hamza Zerouali]
+
+* (feat) docker working. [Hamza Zerouali]
+
+* (feat) docker backend working. [Hamza Zerouali]
+
+* (doc) modify readme. [Hamza Zerouali]
+
+* (enhancement) toast in UI chatframe & colors for parsing status. [Hamza Zerouali]
+
+* (feat) added chat history in front localstorage. [Hamza Zerouali]
+
+* (fix) parsing sync store with db. [Hamza Zerouali]
+
+* I'll summarize the key changes made to improve the Celery configuration and worker cleanup: Centralized Celery Configuration (celery_config.py): Created a dedicated configuration module Moved all Celery settings into get_celery_config() function Added worker_shutdown_timeout: 10 to give tasks time to cleanup Proper Worker Lifecycle Handling (celery_config.py): Added three signal handlers: complete Centralized Celery App Creation (celery_config.py): Added create_celery_app() function to handle app initialization Created a singleton celery_app instance: None Simplified Task File (parsing_tasks.py): Removed duplicate Celery initialization code Now imports the centralized celery_app Updated decorators to use @celery_app.task instead of @celery.task The main benefits of these changes are: Better resource cleanup during shutdown Centralized configuration management Proper logging of worker lifecycle events Cleaner code organization with separation of concerns More reliable GPU memory cleanup The worker will now properly clean up resources when: The application is stopping Receiving shutdown signals (SIGTERM) Worker process recycling Would you like me to explain any part of these changes in more detail?# Please enter the commit message for your changes. Lines starting. [Hamza Zerouali]
+
+* (do not push) celery problem with multiprocessing. [Hamza Zerouali]
+
+* (feat) add sources in chat app. [Hamza Zerouali]
+
+* (feat) memory to chatbot. [Hamza Zerouali]
+
+* (feat) docling integrated. [Hamza Zerouali]
+
+* (feat) docling integration working. [Hamza Zerouali]
+
+* (feat) celery worker integrated. [Hamza Zerouali]
+
+* (minor) fixes in front. [Hamza Zerouali]
+
+* Added hugging face embeddings. [Hamza Zerouali]
+
+* (minor) removed grader to solve http error. [Hamza Zerouali]
+
+* (refacto) create vectorstore factory & singleton usage. [Hamza Zerouali]
+
+* (fix) kms sync. [Hamza Zerouali]
+
+* (fix) sync db & store & chat. [Hamza Zerouali]
+
+* (refacto) moved SimbaDoc type to /models. [Hamza Zerouali]
+
+* Kms sync with store. [Hamza Zerouali]
+
+* (feat) sync database with store working. [Hamza Zerouali]
+
+* (enhancement) created loader.py replaced hardcoded loading. [Hamza Zerouali]
+
+* (enhance) better rag robust vector store sync. [Hamza Zerouali]
+
+* (feat) chat4u integration. [Hamza Zerouali]
+
+* (refacto) use relative imports in backend. [Hamza Zerouali]
+
+* (refacto) chatbots in /chatbots. [Hamza Zerouali]
+
+* (feat) big improvment backend + frontend. [Hamza Zerouali]
+
+* (fix) git remove services error. [Hamza Zerouali]
+
+* (feat) added configurable database to store data. [Hamza Zerouali]
+
+* (front) upload file button working with new layout. [Hamza Zerouali]
+
+* (feat) ollama running. [Hamza Zerouali]
+
+* (feat) docling integration. [Hamza Zerouali]
+
+* (fix) parsing working, missing file correct ext. [Hamza Zerouali]
+
+* (feat) folder creation backend. [Hamza Zerouali]
+
+* (feat) front: re-index button working. [Hamza Zerouali]
+
+* (feat) /parse working storing + refacto code and lint. [Hamza Zerouali]
+
+* (feat) re-index stores .md file in upload fodler. [Hamza Zerouali]
+
+* (feat) backend : added file storage locally working with refacto code. [Hamza Zerouali]
+
+* (feat) front:  edit document button. [Hamza Zerouali]
+
+* (front) feat: re index button. [Hamza Zerouali]
+
+* Implemented update document. [Hamza Zerouali]
+
+* (front) feat: doc preview working. [Hamza Zerouali]
+
+* (feat) agentic workflow connected to back+front. [Hamza Zerouali]
+
+* (feat) CRUD on vector store KMS. [Hamza Zerouali]
+
+* (feat) : api/get all ingested documents. [Hamza Zerouali]
+
+* Modify git ignore. [Hamza Zerouali]
+
+* Removed data from git remote. [Hamza Zerouali]
+
+* Chore: remove Python cache files and update gitignore. [Hamza Zerouali]
+
+* Module. [Hamza Zerouali]
+
+* Pending. [Hamza Zerouali]
+
+* UI front doc ingestion. [Hamza Zerouali]
+
+* Langsmith prompts management. [Hamza Zerouali]
+
+* Chore: remove .env from git tracking. [Hamza Zerouali]
+
+* Big refacto code. [Hamza Zerouali]
+
+* Module. [Hamza Zerouali]
+
+* Module. [Hamza Zerouali]
+
+* New embedding of pdf files. [zeroualihamid]
+
+* Final embedding. [zeroualihamid]
+
+* New files markdown. [zeroualihamid]
+
+* Fix numerical values in backend. [zeroualihamid]
+
+* Prompt ameliorat. [Ezzahir Fatima]
+
+* Greeting optimisation. [Ezzahir Fatima]
+
+* Fix diplay stream. [zeroualihamid]
+
+* Prompt amelioration. [Ezzahir Fatima]
+
+* Graph modification and conditional branching. [Ezzahir Fatima]
+
+* Stream working and numerical value also. [zeroualihamid]
+
+* Update readme. [Hamza Zerouali]
+
+* Iframe version. [zeroualihamid]
+
+* Fix deploy. [Hamza Zerouali]
+
+* Update deployment. [zeroualihamid]
+
+* Fix dockerfile. [zeroualihamid]
+
+* Updated yaml. [zeroualihamid]
+
+* Update yaml. [zeroualihamid]
+
+* Update compose. [zeroualihamid]
+
+* Deploy2. [zeroualihamid]
+
+* Deploy network. [zeroualihamid]
+
+* Fix StateGraph compile method to remove checkpoint parameterrag_generator memory. [zeroualihamid]
+
+* Refactor RAG generation process and update state management. [zeroualihamid]
+
+  - Enhanced the 'generate' function in flow_functions.py to include message history for improved context in responses.
+  - Updated the RAGGenerator class to incorporate chat history in the prompt template and input handling.
+  - Adjusted graph compilation in flow_graph.py to utilize a memory checkpointer.
+  - Cleaned up state_class.py by removing unnecessary lines and ensuring proper structure.
+  - Updated binary files for faiss index and pickle data.
+
+
+* Fixed dockercompose bug. [zeroualihamid]
+
+* Update react dialog. [zeroualihamid]
+
+* Update dependencies, refactor flow functions, and enhance chat interface. [zeroualihamid]
+
+  - Downgraded Poetry version from 1.8.5 to 1.8.4 in poetry.lock.
+  - Removed 'langid' package from project dependencies in pyproject.toml and requirements.txt.
+  - Refactored the 'generate' function in flow_functions.py to improve response generation.
+  - Updated MemorySaver initialization in flow_graph.py for better configuration.
+  - Added a new ChatFrame component for improved chat interface in the frontend.
+  - Updated package-lock.json and package.json to include new Radix UI dependencies.
+  - Cleaned up unused imports and adjusted component structures for better readability.
+
+
+* Update dependencies and refactor flow functions for improved response generation. [zeroualihamid]
+
+  - Updated Poetry version from 1.8.4 to 1.8.5 and added 'langid' package (v1.1.6) to project dependencies.
+  - Refactored the 'generate' function in flow_functions.py to utilize the React agent for asynchronous message processing.
+  - Adjusted MemorySaver initialization in flow_graph.py and ensured proper graph compilation.
+  - Cleaned up unused imports and comments in rag_generator_agent.py and state_class.py.
+  - Updated .gitignore to ensure proper exclusion of __pycache__ directory.
+  - Modified requirements.txt to include 'langid' and 'googletrans' packages.
+
+
+* Updated readme. [GitHamza0206]
+
+* Dockerised version. [GitHamza0206]
+
+* Stable back + front. [zeroualihamid]
+
+* Front is streaming. [zeroualihamid]
+
+* Commit1. [zeroualihamid]
+
+* Remove api from gitignore. [zeroualihamid]
+
+* Working app1. [zeroualihamid]
+
+* Fix poetry env for windows. [zeroualihamid]
+
+* Changed structure and working. [GitHamza0206]
+
+* Fix poetry. [GitHamza0206]
+
+* Chat routes. [zeroualihamid]
+
+* Chaged chroma to faiss + refacto. [GitHamza0206]
+
+* Added poetry config. [GitHamza0206]
+
+* Improved front end. [GitHamza0206]
+
+* Hamid updates. [zeroualihamid]
+
+* Change routes add world 2. [zeroualihamid]
+
+* Setup backend arch + frontend. [GitHamza0206]
+
+* Readme. [GitHamza0206]
+
+* Update README.md. [Hamza Zerouali]
+
+* Update README.md. [Hamza Zerouali]
+
+* Update README.md. [Hamza Zerouali]
+
+* Initial commit. [Hamza Zerouali]
+
+
+## v1.0.1 (2025-01-14)
+
+### 🔍 Other
+
+* (front) feat: doc preview working. [Hamza Zerouali]
+
+
+## v1.0.0 (2025-01-13)
+
+### ✨ Features
+
+* Feat: implement close chat functionality and update frontend design. [zeroualihamid]
+
+### 🔍 Other
+
+* (feat) agentic workflow connected to back+front. [Hamza Zerouali]
+
+* (feat) CRUD on vector store KMS. [Hamza Zerouali]
+
+* (feat) : api/get all ingested documents. [Hamza Zerouali]
+
+* Modify git ignore. [Hamza Zerouali]
+
+* Removed data from git remote. [Hamza Zerouali]
+
+* Chore: remove Python cache files and update gitignore. [Hamza Zerouali]
+
+* Module. [Hamza Zerouali]
+
+* Pending. [Hamza Zerouali]
+
+* UI front doc ingestion. [Hamza Zerouali]
+
+* Langsmith prompts management. [Hamza Zerouali]
+
+* Chore: remove .env from git tracking. [Hamza Zerouali]
+
+* Big refacto code. [Hamza Zerouali]
+
+* Module. [Hamza Zerouali]
+
+* Module. [Hamza Zerouali]
+
+* New embedding of pdf files. [zeroualihamid]
+
+* Final embedding. [zeroualihamid]
+
+* New files markdown. [zeroualihamid]
+
+* Fix numerical values in backend. [zeroualihamid]
+
+* Prompt ameliorat. [Ezzahir Fatima]
+
+* Greeting optimisation. [Ezzahir Fatima]
+
+* Fix diplay stream. [zeroualihamid]
+
+* Prompt amelioration. [Ezzahir Fatima]
+
+* Graph modification and conditional branching. [Ezzahir Fatima]
+
+* Stream working and numerical value also. [zeroualihamid]
+
+* Update readme. [Hamza Zerouali]
+
+* Iframe version. [zeroualihamid]
+
+* Fix deploy. [Hamza Zerouali]
+
+* Update deployment. [zeroualihamid]
+
+* Fix dockerfile. [zeroualihamid]
+
+* Updated yaml. [zeroualihamid]
+
+* Update yaml. [zeroualihamid]
+
+* Update compose. [zeroualihamid]
+
+* Deploy2. [zeroualihamid]
+
+* Deploy network. [zeroualihamid]
+
+* Fix StateGraph compile method to remove checkpoint parameterrag_generator memory. [zeroualihamid]
+
+* Refactor RAG generation process and update state management. [zeroualihamid]
+
+  - Enhanced the 'generate' function in flow_functions.py to include message history for improved context in responses.
+  - Updated the RAGGenerator class to incorporate chat history in the prompt template and input handling.
+  - Adjusted graph compilation in flow_graph.py to utilize a memory checkpointer.
+  - Cleaned up state_class.py by removing unnecessary lines and ensuring proper structure.
+  - Updated binary files for faiss index and pickle data.
+
+
+* Fixed dockercompose bug. [zeroualihamid]
+
+* Update react dialog. [zeroualihamid]
+
+* Update dependencies, refactor flow functions, and enhance chat interface. [zeroualihamid]
+
+  - Downgraded Poetry version from 1.8.5 to 1.8.4 in poetry.lock.
+  - Removed 'langid' package from project dependencies in pyproject.toml and requirements.txt.
+  - Refactored the 'generate' function in flow_functions.py to improve response generation.
+  - Updated MemorySaver initialization in flow_graph.py for better configuration.
+  - Added a new ChatFrame component for improved chat interface in the frontend.
+  - Updated package-lock.json and package.json to include new Radix UI dependencies.
+  - Cleaned up unused imports and adjusted component structures for better readability.
+
+
+* Update dependencies and refactor flow functions for improved response generation. [zeroualihamid]
+
+  - Updated Poetry version from 1.8.4 to 1.8.5 and added 'langid' package (v1.1.6) to project dependencies.
+  - Refactored the 'generate' function in flow_functions.py to utilize the React agent for asynchronous message processing.
+  - Adjusted MemorySaver initialization in flow_graph.py and ensured proper graph compilation.
+  - Cleaned up unused imports and comments in rag_generator_agent.py and state_class.py.
+  - Updated .gitignore to ensure proper exclusion of __pycache__ directory.
+  - Modified requirements.txt to include 'langid' and 'googletrans' packages.
+
+
+* Updated readme. [GitHamza0206]
+
+* Dockerised version. [GitHamza0206]
+
+* Stable back + front. [zeroualihamid]
+
+* Front is streaming. [zeroualihamid]
+
+* Commit1. [zeroualihamid]
+
+* Remove api from gitignore. [zeroualihamid]
+
+* Working app1. [zeroualihamid]
+
+* Fix poetry env for windows. [zeroualihamid]
+
+* Changed structure and working. [GitHamza0206]
+
+* Fix poetry. [GitHamza0206]
+
+* Chat routes. [zeroualihamid]
+
+* Chaged chroma to faiss + refacto. [GitHamza0206]
+
+* Added poetry config. [GitHamza0206]
+
+* Improved front end. [GitHamza0206]
+
+* Hamid updates. [zeroualihamid]
+
+* Change routes add world 2. [zeroualihamid]
+
+* Setup backend arch + frontend. [GitHamza0206]
+
+* Readme. [GitHamza0206]
+
+* Update README.md. [Hamza Zerouali]
+
+* Update README.md. [Hamza Zerouali]
+
+* Update README.md. [Hamza Zerouali]
+
+* Initial commit. [Hamza Zerouali]
+
+* Remove nested Git repositories. [zeroualihamid]
+
+* Save work. [zeroualihamid]
+
+* Memory retreive. [zeroualihamid]
+
+* Initial commit. [Ezzahir Fatima]
+
+

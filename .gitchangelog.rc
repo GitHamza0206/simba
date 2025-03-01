@@ -1,0 +1,76 @@
+# -*- coding: utf-8 -*-
+
+# This file defines the configuration for gitchangelog
+
+# Output engine to use
+output_engine = mustache("markdown")
+
+# Don't include merge commits
+include_merge = False
+
+# Ignore certain commits
+ignore_regexps = [
+    r'@minor', r'!minor',
+    r'@cosmetic', r'!cosmetic',
+    r'@refactor', r'!refactor',
+    r'@wip', r'!wip',
+    r'^Merge pull request .*',
+    r'^Merge branch .*',
+    r'^\[ci skip\].*',
+    r'^\[skip ci\].*',
+    r'^chore\(.*\):.*',
+]
+
+# Define sections based on conventional commits
+section_regexps = [
+    ('✨ Features', [
+        r'^feat(\(.*\))?:.*',
+    ]),
+    ('🐛 Bug Fixes', [
+        r'^fix(\(.*\))?:.*',
+    ]),
+    ('🔧 Maintenance', [
+        r'^refactor(\(.*\))?:.*',
+        r'^perf(\(.*\))?:.*',
+    ]),
+    ('📚 Documentation', [
+        r'^docs(\(.*\))?:.*',
+    ]),
+    ('🧪 Tests', [
+        r'^test(\(.*\))?:.*',
+    ]),
+    ('🔍 Other', None),  # Match all other commits
+]
+
+# Define how to display the commit subject
+subject_process = (strip | ucfirst | final_dot)
+
+# Define how to format the body
+body_process = (lambda text: text)
+
+# Define how to format the tag
+tag_filter_regexp = r'^v[0-9]+\.[0-9]+\.[0-9]+$'
+
+# Define the template for the changelog entry
+unreleased_version_label = "Unreleased"
+
+# This is the template for the changelog
+template = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+{{#versions}}
+## {{label}}
+
+{{#sections}}
+### {{label}}
+
+{{#commits}}
+* {{subject}} ([{{short_sha}}]({{url}})) - {{author}}
+{{/commits}}
+
+{{/sections}}
+
+{{/versions}}
+"""

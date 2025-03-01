@@ -1,4 +1,8 @@
 import nox
+from datetime import datetime
+import subprocess
+import re
+import os
 
 nox.options.sessions = ["tests", "lint", "type_check"]
 nox.options.reuse_existing_virtualenvs = True
@@ -113,3 +117,72 @@ def release(session):
     # Publish to PyPI (will prompt for credentials)
     if session.interactive:
         session.run("twine", "upload", "dist/*", external=True)
+
+# The following sessions are commented out as we now use Release Please
+# for automated changelog generation and release management
+
+# @nox.session
+# def changelog(session):
+#     """Generate changelog from git commit history."""
+#     # Install required packages
+#     session.install("gitchangelog", "pystache")
+#     
+#     # Ensure we're using conventional commits format
+#     session.log("Generating changelog from git history...")
+#     
+#     # Run gitchangelog and output to CHANGELOG.md
+#     session.run("gitchangelog", external=True, stdout=open("CHANGELOG.md", "w"))
+#     
+#     # Log success
+#     session.log("Changelog generated successfully at CHANGELOG.md")
+#     
+#     # Optionally commit the changes if in CI
+#     if os.environ.get("CI") == "true":
+#         try:
+#             # Configure git
+#             session.run("git", "config", "--global", "user.name", "CI Bot", external=True)
+#             session.run("git", "config", "--global", "user.email", "ci@example.com", external=True)
+#             
+#             # Check if there are changes
+#             result = session.run("git", "diff", "--name-only", "CHANGELOG.md", 
+#                                external=True, silent=True, success_codes=[0, 1])
+#             
+#             if result and "CHANGELOG.md" in result:
+#                 session.run("git", "add", "CHANGELOG.md", external=True)
+#                 session.run("git", "commit", "-m", "docs: update changelog [skip ci]", external=True)
+#                 session.run("git", "push", external=True)
+#                 session.log("Committed and pushed changelog updates")
+#             else:
+#                 session.log("No changes to changelog detected")
+#         except Exception as e:
+#             session.log(f"Warning: Could not commit changelog: {e}")
+
+# @nox.session
+# def release_changelog(session):
+#     """Prepare changelog for a release."""
+#     if not session.posargs:
+#         session.error("Please provide a version number: nox -s release_changelog -- 1.2.3")
+#     
+#     version = session.posargs[0]
+#     today = datetime.now().strftime("%Y-%m-%d")
+#     
+#     session.log(f"Preparing changelog for version {version}...")
+#     
+#     # Install required packages
+#     session.install("gitchangelog", "pystache")
+#     
+#     # Generate the changelog
+#     session.run("gitchangelog", external=True, stdout=open("CHANGELOG.md", "w"))
+#     
+#     # Read the content
+#     with open("CHANGELOG.md", "r") as f:
+#         content = f.read()
+#     
+#     # Replace the first "Unreleased" with the version number
+#     updated_content = content.replace("Unreleased", f"{version} - {today}", 1)
+#     
+#     # Write back the content
+#     with open("CHANGELOG.md", "w") as f:
+#         f.write(updated_content)
+#     
+#     session.log(f"Changelog prepared for version {version}")
