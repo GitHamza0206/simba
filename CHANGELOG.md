@@ -1,6 +1,34 @@
 # Changelog
 
 
+## 0.1.0 (2025-03-01)
+
+
+### ✨ Features
+
+* add framer motion ([9ef44b3](https://github.com/GitHamza0206/simba/commit/9ef44b39ff2aab06cfc1bceb0d359acbc7554545))
+* add sources in chat ui frame ([47b8847](https://github.com/GitHamza0206/simba/commit/47b8847eb379aceb4f8c1630315a6a1d4a8b91b4))
+* document preview ([7dc5d5e](https://github.com/GitHamza0206/simba/commit/7dc5d5ecf459b9f3d47935819be1187ab4407c7b))
+* folder creation ([1101214](https://github.com/GitHamza0206/simba/commit/11012148309318ae6cb37586ba8e13cf35885060))
+* implement close chat functionality and update frontend design ([96e94bf](https://github.com/GitHamza0206/simba/commit/96e94bffda13b1c208ea45f1e916e27c84e66728))
+* UX multiple document parsing & enabling ([13fbd39](https://github.com/GitHamza0206/simba/commit/13fbd39db4362eddbc67eac249fb63ff36d75d59))
+
+
+### 🐛 Bug Fixes
+
+* change color of folder ([3627a8b](https://github.com/GitHamza0206/simba/commit/3627a8bffa1df4ed52e24d945f535ce4bc9b255f))
+* ci auth ([63d6f4e](https://github.com/GitHamza0206/simba/commit/63d6f4ef2cd0ca00a790bfa59128ac39a64ae750))
+* ci relase draft ([b6c9457](https://github.com/GitHamza0206/simba/commit/b6c94574d5d3519e25fcb7a54298344cb7240d0e))
+* docker integration & add CI ([660447d](https://github.com/GitHamza0206/simba/commit/660447df6cef3d3dad6bee0aa5d0e050b7146ad6))
+* parser keeps file inside folder & same for delete ([7080762](https://github.com/GitHamza0206/simba/commit/7080762878445134a67ab1fd581a433a3f301864))
+* release-please hot fix ([5d2e643](https://github.com/GitHamza0206/simba/commit/5d2e643427d6b314208e41f8ab518dd3229e4b06))
+* release-please hot fix ([e11487c](https://github.com/GitHamza0206/simba/commit/e11487c7f37a605f040bd625b918d42ea4adc584))
+
+
+### 🚦 Continuous Integration
+
+* added release-please ([ed4c061](https://github.com/GitHamza0206/simba/commit/ed4c061e447c82d61a7d402ec9fff3fccdd03d1b))
+
 ## 1.0.1 - 2025-03-01
 
 ### ✨ Features
@@ -536,5 +564,3 @@
 * Memory retreive. [zeroualihamid]
 
 * Initial commit. [Ezzahir Fatima]
-
-
