@@ -146,15 +146,15 @@ async def preview_document(doc_id: str):
         document = db.get_document(doc_id)
         if not document:
             raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
-        
+
         # Get file path from document metadata
         file_path = document.metadata.file_path
         if not file_path:
             raise HTTPException(status_code=404, detail="File path not found in document metadata")
-        
+
         # Get upload directory
         upload_dir = Path(settings.paths.upload_dir)
-        
+
         # Try multiple approaches to find the file
         possible_paths = [
             # 1. As a direct absolute path
@@ -162,9 +162,9 @@ async def preview_document(doc_id: str):
             # 2. As a path relative to the upload directory
             upload_dir / file_path.lstrip("/"),
             # 3. Just the filename in the upload directory
-            upload_dir / Path(file_path).name
+            upload_dir / Path(file_path).name,
         ]
-        
+
         # Find the first path that exists
         absolute_path = None
         for path in possible_paths:
@@ -174,16 +174,18 @@ async def preview_document(doc_id: str):
                 break
             else:
                 logger.debug(f"File not found at: {path}")
-        
+
         # If no path exists, raise 404
         if not absolute_path:
             logger.error(f"File not found. Tried paths: {possible_paths}")
-            raise HTTPException(status_code=404, detail=f"File not found. Tried: {[str(p) for p in possible_paths]}")
-        
+            raise HTTPException(
+                status_code=404, detail=f"File not found. Tried: {[str(p) for p in possible_paths]}"
+            )
+
         # Determine media type based on file extension
         extension = absolute_path.suffix.lower()
         media_type = "application/octet-stream"  # Default
-        
+
         # Set appropriate media type for common file types
         if extension == ".pdf":
             media_type = "application/pdf"
@@ -199,25 +201,27 @@ async def preview_document(doc_id: str):
             media_type = "application/msword"
         elif extension in [".xls", ".xlsx"]:
             media_type = "application/vnd.ms-excel"
-        
+
         # Custom headers for better browser handling
         headers = {
-            "Content-Disposition": f"inline; filename=\"{document.metadata.filename}\"",
+            "Content-Disposition": f'inline; filename="{document.metadata.filename}"',
             "Cache-Control": "no-cache, no-store, must-revalidate",
             "Pragma": "no-cache",
             "Expires": "0",
-            "Access-Control-Allow-Origin": "*"  # Allow CORS for iframe access
+            "Access-Control-Allow-Origin": "*",  # Allow CORS for iframe access
         }
-        
+
         # Log file details for debugging
-        logger.info(f"Serving file: {absolute_path}, size: {absolute_path.stat().st_size}, media_type: {media_type}")
-        
+        logger.info(
+            f"Serving file: {absolute_path}, size: {absolute_path.stat().st_size}, media_type: {media_type}"
+        )
+
         # Return file response with headers
         return FileResponse(
             path=str(absolute_path),
             media_type=media_type,
             filename=document.metadata.filename,
-            headers=headers
+            headers=headers,
         )
     except Exception as e:
         logger.error(f"Error in preview_document: {str(e)}")
