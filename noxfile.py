@@ -3,11 +3,13 @@ from datetime import datetime
 import subprocess
 import re
 import os
+import sys
+import shutil
 
 nox.options.sessions = ["tests", "lint", "type_check"]
 nox.options.reuse_existing_virtualenvs = True
 
-PYTHON_VERSIONS = ["3.10", "3.11", "3.12"]
+PYTHON_VERSIONS = ["3.11", "3.12"]
 
 @nox.session(python=PYTHON_VERSIONS, venv_backend="uv")
 def tests(session):
@@ -104,19 +106,38 @@ def coverage(session):
     # Open the coverage report (works on most systems)
     session.run("python", "-m", "webbrowser", "-t", "htmlcov/index.html", external=True)
 
-@nox.session(venv_backend="uv" ,python=PYTHON_VERSIONS )
+@nox.session(venv_backend="uv", python=PYTHON_VERSIONS)
 def release(session):
     """
-    Prepare a release: update version, create tag, build and publish.
+    Build and publish the package to PyPI.
+    Uses token authentication via environment variables:
+      TWINE_USERNAME=__token__
+      TWINE_PASSWORD=your-api-token
     """
-    session.install("poetry", "twine", "build")
-    # Ensure clean working directory
-    session.run("git", "diff", "--exit-code", external=True, success_codes=[0, 1])
-    # Build package
-    session.run("poetry", "build", external=True)
-    # Publish to PyPI (will prompt for credentials)
-    if session.interactive:
+    # Install build and twine
+    session.install("build", "twine")
+    
+    # Clean up previous builds
+    if os.path.exists("dist"):
+        session.log("Cleaning up previous builds...")
+        shutil.rmtree("dist")
+    
+    # Build package with standard build module
+    session.log("Building package...")
+    session.run("python", "-m", "build")
+    
+    # Check if we have credentials for PyPI
+    if os.environ.get("TWINE_USERNAME") and os.environ.get("TWINE_PASSWORD"):
+        session.log("Uploading to PyPI...")
+        # For token authentication, TWINE_USERNAME should be "__token__"
+        # and TWINE_PASSWORD should be the API token
         session.run("twine", "upload", "dist/*", external=True)
+    else:
+        session.log("TWINE_USERNAME and TWINE_PASSWORD environment variables not set.")
+        session.log("For PyPI token authentication:")
+        session.log("  TWINE_USERNAME=__token__")
+        session.log("  TWINE_PASSWORD=your-api-token")
+        session.log("Skipping upload.")
 
 # The following sessions are commented out as we now use Release Please
 # for automated changelog generation and release management
