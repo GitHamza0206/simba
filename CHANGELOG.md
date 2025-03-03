@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [0.1.1](https://github.com/GitHamza0206/simba/compare/v0.1.0...v0.1.1) (2025-03-03)
+
+
+### 🐛 Bug Fixes
+
+* release-please file and ci ([d82c6c5](https://github.com/GitHamza0206/simba/commit/d82c6c5591ca6ce2249e85f9714443f18dde2e1a))
+
 ## 0.1.0 (2025-03-01)
 
 
