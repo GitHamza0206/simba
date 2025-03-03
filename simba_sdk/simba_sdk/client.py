@@ -1,5 +1,6 @@
 import requests
 from typing import Optional, Dict, Any
+from .document import DocumentManager
 
 class SimbaClient:
     """
@@ -19,6 +20,9 @@ class SimbaClient:
         self.headers = {"Content-Type": "application/json"}
         if self.api_key:
             self.headers["Authorization"] = f"Bearer {self.api_key}"
+            
+        # Initialize managers
+        self.documents = DocumentManager(self)
 
     def ask(self, query: str) -> Dict[str, Any]:
         """
@@ -45,7 +49,7 @@ class SimbaClient:
         """
         Upload a document to Simba for ingestion.
         
-        This method sends a POST request to <api_url>/ingestion by uploading the file.
+        This method is deprecated. Use client.documents.create() instead.
         
         Args:
             file_path (str): The filesystem path to the document.
@@ -53,15 +57,13 @@ class SimbaClient:
         Returns:
             Dict[str, Any]: The JSON response from the server.
         """
-        with open(file_path, 'rb') as f:
-            files = {'file': f}
-            response = requests.post(
-                f"{self.api_url}/ingestion",
-                files=files,
-                headers=self.headers
-            )
-        response.raise_for_status()
-        return response.json()
+        import warnings
+        warnings.warn(
+            "ingest_document is deprecated; use documents.create() instead", 
+            DeprecationWarning, 
+            stacklevel=2
+        )
+        return self.documents.create(file_path)
 
     # Additional methods (for parsing, retrieval, etc.) can be added here.
     def as_retriever(self):
