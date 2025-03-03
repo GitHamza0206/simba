@@ -17,8 +17,17 @@ MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-async def save_file_locally(file: UploadFile, store_path: Path) -> None:
-    """Save uploaded file to local storage asynchronously"""
+async def save_file_locally(file: UploadFile, store_path: Path) -> Path:
+    """
+    Save uploaded file to local storage asynchronously
+    
+    Args:
+        file: The uploaded file
+        store_path: Directory path to save the file in
+        
+    Returns:
+        Path: The full path to the saved file
+    """
     store_path.mkdir(parents=True, exist_ok=True)
     file_path = store_path / file.filename
 
@@ -26,7 +35,9 @@ async def save_file_locally(file: UploadFile, store_path: Path) -> None:
         content = await file.read()
         await out_file.write(content)
 
-    await file.seek(0)  #
+    await file.seek(0)  # Reset file pointer
+    
+    return file_path  # Return the path to the saved file
 
 
 def delete_file_locally(file_path: Path):
