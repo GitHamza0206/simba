@@ -1,6 +1,6 @@
-# Simba Client  
+# Simba Client (formerly simba_sdk)
 
-Python client for interacting with the Simba document processing API.
+A Python client for interacting with the Simba document processing API.
 
 ## Installation
 
@@ -12,18 +12,13 @@ pip install simba-client
 
 ### Development Installation
 
-For development purposes, you can install the package directly from the repository:
-
 ```bash
 # Clone the repository
-git clone https://github.com/GitHamza0206/simba.git
-cd simba_sdk
+git clone https://github.com/yourusername/simba-client.git
+cd simba-client
 
-# Install using Poetry
+# Install dependencies with Poetry
 poetry install
-
-# Alternatively, install in development mode with pip
-pip install -e .
 ```
 
 ## Quick Start
@@ -33,109 +28,78 @@ from simba_sdk import SimbaClient
 
 # Initialize the client
 client = SimbaClient(
-    api_url="https://api.simba.example.com",
+    api_url="https://your-api.example.com",
     api_key="your-api-key"
 )
 
 # Upload a document
-doc_result = client.document.create_from_file("path/to/your/document.pdf")
-document_id = doc_result["id"]
+with open("document.pdf", "rb") as f:
+    result = client.documents.create_from_file(f, "document.pdf")
+    document_id = result["document_id"]
 
-# Parse the document
-# Use synchronous parsing for immediate results
-parse_result = client.parser.parse_document(document_id, sync=True)
+# Parse a document synchronously
+parsing_result = client.parser.parse_sync(document_id)
 
-# Or asynchronous parsing for background processing
-async_result = client.parser.parse_document(document_id, sync=False)
-task_id = async_result["task_id"]
+# Parse a document asynchronously
+task = client.parser.parse(document_id)
+task_id = task["task_id"]
 
-# Check the status of an asynchronous task
-task_status = client.parser.get_task_status(task_id)
+# Check the status of a parsing task
+task_status = client.parser.get_task(task_id)
 
-# Extract tables from a document
-tables = client.parser.extract_tables(document_id)
+# Generate an embedding for semantic search
+embedding_result = client.embedding.embed_document(document_id)
+
+# Perform a similarity search
+search_results = client.embedding.get_similarity_search(
+    document_id, 
+    "financial projections for next quarter",
+    limit=3
+)
 ```
 
 ## Features
 
-- Document Management (upload, retrieve, list, delete)
-- Document Parsing (synchronous and asynchronous)
-- Natural Language Querying
+- **Document Management**: Upload, download, list, and delete documents
+- **Document Parsing**: Extract structured data from documents, including tables, forms, and entities
+- **Document Embeddings**: Generate vector embeddings for documents to enable semantic search
+- **Authentication**: Secure API access with API keys
+- **Error Handling**: Robust error handling for API requests
 
 ## Documentation
 
-For detailed documentation, please visit [simba-client.readthedocs.io](https://simba-client.readthedocs.io) or refer to the docs directory in this repository.
+For more detailed information, check out the documentation:
 
-## API Reference
-
-### SimbaClient
-
-The main client for interacting with the Simba API.
-
-```python
-client = SimbaClient(
-    api_url="https://api.simba.example.com",
-    api_key="your-api-key",
-    timeout=60
-)
-```
-
-### DocumentManager
-
-Handles document operations (accessible via `client.document`).
-
-- `create(file_path)`: Upload a document from a file path
-- `create_from_file(file)`: Upload a document from a file object
-- `get(document_id)`: Retrieve a document by ID
-- `list()`: List all documents
-- `delete(document_id)`: Delete a document
-
-### ParserManager
-
-Handles document parsing operations (accessible via `client.parser`).
-
-- `parse_document(document_id, sync=True)`: Parse a document
-- `extract_tables(document_id)`: Extract tables from a document
-- `extract_entities(document_id)`: Extract entities from a document
-- `extract_forms(document_id)`: Extract form fields from a document
-- `extract_text(document_id)`: Extract text content from a document
-- `parse_query(document_id, query)`: Extract information based on a natural language query
+- [SimbaClient API Reference](docs/api_reference.md)
+- [DocumentManager API Reference](docs/api_reference.md#documentmanager)
+- [ParserManager API Reference](docs/api_reference.md#parsermanager)
+- [EmbeddingManager API Reference](docs/api_reference.md#embeddingmanager)
 
 ## Development
 
 ### Setup Development Environment
 
 ```bash
-# Install Poetry if you don't have it
-curl -sSL https://install.python-poetry.org | python3 -
+# Clone the repository
+git clone https://github.com/yourusername/simba-client.git
+cd simba-client
 
-# Install dependencies including development dependencies
+# Install dependencies with Poetry
 poetry install
 ```
 
-### Running Tests
+### Run Tests
 
 ```bash
-# Run all tests
 poetry run pytest
-
-# Run with coverage
-poetry run pytest --cov=simba_sdk
-
-# Run specific tests
-poetry run pytest tests/test_document.py
 ```
 
-### Building Documentation
+### Build Documentation
 
 ```bash
-# Build the documentation
-poetry run mkdocs build
-
-# Serve the documentation locally
-poetry run mkdocs serve
+poetry run sphinx-build docs/source docs/build
 ```
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.

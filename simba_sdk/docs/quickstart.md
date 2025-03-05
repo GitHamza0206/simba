@@ -177,6 +177,26 @@ client.document_manager.delete_document(document_id)
 print(f"Document {document_id} deleted")
 ```
 
+### Document Embeddings
+
+Generate embeddings for semantic search:
+
+```python
+# Generate an embedding for a document
+embedding_result = client.embedding.embed_document(document_id)
+print(f"Embedding created with ID: {embedding_result['embedding_id']}")
+
+# Perform a similarity search
+query = "financial projections for next quarter"
+search_results = client.embedding.get_similarity_search(document_id, query, limit=3)
+
+print("\nSearch results:")
+for i, result in enumerate(search_results["results"]):
+    print(f"{i+1}. Score: {result['score']:.4f}")
+    print(f"   {result['content'][:150]}...")
+    print()
+```
+
 ## Complete Example
 
 Here's a complete example that ties everything together:

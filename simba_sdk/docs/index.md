@@ -1,6 +1,39 @@
 # Simba Client Documentation
 
-Welcome to the official documentation for the Simba Client (formerly simba_sdk), a Python client for interacting with the Simba document processing API.
+Welcome to the Simba Client documentation. This SDK provides a Python interface for interacting with the Simba document processing API.
+
+## Features
+
+- **Document Management**: Upload, download, list, and delete documents
+- **Document Parsing**: Extract structured data from documents, including tables, forms, and entities
+- **Document Embeddings**: Generate vector embeddings for documents to enable semantic search and similarity analysis
+- **Authentication**: Secure API access with API keys
+- **Error Handling**: Robust error handling for API requests
+
+## Getting Started
+
+- [Installation Guide](installation.md): Install the Simba Client package
+- [Quick Start Guide](quickstart.md): Quickly get up and running with the SDK
+- [Migration Guide](migration.md): Transition from simba_sdk to simba-client
+
+## Core Functionality
+
+- [Document Management](document_management.md): Work with document uploads and management
+- [Document Parsing](document_parsing.md): Extract structured data from documents
+- [Synchronous Parsing](synchronous_parsing.md): Parse documents synchronously
+- [Document Embeddings](embeddings.md): Generate and manage document embeddings for semantic search
+
+## Reference
+
+- [API Reference](api_reference.md): Detailed information about classes and methods
+- [Examples](../examples/): Code examples for common tasks
+- [Troubleshooting](troubleshooting.md): Solutions for common issues
+
+## Development
+
+- [Contributing Guidelines](contributing.md): How to contribute to the SDK
+- [Testing](testing.md): How to run tests for the SDK
+- [Release Notes](release_notes.md): What's new in each version
 
 ## Table of Contents
 

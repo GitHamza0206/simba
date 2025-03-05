@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any, Union
 from .document import DocumentManager
 from .chat import ChatManager
 from .parser import ParserManager
+from .embed import EmbeddingManager
 
 class SimbaClient:
     """
@@ -27,6 +28,7 @@ class SimbaClient:
         self.documents = DocumentManager(self)
         self.chat = ChatManager(self)
         self.parser = ParserManager(self)
+        self.embedding = EmbeddingManager(self)
 
     def _make_request(self, method: str, endpoint: str, 
                      params: Optional[Dict] = None, 

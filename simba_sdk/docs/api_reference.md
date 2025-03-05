@@ -23,6 +23,7 @@ client = SimbaClient(api_url="https://api.example.com", api_key="your-api-key")
 
 - `document_manager`: Access the document management API
 - `parser_manager`: Access the document parsing API
+- `embedding`: Access the embedding API
 
 ### Methods
 
@@ -39,6 +40,19 @@ Get the version of the Simba API.
 
 **Returns**:
 - `str`: The version string
+
+#### `make_request(method, endpoint, params=None, data=None, files=None, json=None)`
+
+Makes an HTTP request to the Simba API.
+
+- `method` (str): HTTP method (GET, POST, etc.)
+- `endpoint` (str): API endpoint
+- `params` (dict, optional): Query parameters
+- `data` (dict, optional): Form data
+- `files` (dict, optional): Files to upload
+- `json` (dict, optional): JSON data
+
+Returns the response as a dictionary.
 
 ## DocumentManager
 
@@ -188,6 +202,124 @@ Extract form data from a document.
 **Returns**:
 - `dict`: Extracted form data or task information
 
+## EmbeddingManager
+
+Handles document embedding operations.
+
+> **Note on API Endpoints**: The embedding API endpoints have been updated to match the server implementation. All methods in this class now use the correct endpoints.
+
+### Methods
+
+#### `embed_document(document_id, model=None)`
+
+Creates an embedding for a document.
+
+**Parameters**:
+- `document_id` (str): ID of the document to embed
+- `model` (str, optional): The embedding model to use. If not provided, uses the default model
+
+**Returns**:
+- `dict`: Embedding ID and other information
+
+**API Endpoint**: `POST /embed/document` with query parameter `doc_id`
+
+#### `get_embedding(document_id)`
+
+Gets information about an embedding for a document.
+
+**Parameters**:
+- `document_id` (str): ID of the document
+
+**Returns**:
+- `dict`: Embedding information
+
+**API Endpoint**: `GET /embedded_documents` with query parameter `doc_id`
+
+#### `list_embeddings(limit=100, offset=0)`
+
+Lists all embeddings.
+
+**Parameters**:
+- `limit` (int, optional): Maximum number of embeddings to return. Default: 100
+- `offset` (int, optional): Offset for pagination. Default: 0
+
+**Returns**:
+- `dict`: List of embeddings
+
+**API Endpoint**: `GET /embedded_documents` with query parameters `limit` and `offset`
+
+#### `embed_documents(document_ids, model=None)`
+
+Creates embeddings for multiple documents.
+
+**Parameters**:
+- `document_ids` (list): List of document IDs to embed
+- `model` (str, optional): The embedding model to use. If not provided, uses the default model
+
+**Returns**:
+- `dict`: Task ID for tracking progress
+
+**API Endpoint**: `POST /embed/documents` with JSON body containing `document_ids`
+
+#### `embed_all_documents(model=None)`
+
+Creates embeddings for all documents.
+
+**Parameters**:
+- `model` (str, optional): The embedding model to use. If not provided, uses the default model
+
+**Returns**:
+- `dict`: Task ID for tracking progress
+
+**API Endpoint**: `POST /embed/documents` with empty JSON body or model parameter
+
+#### `delete_embedding(document_id)`
+
+Deletes an embedding for a document.
+
+**Parameters**:
+- `document_id` (str): ID of the document
+
+**Returns**:
+- `dict`: Confirmation of deletion
+
+**API Endpoint**: `DELETE /embed/document` with query parameter `doc_id`
+
+#### `delete_all_embeddings()`
+
+Deletes all embeddings.
+
+**Returns**:
+- `dict`: Number of embeddings deleted
+
+**API Endpoint**: `DELETE /embed/clear_store`
+
+#### `get_embedding_status(task_id)`
+
+Gets the status of an embedding task.
+
+**Parameters**:
+- `task_id` (str): ID of the task
+
+**Returns**:
+- `dict`: Task status information
+
+**API Endpoint**: `GET /embed/task/{task_id}`
+
+#### `get_similarity_search(document_id, query, limit=5)`
+
+Performs a similarity search using a document's embedding.
+
+**Parameters**:
+- `document_id` (str): ID of the document to search within
+- `query` (str): The search query
+- `limit` (int, optional): Maximum number of results to return. Default: 5
+
+**Returns**:
+- `dict`: Search results with scores and content
+
+**API Endpoint**: `GET /embed/search` with query parameters `doc_id`, `query`, and `limit`
+
 ## Error Handling
 
 The SDK uses custom exceptions to handle errors:
@@ -217,4 +349,30 @@ try:
     client.health_check()
 except SimbaConnectionError as e:
     print(f"Connection Error: {e}")
+```
+
+## Pagination
+
+For methods that return lists (like `list_documents`), use the `limit` and `offset` parameters to paginate through results:
+
+```python
+# Get first page
+page1 = client.document_manager.list_documents(limit=10, offset=0)
+
+# Get second page
+page2 = client.document_manager.list_documents(limit=10, offset=10)
+```
+
+## Batch Processing
+
+For operations that might take time, like parsing or embedding multiple documents, use the task management methods to check status:
+
+```python
+# Start a batch operation
+result = client.embedding.embed_documents(["doc1", "doc2", "doc3"])
+task_id = result["task_id"]
+
+# Check status
+status = client.embedding.get_embedding_status(task_id)
+print(f"Task status: {status['state']}")
 ``` 

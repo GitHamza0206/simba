@@ -10,12 +10,14 @@ __license__ = "MIT"
 from simba_sdk.simba_sdk.client import SimbaClient
 from simba_sdk.simba_sdk.document import DocumentManager
 from simba_sdk.simba_sdk.parser import ParserManager
+from simba_sdk.simba_sdk.embed import EmbeddingManager
 
 # Make these classes available at the package level
-__all__ = ["SimbaClient", "DocumentManager", "ParserManager"]
+__all__ = ["SimbaClient", "DocumentManager", "ParserManager", "EmbeddingManager"]
 
 # Alias for backward compatibility if someone imports from simba_client
 # This will help with transitioning to the new package name
 SimbaClient = SimbaClient
 DocumentManager = DocumentManager
 ParserManager = ParserManager
+EmbeddingManager = EmbeddingManager
