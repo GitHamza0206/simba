@@ -1,3 +1,3 @@
-from .retriever import Retriever
+from .retriever import Retriever, RetrievalMethod
 
-__all__ = ["Retriever"]
+__all__ = ["Retriever", "RetrievalMethod"]

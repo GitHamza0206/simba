@@ -14,8 +14,8 @@ pip install simba-client
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/simba-client.git
-cd simba-client
+git clone https://github.com/GitHamza0206/simba.git
+cd simba
 
 # Install dependencies with Poetry
 poetry install
