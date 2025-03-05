@@ -197,4 +197,22 @@ class DocumentManager:
             stream=True
         )
         response.raise_for_status()
-        return response.content 
+        return response.content
+
+    def clear_db(self) -> Dict[str, Any]:
+        """
+        Clear all documents from the database.
+        
+        WARNING: This will permanently delete all documents in the system.
+        This is a destructive operation and cannot be undone.
+        
+        Returns:
+            Dict[str, Any]: A response confirming the database was cleared
+        
+        Raises:
+            Exception: If the operation fails
+        """
+        return self.client._make_request(
+            "DELETE",
+            "/db/clear"
+        ) 

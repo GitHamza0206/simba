@@ -268,4 +268,42 @@ class TestDocumentManager:
             "https://api.simba.example.com/ingestion",
             params={"uids": ["doc123"]},
             headers=document_manager.headers
+        )
+
+    @responses.activate
+    def test_clear_db(self, client):
+        """Test clearing the database."""
+        # Mock the API response
+        responses.add(
+            responses.DELETE,
+            "https://test-api.simba.com/db/clear",
+            json={"status": "success", "message": "Database cleared"},
+            status=200
+        )
+    
+        # Call the method
+        result = client.documents.clear_db()
+        
+        # Verify the result
+        assert result["status"] == "success"
+        assert result["message"] == "Database cleared"
+    
+    @patch("simba_sdk.simba_sdk.client.SimbaClient._make_request")
+    def test_clear_db_with_mock(self, mock_make_request, document_manager):
+        """Test clearing the database using mocks."""
+        # Setup mock response
+        mock_response = {"status": "success", "message": "Database cleared"}
+        mock_make_request.return_value = mock_response
+        
+        # Replace the document_manager's client._make_request with our mock
+        document_manager.client._make_request = mock_make_request
+        
+        # Call the method
+        result = document_manager.clear_db()
+        
+        # Verify the result
+        assert result == mock_response
+        mock_make_request.assert_called_once_with(
+            "DELETE",
+            "/db/clear"
         ) 

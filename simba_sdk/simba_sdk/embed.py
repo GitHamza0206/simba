@@ -45,18 +45,18 @@ class EmbeddingManager:
         if model:
             params["model"] = model
             
-        return self.client.make_request(
+        return self.client._make_request(
             "POST", 
             f"/embed/document", 
-            params={"doc_id": document_id, **params}
+            params=params
         )
     
     def get_embedding(self, document_id):
         """
-        Get information about an embedding for a document.
+        Get embedding information for a document.
         
         Args:
-            document_id (str): The ID of the document.
+            document_id (str): The ID of the document to get the embedding for.
         
         Returns:
             dict: A dictionary containing the embedding information.
@@ -64,10 +64,9 @@ class EmbeddingManager:
         Raises:
             Exception: If the API request fails.
         """
-        return self.client.make_request(
+        return self.client._make_request(
             "GET", 
-            f"/embedded_documents", 
-            params={"doc_id": document_id}
+            f"/embed/document/{document_id}"
         )
     
     def list_embeddings(self, limit=100, offset=0):
@@ -75,11 +74,13 @@ class EmbeddingManager:
         List all embeddings.
         
         Args:
-            limit (int, optional): Maximum number of embeddings to return. Default is 100.
-            offset (int, optional): Offset for pagination. Default is 0.
+            limit (int, optional): The maximum number of embeddings to return.
+                                  Defaults to 100.
+            offset (int, optional): The offset to start from when returning 
+                                   embeddings. Defaults to 0.
         
         Returns:
-            dict: A dictionary containing a list of embeddings.
+            dict: A dictionary containing the list of embeddings.
         
         Raises:
             Exception: If the API request fails.
@@ -89,7 +90,7 @@ class EmbeddingManager:
             "offset": offset
         }
         
-        return self.client.make_request(
+        return self.client._make_request(
             "GET", 
             "/embedded_documents", 
             params=params
@@ -100,27 +101,27 @@ class EmbeddingManager:
         Create embeddings for multiple documents.
         
         Args:
-            document_ids (list): List of document IDs to embed.
+            document_ids (list): A list of document IDs to embed.
             model (str, optional): The embedding model to use. If not provided,
                                   the default model will be used.
         
         Returns:
-            dict: A dictionary containing the task ID for tracking progress.
+            dict: A dictionary containing the embedding information.
         
         Raises:
             Exception: If the API request fails.
         """
-        data = {
-            "document_ids": document_ids
+        params = {
+            "doc_ids": document_ids
         }
         
         if model:
-            data["model"] = model
+            params["model"] = model
             
-        return self.client.make_request(
+        return self.client._make_request(
             "POST", 
             "/embed/documents", 
-            json=data
+            json=params
         )
     
     def embed_all_documents(self, model=None):
@@ -132,20 +133,20 @@ class EmbeddingManager:
                                   the default model will be used.
         
         Returns:
-            dict: A dictionary containing the task ID for tracking progress.
+            dict: A dictionary containing the embedding information.
         
         Raises:
             Exception: If the API request fails.
         """
-        data = {}
+        params = {}
         
         if model:
-            data["model"] = model
+            params["model"] = model
             
-        return self.client.make_request(
+        return self.client._make_request(
             "POST", 
-            "/embed/documents", 
-            json=data
+            "/embed/all", 
+            json=params
         )
     
     def delete_embedding(self, document_id):
@@ -153,15 +154,15 @@ class EmbeddingManager:
         Delete an embedding for a document.
         
         Args:
-            document_id (str): The ID of the document.
+            document_id (str): The ID of the document to delete the embedding for.
         
         Returns:
-            dict: A dictionary confirming deletion.
+            dict: A dictionary confirming the embedding was deleted.
         
         Raises:
             Exception: If the API request fails.
         """
-        return self.client.make_request(
+        return self.client._make_request(
             "DELETE", 
             f"/embed/document", 
             params={"doc_id": document_id}
@@ -172,12 +173,30 @@ class EmbeddingManager:
         Delete all embeddings.
         
         Returns:
-            dict: A dictionary containing the number of embeddings deleted.
+            dict: A dictionary confirming all embeddings were deleted.
         
         Raises:
             Exception: If the API request fails.
         """
-        return self.client.make_request(
+        return self.client._make_request(
+            "DELETE", 
+            "/embed/clear_store"
+        )
+    
+    def clear_store(self):
+        """
+        Clear the vector store containing all embeddings.
+        
+        This is an alias for delete_all_embeddings() that provides a more explicit name
+        for the operation of completely clearing the vector store.
+        
+        Returns:
+            dict: A dictionary confirming the store was cleared.
+        
+        Raises:
+            Exception: If the API request fails.
+        """
+        return self.client._make_request(
             "DELETE", 
             "/embed/clear_store"
         )
@@ -187,30 +206,31 @@ class EmbeddingManager:
         Get the status of an embedding task.
         
         Args:
-            task_id (str): The ID of the task.
+            task_id (str): The ID of the task to get the status for.
         
         Returns:
-            dict: A dictionary containing task status information.
+            dict: A dictionary containing the task status.
         
         Raises:
             Exception: If the API request fails.
         """
-        return self.client.make_request(
+        return self.client._make_request(
             "GET", 
-            f"/embed/task/{task_id}"
+            f"/task/{task_id}/status"
         )
     
     def get_similarity_search(self, document_id, query, limit=5):
         """
-        Perform a similarity search using a document's embedding.
+        Perform a similarity search for a document.
         
         Args:
-            document_id (str): The ID of the document to search within.
-            query (str): The search query.
-            limit (int, optional): Maximum number of results to return. Default is 5.
+            document_id (str): The ID of the document to search against.
+            query (str): The query text to search for.
+            limit (int, optional): The maximum number of results to return.
+                                  Defaults to 5.
         
         Returns:
-            dict: A dictionary containing search results with scores and content.
+            dict: A dictionary containing the search results.
         
         Raises:
             Exception: If the API request fails.
@@ -221,8 +241,8 @@ class EmbeddingManager:
             "doc_id": document_id
         }
         
-        return self.client.make_request(
+        return self.client._make_request(
             "GET", 
-            f"/embed/search", 
+            "/embed/search", 
             params=params
         ) 
