@@ -1,5 +1,6 @@
 import logging
 
+import torch
 from celery.app.control import Inspect
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -7,9 +8,8 @@ from pydantic import BaseModel
 from simba.core.factories.database_factory import get_database
 from simba.core.factories.vector_store_factory import VectorStoreFactory
 from simba.models.simbadoc import SimbaDoc
-from simba.tasks.parsing_tasks import celery, parse_docling_task
 from simba.parsing.docling_parser import DoclingParser
-import torch
+from simba.tasks.parsing_tasks import celery, parse_docling_task
 
 logger = logging.getLogger(__name__)
 parsing = APIRouter()
@@ -47,7 +47,7 @@ async def parse_document(request: ParseDocumentRequest):
                 return await parse_document_sync(request.document_id)
             else:
                 raise HTTPException(status_code=400, detail="Unsupported parser")
-        
+
         # Otherwise, parse asynchronously using Celery
         elif request.parser == "docling":
             task = parse_docling_task.delay(request.document_id)
@@ -87,18 +87,20 @@ async def parse_document_sync(document_id: str):
                 "document_id": parsed_simba_doc.id,
                 "result": {
                     "document_id": parsed_simba_doc.id,
-                    "num_chunks": len(parsed_simba_doc.documents) if parsed_simba_doc.documents else 0,
+                    "num_chunks": (
+                        len(parsed_simba_doc.documents) if parsed_simba_doc.documents else 0
+                    ),
                     "parsing_status": parsed_simba_doc.metadata.parsing_status,
-                    "parsed_at": parsed_simba_doc.metadata.parsed_at.isoformat() if parsed_simba_doc.metadata.parsed_at else None
-                }
+                    "parsed_at": (
+                        parsed_simba_doc.metadata.parsed_at.isoformat()
+                        if parsed_simba_doc.metadata.parsed_at
+                        else None
+                    ),
+                },
             }
         except Exception as e:
             logger.error(f"Parsing failed: {str(e)}", exc_info=True)
-            return {
-                "status": "error",
-                "document_id": document_id,
-                "error": str(e)
-            }
+            return {"status": "error", "document_id": document_id, "error": str(e)}
         finally:
             # Clean up any remaining GPU memory
             if torch.cuda.is_available():
