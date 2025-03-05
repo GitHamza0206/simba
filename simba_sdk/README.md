@@ -1,115 +1,141 @@
-# Simba SDK 
+# Simba Client  
 
-This is a Python SDK for the Simba Knowledge Management System.
+Python client for interacting with the Simba document processing API.
 
 ## Installation
 
+### Using pip
+
 ```bash
-pip install simba-sdk
+pip install simba-client
 ```
 
-## Usage
+### Development Installation
 
-### Initialize the Client
+For development purposes, you can install the package directly from the repository:
+
+```bash
+# Clone the repository
+git clone https://github.com/GitHamza0206/simba.git
+cd simba_sdk
+
+# Install using Poetry
+poetry install
+
+# Alternatively, install in development mode with pip
+pip install -e .
+```
+
+## Quick Start
 
 ```python
 from simba_sdk import SimbaClient
 
-# Initialize the client with your Simba API URL and optional API key
-client = SimbaClient(api_url="https://your-simba-instance.com/api/v1", api_key="your-api-key")
+# Initialize the client
+client = SimbaClient(
+    api_url="https://api.simba.example.com",
+    api_key="your-api-key"
+)
+
+# Upload a document
+doc_result = client.document.create_from_file("path/to/your/document.pdf")
+document_id = doc_result["id"]
+
+# Parse the document
+# Use synchronous parsing for immediate results
+parse_result = client.parser.parse_document(document_id, sync=True)
+
+# Or asynchronous parsing for background processing
+async_result = client.parser.parse_document(document_id, sync=False)
+task_id = async_result["task_id"]
+
+# Check the status of an asynchronous task
+task_status = client.parser.get_task_status(task_id)
+
+# Extract tables from a document
+tables = client.parser.extract_tables(document_id)
 ```
 
-### Document Management
+## Features
 
-The SDK provides comprehensive document management capabilities through the `documents` property of the client:
+- Document Management (upload, retrieve, list, delete)
+- Document Parsing (synchronous and asynchronous)
+- Natural Language Querying
 
-#### Upload and Ingest a Document
+## Documentation
+
+For detailed documentation, please visit [simba-client.readthedocs.io](https://simba-client.readthedocs.io) or refer to the docs directory in this repository.
+
+## API Reference
+
+### SimbaClient
+
+The main client for interacting with the Simba API.
 
 ```python
-# Upload a file from disk
-document = client.documents.create("path/to/document.pdf")
-document_id = document["document_id"]
-
-# Upload with metadata
-document = client.documents.create(
-    "path/to/document.pdf", 
-    metadata={"author": "John Doe", "category": "Research"}
+client = SimbaClient(
+    api_url="https://api.simba.example.com",
+    api_key="your-api-key",
+    timeout=60
 )
 ```
 
-#### Create a Document from Text
+### DocumentManager
 
-```python
-# Create a document from raw text
-document = client.documents.create_from_text(
-    text="This is the content of my document.",
-    name="example.txt",
-    metadata={"source": "User input"}
-)
-```
+Handles document operations (accessible via `client.document`).
 
-#### Get Document Details
+- `create(file_path)`: Upload a document from a file path
+- `create_from_file(file)`: Upload a document from a file object
+- `get(document_id)`: Retrieve a document by ID
+- `list()`: List all documents
+- `delete(document_id)`: Delete a document
 
-```python
-# Retrieve a document by ID
-document = client.documents.get(document_id)
-print(document["name"])
-print(document["metadata"])
-```
+### ParserManager
 
-#### List Documents
+Handles document parsing operations (accessible via `client.parser`).
 
-```python
-# List all documents
-documents = client.documents.list()
-for doc in documents["items"]:
-    print(f"{doc['document_id']}: {doc['name']}")
-
-# With pagination
-documents = client.documents.list(page=2, page_size=10)
-
-# With filters
-documents = client.documents.list(filters={"author": "John Doe"})
-```
-
-#### Update Document Metadata
-
-```python
-# Update metadata
-updated_document = client.documents.update(
-    document_id,
-    metadata={"status": "reviewed", "rating": 5}
-)
-```
-
-#### Delete a Document
-
-```python
-# Delete a document
-result = client.documents.delete(document_id)
-print(result["status"])  # Should be "deleted"
-```
+- `parse_document(document_id, sync=True)`: Parse a document
+- `extract_tables(document_id)`: Extract tables from a document
+- `extract_entities(document_id)`: Extract entities from a document
+- `extract_forms(document_id)`: Extract form fields from a document
+- `extract_text(document_id)`: Extract text content from a document
+- `parse_query(document_id, query)`: Extract information based on a natural language query
 
 ## Development
 
-### Setup
+### Setup Development Environment
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/simba-sdk.git
-cd simba-sdk
+# Install Poetry if you don't have it
+curl -sSL https://install.python-poetry.org | python3 -
 
-# Install development dependencies
-pip install -r requirements-dev.txt
-pip install -e .
+# Install dependencies including development dependencies
+poetry install
 ```
 
 ### Running Tests
 
 ```bash
-pytest
+# Run all tests
+poetry run pytest
+
+# Run with coverage
+poetry run pytest --cov=simba_sdk
+
+# Run specific tests
+poetry run pytest tests/test_document.py
+```
+
+### Building Documentation
+
+```bash
+# Build the documentation
+poetry run mkdocs build
+
+# Serve the documentation locally
+poetry run mkdocs serve
 ```
 
 ## License
 
-[Your License Info Here]
+This project is licensed under the MIT License - see the LICENSE file for details.

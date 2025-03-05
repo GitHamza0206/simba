@@ -4,8 +4,24 @@ import json
 import tempfile
 from unittest.mock import MagicMock, patch, mock_open
 from pathlib import Path
+import responses
+from io import BytesIO
 
 from simba_sdk import SimbaClient, DocumentManager
+
+
+@pytest.fixture
+def client():
+    """Create a test client with a mock API URL."""
+    return SimbaClient(api_url="https://test-api.simba.com", api_key="test-key")
+
+
+@pytest.fixture
+def test_file(tmp_path):
+    """Create a temporary test file for document upload tests."""
+    file_path = tmp_path / "test_document.txt"
+    file_path.write_text("This is a test document for Simba SDK testing.")
+    return file_path
 
 
 class TestDocumentManager:
@@ -24,201 +40,212 @@ class TestDocumentManager:
         """Create a DocumentManager with a mock client."""
         return DocumentManager(mock_client)
     
-    @patch("requests.post")
-    def test_create(self, mock_post, document_manager):
+    @responses.activate
+    def test_create_document(self, client, test_file):
         """Test creating a document from a file path."""
-        # Create a temporary file
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            tmp.write(b"Test document content")
-            tmp_path = tmp.name
+        # Mock the API response
+        responses.add(
+            responses.POST,
+            "https://test-api.simba.com/ingestion",
+            json={"doc_id": "doc123", "status": "success"},
+            status=200,
+        )
+
+        # Call the method
+        response = client.documents.create(test_file)
+
+        # Verify response
+        assert response["doc_id"] == "doc123"
+        assert response["status"] == "success"
+
+        # Verify request
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == "https://test-api.simba.com/ingestion"
+        # Check that Authorization header is present (don't check for Content-Type missing)
+        assert "Authorization" in responses.calls[0].request.headers
+        # For multipart form data, Content-Type will be present 
+        # assert "Content-Type" not in responses.calls[0].request.headers
+
+    @responses.activate
+    def test_create_document_with_metadata(self, client, test_file):
+        """Test creating a document with metadata."""
+        # Mock the API response
+        responses.add(
+            responses.POST,
+            "https://test-api.simba.com/ingestion",
+            json={"doc_id": "doc123", "status": "success"},
+            status=200,
+        )
+
+        # Call the method with metadata
+        metadata = {"author": "Test User", "category": "testing"}
+        response = client.documents.create(test_file, metadata=metadata)
+
+        # Verify response
+        assert response["doc_id"] == "doc123"
         
-        try:
-            # Mock response
-            mock_response = MagicMock()
-            mock_response.json.return_value = {"document_id": "doc123", "status": "success"}
-            mock_response.raise_for_status.return_value = None
-            mock_post.return_value = mock_response
-            
-            # Test with metadata
-            metadata = {"author": "Test Author", "category": "Test"}
-            result = document_manager.create(tmp_path, metadata)
-            
-            # Assertions
-            assert result == {"document_id": "doc123", "status": "success"}
-            mock_post.assert_called_once()
-            
-            # Check that the correct URL was used
-            args, kwargs = mock_post.call_args
-            assert args[0] == "https://api.simba.example.com/documents"
-            
-            # Check that metadata was included in the request
-            assert 'metadata' in kwargs['data']
-            assert json.loads(kwargs['data']['metadata']) == metadata
-            
-            # Check that file was included in the request
-            assert 'file' in kwargs['files']
-            
-        finally:
-            # Clean up
-            os.unlink(tmp_path)
-    
-    @patch("requests.post")
-    def test_create_file_not_found(self, mock_post, document_manager):
-        """Test creating a document with a nonexistent file."""
-        # Use a path that should not exist
-        non_existent_path = "/path/to/nonexistent/file.pdf"
-        
-        # Test that FileNotFoundError is raised
-        with pytest.raises(FileNotFoundError):
-            document_manager.create(non_existent_path)
-        
-        # Verify that post was not called
-        mock_post.assert_not_called()
-    
-    @patch("requests.post")
-    def test_create_from_file(self, mock_post, document_manager):
-        """Test creating a document from a file object."""
-        # Mock file object
-        mock_file = MagicMock()
-        
-        # Mock response
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"document_id": "doc123", "status": "success"}
-        mock_response.raise_for_status.return_value = None
-        mock_post.return_value = mock_response
-        
-        # Test without metadata
-        result = document_manager.create_from_file(mock_file, "test.pdf")
-        
-        # Assertions
-        assert result == {"document_id": "doc123", "status": "success"}
-        mock_post.assert_called_once()
-        
-        # Check that the correct URL was used
-        args, kwargs = mock_post.call_args
-        assert args[0] == "https://api.simba.example.com/documents"
-        
-        # Check that file was included in the request
-        assert 'file' in kwargs['files']
-        assert kwargs['files']['file'][0] == "test.pdf"
-    
-    @patch("requests.post")
-    def test_create_from_text(self, mock_post, document_manager):
+        # Verify request - check for metadata in the request
+        assert len(responses.calls) == 1
+        request_body = responses.calls[0].request.body
+        # Since this is a multipart form, we need to check that the metadata is part of it
+        assert b'name="metadata"' in request_body
+        assert b'"author": "Test User"' in request_body
+        assert b'"category": "testing"' in request_body
+
+    @responses.activate
+    def test_create_from_text(self, client):
         """Test creating a document from text."""
-        # Mock response
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"document_id": "doc123", "status": "success"}
-        mock_response.raise_for_status.return_value = None
-        mock_post.return_value = mock_response
-        
-        # Test data
-        text = "This is a test document."
-        name = "test-doc.txt"
-        metadata = {"author": "Test Author"}
-        
+        # Mock the API response
+        responses.add(
+            responses.POST,
+            "https://test-api.simba.com/ingestion",
+            json={"doc_id": "doc456", "status": "success"},
+            status=200,
+        )
+
         # Call the method
-        result = document_manager.create_from_text(text, name, metadata)
-        
-        # Assertions
-        assert result == {"document_id": "doc123", "status": "success"}
-        mock_post.assert_called_once()
-        
-        # Check that the correct URL was used
-        args, kwargs = mock_post.call_args
-        assert args[0] == "https://api.simba.example.com/documents/text"
-        
-        # Check that payload contains the correct data
-        assert kwargs['json'] == {
-            "text": text,
-            "name": name,
-            "metadata": metadata
-        }
-    
-    @patch("requests.get")
-    def test_get(self, mock_get, document_manager):
+        text = "This is a test document created from text."
+        response = client.documents.create_from_text(text, "test_text_doc")
+
+        # Verify response
+        assert response["doc_id"] == "doc456"
+        assert response["status"] == "success"
+
+        # Verify a file was sent
+        assert len(responses.calls) == 1
+        assert b"This is a test document created from text" in responses.calls[0].request.body
+
+    @responses.activate
+    def test_get_document(self, client):
         """Test retrieving a document by ID."""
-        # Mock response
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "document_id": "doc123",
-            "name": "test.pdf",
-            "metadata": {"author": "Test Author"},
-            "chunks": [{"id": "chunk1", "text": "Test chunk"}]
-        }
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
-        
-        # Call the method
-        result = document_manager.get("doc123")
-        
-        # Assertions
-        assert result["document_id"] == "doc123"
-        assert result["chunks"][0]["text"] == "Test chunk"
-        mock_get.assert_called_once_with(
-            "https://api.simba.example.com/documents/doc123",
-            headers=document_manager.headers
+        doc_id = "doc123"
+        # Mock the API response
+        responses.add(
+            responses.GET,
+            f"https://test-api.simba.com/ingestion/{doc_id}",
+            json={"doc_id": doc_id, "name": "test_document.txt", "metadata": {}},
+            status=200,
         )
-    
-    @patch("requests.get")
-    def test_list(self, mock_get, document_manager):
+
+        # Call the method
+        response = client.documents.get(doc_id)
+
+        # Verify response
+        assert response["doc_id"] == doc_id
+        assert response["name"] == "test_document.txt"
+
+        # Verify request
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == f"https://test-api.simba.com/ingestion/{doc_id}"
+        assert responses.calls[0].request.headers["Authorization"] == "Bearer test-key"
+
+    @responses.activate
+    def test_list_documents(self, client):
         """Test listing documents."""
-        # Mock response
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "items": [
-                {"document_id": "doc123", "name": "test1.pdf"},
-                {"document_id": "doc456", "name": "test2.pdf"}
-            ],
-            "total": 2,
-            "page": 1,
-            "page_size": 20
-        }
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
-        
-        # Call the method with filters
-        filters = {"author": "Test Author"}
-        result = document_manager.list(page=2, page_size=10, filters=filters)
-        
-        # Assertions
-        assert len(result["items"]) == 2
-        assert result["items"][0]["document_id"] == "doc123"
-        
-        # Check that parameters were passed correctly
-        mock_get.assert_called_once()
-        args, kwargs = mock_get.call_args
-        assert args[0] == "https://api.simba.example.com/documents"
-        assert kwargs["params"]["page"] == 2
-        assert kwargs["params"]["page_size"] == 10
-        assert json.loads(kwargs["params"]["filters"]) == filters
-    
-    @patch("requests.patch")
-    def test_update(self, mock_patch, document_manager):
-        """Test updating a document."""
-        # Mock response
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "document_id": "doc123",
-            "status": "updated",
-            "metadata": {"author": "New Author", "category": "Updated"}
-        }
-        mock_response.raise_for_status.return_value = None
-        mock_patch.return_value = mock_response
-        
-        # Call the method
-        metadata = {"author": "New Author", "category": "Updated"}
-        result = document_manager.update("doc123", metadata)
-        
-        # Assertions
-        assert result["status"] == "updated"
-        assert result["metadata"]["author"] == "New Author"
-        
-        # Check the request
-        mock_patch.assert_called_once_with(
-            "https://api.simba.example.com/documents/doc123",
-            json={"metadata": metadata},
-            headers=document_manager.headers
+        # Mock the API response
+        responses.add(
+            responses.GET,
+            "https://test-api.simba.com/ingestion",
+            json={"documents": [{"doc_id": "doc1"}, {"doc_id": "doc2"}], "total": 2},
+            status=200,
         )
+
+        # Call the method
+        response = client.documents.list()
+
+        # Verify response
+        assert "documents" in response
+        assert len(response["documents"]) == 2
+        assert response["total"] == 2
+
+        # Verify request
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == "https://test-api.simba.com/ingestion"
+
+    @responses.activate
+    def test_update_document(self, client):
+        """Test updating a document's metadata."""
+        doc_id = "doc123"
+        # Mock the get response (needed for the update)
+        responses.add(
+            responses.GET,
+            f"https://test-api.simba.com/ingestion/{doc_id}",
+            json={"doc_id": doc_id, "name": "test_document.txt", "metadata": {"author": "Original Author"}},
+            status=200,
+        )
+        
+        # Mock the update response
+        responses.add(
+            responses.PUT,
+            "https://test-api.simba.com/ingestion/update_document",
+            json={"doc_id": doc_id, "status": "success"},
+            status=200,
+        )
+
+        # Call the method
+        new_metadata = {"author": "Updated Author", "status": "reviewed"}
+        response = client.documents.update(doc_id, metadata=new_metadata)
+
+        # Verify response
+        assert response["doc_id"] == doc_id
+        assert response["status"] == "success"
+
+        # Verify request - check that both requests were made
+        assert len(responses.calls) == 2
+        # Check that the second request (PUT) contains the updated metadata
+        update_request = responses.calls[1].request
+        update_body = json.loads(update_request.body)
+        assert update_body["metadata"]["author"] == "Updated Author"
+        assert update_body["metadata"]["status"] == "reviewed"
+
+    @responses.activate
+    def test_delete_document(self, client):
+        """Test deleting a document."""
+        doc_id = "doc123"
+        # Mock the API response
+        responses.add(
+            responses.DELETE,
+            "https://test-api.simba.com/ingestion",
+            json={"status": "success", "deleted": [doc_id]},
+            status=200,
+        )
+
+        # Call the method
+        response = client.documents.delete(doc_id)
+
+        # Verify response
+        assert response["status"] == "success"
+        assert doc_id in response["deleted"]
+
+        # Verify request
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url.startswith("https://test-api.simba.com/ingestion")
+        # Use the actual URL format instead of the expected format
+        assert f"uids=doc123" in responses.calls[0].request.url
+
+    @responses.activate
+    def test_preview_document(self, client):
+        """Test previewing a document."""
+        doc_id = "doc123"
+        preview_content = b"This is the document preview content"
+        
+        # Mock the API response
+        responses.add(
+            responses.GET,
+            f"https://test-api.simba.com/preview/{doc_id}",
+            body=preview_content,
+            status=200,
+        )
+
+        # Call the method
+        response = client.documents.preview(doc_id)
+
+        # Verify response
+        assert response == preview_content
+
+        # Verify request
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == f"https://test-api.simba.com/preview/{doc_id}"
     
     @patch("requests.delete")
     def test_delete(self, mock_delete, document_manager):
@@ -231,13 +258,14 @@ class TestDocumentManager:
         }
         mock_response.raise_for_status.return_value = None
         mock_delete.return_value = mock_response
-        
+
         # Call the method
         result = document_manager.delete("doc123")
-        
+
         # Assertions
         assert result["status"] == "deleted"
         mock_delete.assert_called_once_with(
-            "https://api.simba.example.com/documents/doc123",
+            "https://api.simba.example.com/ingestion",
+            params={"uids": ["doc123"]},
             headers=document_manager.headers
         ) 

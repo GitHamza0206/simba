@@ -1,6 +1,8 @@
 import requests
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from .document import DocumentManager
+from .chat import ChatManager
+from .parser import ParserManager
 
 class SimbaClient:
     """
@@ -23,27 +25,57 @@ class SimbaClient:
             
         # Initialize managers
         self.documents = DocumentManager(self)
+        self.chat = ChatManager(self)
+        self.parser = ParserManager(self)
 
-    def ask(self, query: str) -> Dict[str, Any]:
+    def _make_request(self, method: str, endpoint: str, 
+                     params: Optional[Dict] = None, 
+                     json: Optional[Dict] = None, 
+                     data: Optional[Dict] = None,
+                     files: Optional[Dict] = None,
+                     stream: bool = False) -> Union[Dict, str, bytes]:
         """
-        Send a query to the Simba chat endpoint.
-        
-        This method sends a POST request to <api_url>/chat with the query message.
+        Helper method to make API requests.
         
         Args:
-            query (str): The query to send to Simba.
-        
+            method: HTTP method to use (GET, POST, etc.)
+            endpoint: API endpoint (will be appended to base URL)
+            params: Query parameters
+            json: JSON body data
+            data: Form data
+            files: Files to upload
+            stream: Whether to stream the response
+            
         Returns:
-            Dict[str, Any]: The JSON response from the server.
+            Response data (parsed JSON, text, or bytes depending on context)
         """
-        payload = {"message": query}
-        response = requests.post(
-            f"{self.api_url}/chat",
-            json=payload,
-            headers=self.headers
+        url = f"{self.api_url}/{endpoint.lstrip('/')}"
+        
+        # Handle files upload - don't send Content-Type header
+        request_headers = self.headers
+        if files:
+            request_headers = {k: v for k, v in self.headers.items() 
+                              if k != 'Content-Type'}
+        
+        response = requests.request(
+            method,
+            url,
+            params=params,
+            json=json,
+            data=data,
+            files=files,
+            headers=request_headers,
+            stream=stream
         )
         response.raise_for_status()
-        return response.text
+        
+        if stream:
+            return response.content
+        
+        try:
+            return response.json()
+        except ValueError:
+            return response.text
 
     def ingest_document(self, file_path: str) -> Dict[str, Any]:
         """
@@ -65,12 +97,14 @@ class SimbaClient:
         )
         return self.documents.create(file_path)
 
-    # Additional methods (for parsing, retrieval, etc.) can be added here.
-    def as_retriever(self):
-        response = requests.get(
-            f"{self.api_url}/retriever/as_retriever",
-            headers=self.headers
-        )
-        response.raise_for_status()
-        return response
+    def as_retriever(self) -> Dict[str, Any]:
+        """
+        Get the retriever configuration.
+        
+        Returns:
+            Dict[str, Any]: The retriever configuration.
+        """
+        return self._make_request("GET", "retriever/as_retriever")
+
+    # Additional methods for other API endpoints would go here
 

@@ -1,40 +1,51 @@
+#!/usr/bin/env python
+"""
+Compatibility setup.py for non-Poetry users.
+We recommend using Poetry for installation, but this file is provided for compatibility.
+"""
+
+import re
 from setuptools import setup, find_packages
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
+# Read version from __init__.py
+with open("simba_sdk/__init__.py", "r") as f:
+    version_match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', f.read())
+    version = version_match.group(1) if version_match else "0.1.0"
+
+# Read README.md for long description
+with open("README.md", "r") as f:
+    long_description = f.read()
 
 setup(
-    name="simba-sdk",
-    version="0.1.0",
-    author="Simba Team",
-    author_email="contact@simba.example.com",
-    description="SDK for the Simba Knowledge Management System",
+    name="simba-client",
+    version=version,
+    description="Python client for the Simba document processing API",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/GitHamza0206/simba",
+    author="Simba Team",
+    author_email="info@example.com",
+    url="https://github.com/yourusername/simba-client",
     packages=find_packages(),
     classifiers=[
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.11",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
-        "Topic :: Software Development :: Libraries :: Python Modules",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ],
-    python_requires=">=3.11",
+    python_requires=">=3.8",
     install_requires=[
         "requests>=2.28.0",
+        "urllib3>=2.0.0",
+        "pydantic>=2.0.0",
     ],
-    extras_require={
-        "dev": [
-            "pytest>=7.0.0",
-            "pytest-cov>=4.0.0",
-            "black>=23.0.0",
-            "isort>=5.0.0",
-            "flake8>=6.0.0",
-            "mypy>=1.0.0",
-            "requests-mock>=1.10.0",
-        ],
+    project_urls={
+        "Documentation": "https://simba-client.readthedocs.io",
+        "Source": "https://github.com/yourusername/simba-client",
+        "Bug Tracker": "https://github.com/yourusername/simba-client/issues",
     },
 ) 
