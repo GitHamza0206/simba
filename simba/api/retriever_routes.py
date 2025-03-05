@@ -20,7 +20,7 @@ class RetrieveRequest(BaseModel):
 
 
 class RetrieveResponse(BaseModel):
-    documents: List[SimbaDoc]
+    documents: List[Document]
 
 
 @retriever_route.get("/as_retriever")
@@ -47,36 +47,4 @@ async def retrieve_documents(request: RetrieveRequest) -> RetrieveResponse:
         filter=request.filter
     )
     
-    # Convert documents to SimbaDoc objects
-    simba_docs = []
-    for i, doc in enumerate(documents):
-        # Extract metadata or create default
-        meta_dict = doc.metadata if hasattr(doc, "metadata") and doc.metadata else {}
-        
-        # Create metadata
-        metadata = MetadataType(
-            filename=meta_dict.get("filename", f"result_{i}"),
-            type=meta_dict.get("type", "retrieval_result"),
-            chunk_number=meta_dict.get("chunk_number", i),
-            page_number=meta_dict.get("page_number", 0),
-            enabled=True,
-            parsing_status="completed",
-            size=meta_dict.get("size", "unknown"),
-            loader=meta_dict.get("loader", "retriever"),
-            parser=meta_dict.get("parser", None),
-            splitter=meta_dict.get("splitter", None),
-            uploadedAt=meta_dict.get("uploadedAt", ""),
-            file_path=meta_dict.get("file_path", ""),
-            parsed_at=meta_dict.get("parsed_at", "")
-        )
-        
-        # Create SimbaDoc
-        simba_doc = SimbaDoc(
-            id=str(uuid.uuid4()),
-            documents=[doc],
-            metadata=metadata
-        )
-        
-        simba_docs.append(simba_doc)
-    
-    return RetrieveResponse(documents=simba_docs)
+    return RetrieveResponse(documents=documents)
