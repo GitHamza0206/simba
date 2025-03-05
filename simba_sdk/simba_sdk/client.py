@@ -4,6 +4,7 @@ from .document import DocumentManager
 from .chat import ChatManager
 from .parser import ParserManager
 from .embed import EmbeddingManager
+from .retrieve import RetrieveManager
 
 class SimbaClient:
     """
@@ -29,6 +30,7 @@ class SimbaClient:
         self.chat = ChatManager(self)
         self.parser = ParserManager(self)
         self.embedding = EmbeddingManager(self)
+        self.retriever = RetrieveManager(self)
 
     def _make_request(self, method: str, endpoint: str, 
                      params: Optional[Dict] = None, 
@@ -79,34 +81,4 @@ class SimbaClient:
         except ValueError:
             return response.text
 
-    def ingest_document(self, file_path: str) -> Dict[str, Any]:
-        """
-        Upload a document to Simba for ingestion.
-        
-        This method is deprecated. Use client.documents.create() instead.
-        
-        Args:
-            file_path (str): The filesystem path to the document.
-        
-        Returns:
-            Dict[str, Any]: The JSON response from the server.
-        """
-        import warnings
-        warnings.warn(
-            "ingest_document is deprecated; use documents.create() instead", 
-            DeprecationWarning, 
-            stacklevel=2
-        )
-        return self.documents.create(file_path)
-
-    def as_retriever(self) -> Dict[str, Any]:
-        """
-        Get the retriever configuration.
-        
-        Returns:
-            Dict[str, Any]: The retriever configuration.
-        """
-        return self._make_request("GET", "retriever/as_retriever")
-
-    # Additional methods for other API endpoints would go here
-
+    
