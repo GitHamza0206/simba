@@ -1,5 +1,9 @@
 import requests
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
+from .document import DocumentManager
+from .chat import ChatManager
+from .parser import ParserManager
+from .embed import EmbeddingManager
 
 class SimbaClient:
     """
@@ -19,33 +23,67 @@ class SimbaClient:
         self.headers = {"Content-Type": "application/json"}
         if self.api_key:
             self.headers["Authorization"] = f"Bearer {self.api_key}"
+            
+        # Initialize managers
+        self.documents = DocumentManager(self)
+        self.chat = ChatManager(self)
+        self.parser = ParserManager(self)
+        self.embedding = EmbeddingManager(self)
 
-    def ask(self, query: str) -> Dict[str, Any]:
+    def _make_request(self, method: str, endpoint: str, 
+                     params: Optional[Dict] = None, 
+                     json: Optional[Dict] = None, 
+                     data: Optional[Dict] = None,
+                     files: Optional[Dict] = None,
+                     stream: bool = False) -> Union[Dict, str, bytes]:
         """
-        Send a query to the Simba chat endpoint.
-        
-        This method sends a POST request to <api_url>/chat with the query message.
+        Helper method to make API requests.
         
         Args:
-            query (str): The query to send to Simba.
-        
+            method: HTTP method to use (GET, POST, etc.)
+            endpoint: API endpoint (will be appended to base URL)
+            params: Query parameters
+            json: JSON body data
+            data: Form data
+            files: Files to upload
+            stream: Whether to stream the response
+            
         Returns:
-            Dict[str, Any]: The JSON response from the server.
+            Response data (parsed JSON, text, or bytes depending on context)
         """
-        payload = {"message": query}
-        response = requests.post(
-            f"{self.api_url}/chat",
-            json=payload,
-            headers=self.headers
+        url = f"{self.api_url}/{endpoint.lstrip('/')}"
+        
+        # Handle files upload - don't send Content-Type header
+        request_headers = self.headers
+        if files:
+            request_headers = {k: v for k, v in self.headers.items() 
+                              if k != 'Content-Type'}
+        
+        response = requests.request(
+            method,
+            url,
+            params=params,
+            json=json,
+            data=data,
+            files=files,
+            headers=request_headers,
+            stream=stream
         )
         response.raise_for_status()
-        return response.text
+        
+        if stream:
+            return response.content
+        
+        try:
+            return response.json()
+        except ValueError:
+            return response.text
 
     def ingest_document(self, file_path: str) -> Dict[str, Any]:
         """
         Upload a document to Simba for ingestion.
         
-        This method sends a POST request to <api_url>/ingestion by uploading the file.
+        This method is deprecated. Use client.documents.create() instead.
         
         Args:
             file_path (str): The filesystem path to the document.
@@ -53,22 +91,22 @@ class SimbaClient:
         Returns:
             Dict[str, Any]: The JSON response from the server.
         """
-        with open(file_path, 'rb') as f:
-            files = {'file': f}
-            response = requests.post(
-                f"{self.api_url}/ingestion",
-                files=files,
-                headers=self.headers
-            )
-        response.raise_for_status()
-        return response.json()
-
-    # Additional methods (for parsing, retrieval, etc.) can be added here.
-    def as_retriever(self):
-        response = requests.get(
-            f"{self.api_url}/retriever/as_retriever",
-            headers=self.headers
+        import warnings
+        warnings.warn(
+            "ingest_document is deprecated; use documents.create() instead", 
+            DeprecationWarning, 
+            stacklevel=2
         )
-        response.raise_for_status()
-        return response
+        return self.documents.create(file_path)
+
+    def as_retriever(self) -> Dict[str, Any]:
+        """
+        Get the retriever configuration.
+        
+        Returns:
+            Dict[str, Any]: The retriever configuration.
+        """
+        return self._make_request("GET", "retriever/as_retriever")
+
+    # Additional methods for other API endpoints would go here
 

@@ -5,13 +5,17 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from simba.core.factories.database_factory import get_database
+from simba.core.factories.vector_store_factory import VectorStoreFactory
 from simba.models.simbadoc import SimbaDoc
 from simba.tasks.parsing_tasks import celery, parse_docling_task
+from simba.parsing.docling_parser import DoclingParser
+import torch
 
 logger = logging.getLogger(__name__)
 parsing = APIRouter()
 
 db = get_database()
+vector_store = VectorStoreFactory.get_vector_store()
 
 
 @parsing.get("/parsers")
@@ -23,11 +27,12 @@ async def get_parsers():
 class ParseDocumentRequest(BaseModel):
     document_id: str
     parser: str
+    sync: bool = False  # New parameter to indicate whether to parse synchronously
 
 
 @parsing.post("/parse")
 async def parse_document(request: ParseDocumentRequest):
-    """Parse a document asynchronously"""
+    """Parse a document asynchronously or synchronously based on the sync parameter"""
     try:
         logger.info(f"Received parse request: {request}")
 
@@ -36,6 +41,14 @@ async def parse_document(request: ParseDocumentRequest):
         if not simbadoc:
             raise HTTPException(status_code=404, detail="Document not found")
 
+        # If sync is True, parse synchronously
+        if request.sync:
+            if request.parser == "docling":
+                return await parse_document_sync(request.document_id)
+            else:
+                raise HTTPException(status_code=400, detail="Unsupported parser")
+        
+        # Otherwise, parse asynchronously using Celery
         elif request.parser == "docling":
             task = parse_docling_task.delay(request.document_id)
         else:
@@ -44,7 +57,55 @@ async def parse_document(request: ParseDocumentRequest):
         return {"task_id": task.id, "status_url": f"parsing/tasks/{task.id}"}
 
     except Exception as e:
-        logger.error(f"Error enqueuing task: {e}", exc_info=True)
+        logger.error(f"Error processing parse request: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@parsing.post("/parse/sync")
+async def parse_document_sync(document_id: str):
+    """Parse a document synchronously"""
+    try:
+        logger.info(f"Received synchronous parse request for document: {document_id}")
+
+        # Verify document exists first
+        simbadoc: SimbaDoc = db.get_document(document_id)
+        if not simbadoc:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        # Perform parsing directly
+        try:
+            parser = DoclingParser()
+            parsed_simba_doc = parser.parse(simbadoc)
+
+            # Update database
+            vector_store.add_documents(parsed_simba_doc.documents)
+            db.update_document(document_id, parsed_simba_doc)
+
+            # Return the parsed document data
+            return {
+                "status": "success",
+                "document_id": parsed_simba_doc.id,
+                "result": {
+                    "document_id": parsed_simba_doc.id,
+                    "num_chunks": len(parsed_simba_doc.documents) if parsed_simba_doc.documents else 0,
+                    "parsing_status": parsed_simba_doc.metadata.parsing_status,
+                    "parsed_at": parsed_simba_doc.metadata.parsed_at.isoformat() if parsed_simba_doc.metadata.parsed_at else None
+                }
+            }
+        except Exception as e:
+            logger.error(f"Parsing failed: {str(e)}", exc_info=True)
+            return {
+                "status": "error",
+                "document_id": document_id,
+                "error": str(e)
+            }
+        finally:
+            # Clean up any remaining GPU memory
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+    except Exception as e:
+        logger.error(f"Error processing synchronous parse request: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
