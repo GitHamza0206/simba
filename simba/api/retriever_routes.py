@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Body
-from typing import List, Optional
 import uuid
+from typing import List, Optional
 
-from simba.retrieval import Retriever, RetrievalMethod
-from simba.models.simbadoc import SimbaDoc, MetadataType
-from pydantic import BaseModel
+from fastapi import APIRouter, Body
 from langchain.schema import Document
+from pydantic import BaseModel
+
+from simba.models.simbadoc import MetadataType, SimbaDoc
+from simba.retrieval import RetrievalMethod, Retriever
 
 retriever_route = APIRouter(prefix="/retriever", tags=["Retriever"])
 retriever = Retriever()
@@ -32,10 +33,10 @@ async def get_retriever():
 async def retrieve_documents(request: RetrieveRequest) -> RetrieveResponse:
     """
     Retrieve documents using the specified method.
-    
+
     Args:
         request: RetrieveRequest with query and retrieval parameters
-        
+
     Returns:
         List of retrieved documents as SimbaDoc objects
     """
@@ -44,15 +45,15 @@ async def retrieve_documents(request: RetrieveRequest) -> RetrieveResponse:
         method=request.method,
         k=request.k,
         score_threshold=request.score_threshold,
-        filter=request.filter
+        filter=request.filter,
     )
-    
+
     # Convert documents to SimbaDoc objects
     simba_docs = []
     for i, doc in enumerate(documents):
         # Extract metadata or create default
         meta_dict = doc.metadata if hasattr(doc, "metadata") and doc.metadata else {}
-        
+
         # Create metadata
         metadata = MetadataType(
             filename=meta_dict.get("filename", f"result_{i}"),
@@ -67,16 +68,12 @@ async def retrieve_documents(request: RetrieveRequest) -> RetrieveResponse:
             splitter=meta_dict.get("splitter", None),
             uploadedAt=meta_dict.get("uploadedAt", ""),
             file_path=meta_dict.get("file_path", ""),
-            parsed_at=meta_dict.get("parsed_at", "")
+            parsed_at=meta_dict.get("parsed_at", ""),
         )
-        
+
         # Create SimbaDoc
-        simba_doc = SimbaDoc(
-            id=str(uuid.uuid4()),
-            documents=[doc],
-            metadata=metadata
-        )
-        
+        simba_doc = SimbaDoc(id=str(uuid.uuid4()), documents=[doc], metadata=metadata)
+
         simba_docs.append(simba_doc)
-    
+
     return RetrieveResponse(documents=simba_docs)
