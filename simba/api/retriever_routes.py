@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Body
-from typing import List, Optional
 import uuid
+from typing import List, Optional
 
-from simba.retrieval import Retriever, RetrievalMethod
-from simba.models.simbadoc import SimbaDoc, MetadataType
-from pydantic import BaseModel
+from fastapi import APIRouter, Body
 from langchain.schema import Document
+from pydantic import BaseModel
+
+from simba.models.simbadoc import MetadataType, SimbaDoc
+from simba.retrieval import RetrievalMethod, Retriever
 
 retriever_route = APIRouter(prefix="/retriever", tags=["Retriever"])
 retriever = Retriever()
@@ -32,10 +33,10 @@ async def get_retriever():
 async def retrieve_documents(request: RetrieveRequest) -> RetrieveResponse:
     """
     Retrieve documents using the specified method.
-    
+
     Args:
         request: RetrieveRequest with query and retrieval parameters
-        
+
     Returns:
         List of retrieved documents as SimbaDoc objects
     """
@@ -44,7 +45,7 @@ async def retrieve_documents(request: RetrieveRequest) -> RetrieveResponse:
         method=request.method,
         k=request.k,
         score_threshold=request.score_threshold,
-        filter=request.filter
+        filter=request.filter,
     )
-    
+
     return RetrieveResponse(documents=documents)
