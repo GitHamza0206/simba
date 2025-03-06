@@ -1,6 +1,24 @@
 # Changelog
 
 
+## [0.2.0](https://github.com/GitHamza0206/simba/compare/v0.1.1...v0.2.0) (2025-03-06)
+
+
+### ✨ Features
+
+* added clear_store & clean_index ([19fc88c](https://github.com/GitHamza0206/simba/commit/19fc88c22c5a0cf58e5180a16e038a7e3040e0b7))
+* adding embeddingManager in simba-client ([0376b70](https://github.com/GitHamza0206/simba/commit/0376b7049f56ea7289e586bfeaaa999416735d34))
+* retriever is now in simba-sdk ([63ce7db](https://github.com/GitHamza0206/simba/commit/63ce7db44076d4cb10ad02a9c8333c1f78e7f793))
+* retriever.retreive ([05edc21](https://github.com/GitHamza0206/simba/commit/05edc2144df8769d907b6fa74de0bfd940429d0b))
+* simba-client is now pip install package ([3daa459](https://github.com/GitHamza0206/simba/commit/3daa459edf81bdb7bd77c24101445c64a2e014be))
+* simba-sdk ([9482997](https://github.com/GitHamza0206/simba/commit/94829978b8c8c044a14b068de1a42d0eb69eaa35))
+* simba-sdk document ingestion ([a6f4988](https://github.com/GitHamza0206/simba/commit/a6f49885a1f9ce14a350db9854b932710a40112d))
+
+
+### 🐛 Bug Fixes
+
+* fix retrieve documents returns langchain Document ([fa93fc0](https://github.com/GitHamza0206/simba/commit/fa93fc0e40af941cdce3bec7a0fd460dd25983bf))
+
 ## [0.1.1](https://github.com/GitHamza0206/simba/compare/v0.1.0...v0.1.1) (2025-03-03)
 
 
