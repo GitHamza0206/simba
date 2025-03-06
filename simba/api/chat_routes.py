@@ -7,9 +7,12 @@ from pydantic import BaseModel
 
 from simba.chatbot.demo.graph import graph
 from simba.chatbot.demo.state import State, for_client
+from simba.core.langfuse_config import get_langfuse_callback_handler
+
 
 chat = APIRouter(prefix="/chat", tags=["chat"])
 
+langfuse_handler = get_langfuse_callback_handler()
 
 # request input format
 class Query(BaseModel):
@@ -19,8 +22,12 @@ class Query(BaseModel):
 @chat.post("/")
 async def invoke_graph(query: Query = Body(...)):
     """Invoke the graph workflow with a message"""
+   
+    if langfuse_handler is None:
+        config = {"configurable": {"thread_id": "2"}}
+    else:
+        config = {"configurable": {"thread_id": "2"}, "callbacks": [langfuse_handler]}
 
-    config = {"configurable": {"thread_id": "2"}}
     state = State()
     state["messages"] = [HumanMessage(content=query.message)]
 

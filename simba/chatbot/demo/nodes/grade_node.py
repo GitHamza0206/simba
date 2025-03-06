@@ -3,29 +3,30 @@ from simba.chatbot.demo.chains.grade_chain import grade_chain
 
 def grade(state):
     """
-    Grade documents
+    Grade answer for hallucination
 
     Args:
         state (dict): The current graph state
 
     Returns:
-        state (dict): New key added to state, grade, that contains grade
+        state (dict): New key added to state, score, that contains LLM generation
     """
-
-    print("---CHECK DOCUMENT RELEVANCE TO QUESTION---")
-    question = state["question"]
+    print("---GRADE---")
+    question = state["messages"][-1].content
     documents = state["documents"]
 
-    # Score each doc
-    filtered_docs = []
-    for d in documents:
-        score = grade_chain.invoke({"question": question, "document": d.page_content})
-        grade = score.binary_score
-        if grade == "yes":
-            print("---GRADE: DOCUMENT RELEVANT---")
-            filtered_docs.append(d)
-        else:
-            print("---GRADE: DOCUMENT NOT RELEVANT---")
-            continue
+    docs_content = "\n\n".join(doc.page_content for doc in documents)
+    
+    # Grade (callbacks are handled at the graph level)
+    score = grade_chain.invoke(
+        {
+            "context": docs_content,
+            "question": question,
+        }
+    )
 
-    return {"documents": filtered_docs, "question": question}
+    if score:
+        print(f"GRADE: {score}")
+        return {"documents": documents, "question": question, "score": score}
+    else:
+        return {"documents": documents, "question": question, "score": "0"}

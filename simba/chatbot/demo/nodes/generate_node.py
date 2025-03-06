@@ -18,7 +18,8 @@ def generate(state):
     documents = state["documents"]
 
     docs_content = "\n\n".join(doc.page_content for doc in documents)
-    # RAG generation
+    
+    # RAG generation (callbacks are handled at the graph level)
     generation = generate_chain.invoke(
         {
             "context": docs_content,

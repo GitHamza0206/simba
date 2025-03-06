@@ -57,6 +57,8 @@ torch = "^2.6.0"
 torchvision = "^0.21.0"
 torchaudio = "^2.6.0"
 celery = "^5.4.0"
+langfuse = "^2.59.7"
+ragas = "^0.2.14"
 
 
 [tool.poetry.group.dev.dependencies]

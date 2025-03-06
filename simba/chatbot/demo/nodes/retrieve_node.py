@@ -17,6 +17,8 @@ def retrieve(state):
         # Retrieval with error handling
         retriever = Retriever()
         ensemble_retriever = retriever.as_retriever()
+        
+        # Use the retriever without callbacks (they're handled at the graph level)
         documents = ensemble_retriever.invoke(question)
         print(f"Retrieved {len(documents)} documents")
 

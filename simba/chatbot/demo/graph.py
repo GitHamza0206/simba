@@ -8,6 +8,7 @@ from simba.chatbot.demo.nodes.grade_node import grade
 # Import nodes
 from simba.chatbot.demo.nodes.retrieve_node import retrieve
 from simba.chatbot.demo.state import State
+from simba.core.langfuse_config import get_langfuse_callback_handler
 
 # ===========================================
 
@@ -50,10 +51,13 @@ def show_graph(workflow):
     plt.show()
 
 
-# Compile
-graph = workflow.compile(checkpointer=memory)
+# Get Langfuse callback handler
+langfuse_handler = get_langfuse_callback_handler()
+
+# Compile the graph with the Langfuse callback handler configuration
+graph = workflow.compile(checkpointer=memory).with_config({"callbacks": [langfuse_handler]})
 
 if __name__ == "__main__":
-
+    # Just invoke the graph directly - the callbacks are already configured
     print(graph.invoke({"messages": "what is insurance?"}))
     show_graph(graph)
