@@ -951,6 +951,37 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
+  const handleDeleteMultiple = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    
+    if (window.confirm(`Delete ${ids.length} document(s)?`)) {
+      ids.forEach(id => {
+        onDelete(id);
+      });
+      setSelectedIds(new Set());
+    }
+  };
+
+  // Add a function to handle bulk deletion
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    
+    // Create confirmation dialog
+    if (confirm(`Are you sure you want to delete ${selectedIds.size} document(s)?`)) {
+      // Convert selected IDs set to array
+      const docIds = Array.from(selectedIds);
+      
+      // Delete each document one by one
+      for (const id of docIds) {
+        await onDelete(id);
+      }
+      
+      // Clear selection after deletion
+      setSelectedIds(new Set());
+    }
+  };
+
   return (
     <div className="relative">
       <CardContent>
@@ -1261,7 +1292,12 @@ const DocumentList: React.FC<DocumentListProps> = ({
                               id={`delete-button-${doc.id}`}
                               variant="ghost"
                               size="icon"
-                              onClick={(e) => { e.stopPropagation(); onDelete(doc.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Are you sure you want to delete "${doc.metadata.filename}"?`)) {
+                                  onDelete(doc.id);
+                                }
+                              }}
                               className="h-8 w-8 hover:bg-red-100 hover:text-red-600"
                             >
                               <Trash2 className="h-4 w-4 text-red-500" />
@@ -1288,7 +1324,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 {selectedIds.size} {selectedIds.size === 1 ? 'document' : 'documents'} selected
               </span>
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-4 items-center">
               <Button 
                 size="lg"
                 variant="outline"
@@ -1300,31 +1336,28 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 <Play className="h-4 w-4 mr-2" />
                 Parse Selected
               </Button>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm">Enable/Disable</span>
+                <Switch
+                  checked={documents.filter(doc => selectedIds.has(doc.id)).every(doc => doc.metadata.enabled)}
+                  onCheckedChange={(checked) => {
+                    const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
+                    selectedDocs.forEach(doc => {
+                      enableDocument(doc, checked);
+                    });
+                  }}
+                  aria-label="Toggle selected documents embedding"
+                />
+              </div>
+              
               <Button 
-                size="lg"
-                variant="outline"
-                onClick={() => {
-                  const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
-                  selectedDocs.forEach(doc => {
-                    enableDocument(doc, true);
-                  });
-                }}
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Enable Selected
-              </Button>
-              <Button 
-                size="lg"
-                variant="outline"
-                onClick={() => {
-                  const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
-                  selectedDocs.forEach(doc => {
-                    enableDocument(doc, false);
-                  });
-                }}
+                variant="destructive" 
+                onClick={handleBulkDelete}
+                className="bg-red-500 hover:bg-red-600"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Disable Selected
+                Delete Documents
               </Button>
             </div>
           </div>

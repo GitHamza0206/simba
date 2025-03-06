@@ -14,6 +14,23 @@ const ALLOWED_FILE_TYPES = [
   'application/vnd.openxmlformats-officedocument.presentationml.presentation'  // .pptx
 ];
 
+// Task types
+export interface IngestionTask {
+  task_id: string;
+  filename: string;
+  status: string;
+  message: string;
+}
+
+export interface TaskResponse {
+  tasks: IngestionTask[];
+}
+
+export interface TaskStatus {
+  status: string;
+  message: any;
+}
+
 class IngestionApi {
   private baseUrl = config.apiUrl;
 
@@ -36,7 +53,7 @@ class IngestionApi {
 
   async uploadDocuments(
     files: File[], 
-  ): Promise<SimbaDoc[]> {
+  ): Promise<TaskResponse> {
     // Validate all files
     for (const file of files) {
       if (!ALLOWED_FILE_TYPES.includes(file.type)) {
@@ -53,7 +70,7 @@ class IngestionApi {
       formData.append('files', file);
     });
 
-
+    // Returns task information instead of documents directly
     return this.request('/ingestion', {
       method: 'POST',
       body: formData,
@@ -63,8 +80,35 @@ class IngestionApi {
   // Helper method for single file upload
   async uploadDocument(
     file: File, 
-  ): Promise<SimbaDoc[]> {
+  ): Promise<TaskResponse> {
     return this.uploadDocuments([file]);
+  }
+
+  // Get the status of a document ingestion task
+  async getIngestionTaskStatus(taskId: string): Promise<TaskStatus> {
+    return this.request(`/ingestion/task/${taskId}`);
+  }
+
+  // Poll task status until it completes or fails
+  async pollTaskUntilComplete(taskId: string, maxAttempts = 30, interval = 2000): Promise<TaskStatus> {
+    let attempts = 0;
+    
+    const checkStatus = async (): Promise<TaskStatus> => {
+      const status = await this.getIngestionTaskStatus(taskId);
+      
+      if (['success', 'failure'].includes(status.status) || attempts >= maxAttempts) {
+        return status;
+      }
+      
+      attempts++;
+      return new Promise(resolve => {
+        setTimeout(async () => {
+          resolve(await checkStatus());
+        }, interval);
+      });
+    };
+    
+    return checkStatus();
   }
 
   async getDocuments(): Promise<SimbaDoc[]> {
@@ -82,11 +126,6 @@ class IngestionApi {
   }
 
   async deleteDocument(id: string): Promise<void> {
-    const isConfirmed = window.confirm('Are you sure you want to delete this document?');
-    if (!isConfirmed) {
-      throw new Error('Delete cancelled by user');
-    }
-
     await this.request('/ingestion', {
       method: 'DELETE',
       headers: {

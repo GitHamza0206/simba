@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "simba-core"
-version = "0.1.0"
+version = "0.1.1"
 description = "Knowledge Management System that connects to your RAG system"
 authors = ["GitHamza0206 <zeroualihamza0206@gmail.com>"]
 readme = "README.md"
