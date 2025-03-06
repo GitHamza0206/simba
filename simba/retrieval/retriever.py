@@ -1,138 +1,164 @@
-from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+"""
+Main retriever interface for document retrieval.
+"""
+import logging
+from typing import List, Dict, Any, Union, Optional
 
-from langchain.retrievers import EnsembleRetriever
 from langchain.schema import Document
-from langchain_community.retrievers import BM25Retriever
 
 from simba.core.factories.vector_store_factory import VectorStoreFactory
+from simba.core.config import settings
+from simba.retrieval.base import BaseRetriever, RetrievalMethod
+from simba.retrieval.factory import RetrieverFactory
 
-
-class RetrievalMethod(str, Enum):
-    DEFAULT = "default"
-    ENSEMBLE = "ensemble"
-    SEMANTIC = "semantic"
-    HYBRID = "hybrid"
+logger = logging.getLogger(__name__)
 
 
 class Retriever:
-    def __init__(self):
+    """
+    Main retrieval interface for the application.
+    This class serves as a facade over the various retrieval strategies.
+    """
+    
+    def __init__(self, config: Dict[str, Any] = None):
+        """
+        Initialize the retriever with a vector store and configuration.
+        
+        Args:
+            config: Optional configuration dictionary. If not provided,
+                  will be loaded from application settings.
+        """
         self.store = VectorStoreFactory.get_vector_store()
-
+        self.factory = RetrieverFactory
+        
+        # Get default retriever from configuration
+        self.default_retriever = self.factory.from_config(config)
+        logger.info(f"Initialized retriever with default strategy: {type(self.default_retriever).__name__}")
+    
     def retrieve(
-        self, query: str, method: Union[str, RetrievalMethod] = RetrievalMethod.DEFAULT, **kwargs
+        self, 
+        query: str, 
+        method: Union[str, RetrievalMethod] = None, 
+        **kwargs
     ) -> List[Document]:
         """
         Retrieve documents using the specified method.
 
         Args:
             query: The query string
-            method: Retrieval method to use
+            method: Retrieval method to use. If None, uses the configured default.
             **kwargs: Additional parameters for the retrieval method
 
         Returns:
             List of relevant documents
         """
-        # Convert string to enum if needed
-        if isinstance(method, str):
-            method = RetrievalMethod(method)
-
-        # Choose the appropriate retrieval method
-        if method == RetrievalMethod.ENSEMBLE:
-            return self._retrieve_ensemble(query, **kwargs)
-        elif method == RetrievalMethod.SEMANTIC:
-            return self._retrieve_semantic(query, **kwargs)
-        elif method == RetrievalMethod.HYBRID:
-            return self._retrieve_hybrid(query, **kwargs)
-        else:  # Default
-            return self._retrieve_default(query, **kwargs)
-
-    def _retrieve_default(self, query: str, **kwargs) -> List[Document]:
-        k = kwargs.get("k", 5)
-        return self.store.as_retriever(
-            search_type="similarity", search_kwargs={"k": k}
-        ).get_relevant_documents(query)
-
-    def _retrieve_ensemble(self, query: str, **kwargs) -> List[Document]:
-        ensemble = self.as_ensemble_retriever()
-        return ensemble.get_relevant_documents(query)
-
-    def _retrieve_semantic(self, query: str, **kwargs) -> List[Document]:
+        # If method is specified, create a retriever for it
+        if method:
+            retriever = self.factory.get_retriever(method, vector_store=self.store)
+            logger.debug(f"Using retrieval strategy '{method}' for query: {query[:50]}...")
+        else:
+            # Use the default retriever
+            retriever = self.default_retriever
+            logger.debug(f"Using default retrieval strategy for query: {query[:50]}...")
+        
+        # Retrieve documents
+        docs = retriever.retrieve(query, **kwargs)
+        logger.debug(f"Retrieved {len(docs)} documents using {type(retriever).__name__}")
+        return docs
+    
+    def as_retriever(self, method: Union[str, RetrievalMethod] = None, **kwargs):
         """
-        Retrieve documents using semantic search with configurable thresholds.
-
+        Return a LangChain-compatible retriever.
+        
         Args:
-            query: The query string
-            **kwargs: Additional parameters including:
-                - k: Number of documents to retrieve
-                - score_threshold: Minimum similarity score to include a document
-                - filter: Metadata filters to apply to the search
-
+            method: Retrieval method to use. If None, uses the configured default.
+            **kwargs: Additional parameters for the retriever
+            
         Returns:
-            List of relevant documents
+            A LangChain retriever
         """
-        k = kwargs.get("k", 5)
-        score_threshold = kwargs.get("score_threshold", 0.5)
-        filter_dict = kwargs.get("filter", None)
-
-        return self.store.as_retriever(
-            search_type="similarity_score_threshold",
-            search_kwargs={"k": k, "score_threshold": score_threshold, "filter": filter_dict},
-        ).get_relevant_documents(query)
-
-    def _retrieve_hybrid(self, query: str, **kwargs) -> List[Document]:
+        # If method is specified, create a retriever for it
+        if method:
+            retriever = self.factory.get_retriever(method, vector_store=self.store)
+            logger.debug(f"Creating LangChain retriever with strategy: {method}")
+        else:
+            # Use the default retriever
+            retriever = self.default_retriever
+            logger.debug(f"Creating LangChain retriever with default strategy: {type(retriever).__name__}")
+        
+        # Return as a LangChain retriever
+        return retriever.as_retriever(**kwargs)
+    
+    def as_ensemble_retriever(
+        self, 
+        retrievers: Optional[List[BaseRetriever]] = None,
+        weights: Optional[List[float]] = None,
+        **kwargs
+    ):
         """
-        Retrieve documents using a custom hybrid approach that combines
-        multiple retrieval strategies and post-processes the results.
-
+        Create an ensemble retriever that combines multiple strategies.
+        
         Args:
-            query: The query string
-            **kwargs: Additional parameters including:
-                - k: Number of documents to retrieve
-                - reranker_threshold: Threshold for reranking
-                - filter: Metadata filters to apply
-
+            retrievers: List of retrievers to ensemble
+            weights: Weights for each retriever
+            **kwargs: Additional parameters for the ensemble
+            
         Returns:
-            List of relevant documents
+            An ensemble retriever
         """
-        k = kwargs.get("k", 5)
-        filter_dict = kwargs.get("filter", None)
-
-        # Get documents from different retrieval methods
-        default_docs = self._retrieve_default(query, k=k * 2, filter=filter_dict)
-        semantic_docs = self._retrieve_semantic(query, k=k * 2, filter=filter_dict)
-
-        # Combine results (removing duplicates)
-        combined_docs = []
-        seen_contents = set()
-
-        # Process both result sets, prioritizing semantic results
-        for doc in semantic_docs + default_docs:
-            # Create a hash of the content to identify duplicates
-            # Using a substring to avoid excessive memory usage for large docs
-            content_hash = hash(doc.page_content[:100])
-
-            if content_hash not in seen_contents:
-                seen_contents.add(content_hash)
-                combined_docs.append(doc)
-
-                # Stop when we have enough documents
-                if len(combined_docs) >= k:
-                    break
-
-        return combined_docs
-
-    def as_retriever(self, **kwargs):
-        return self.store.as_retriever(**kwargs)
-
-    def as_ensemble_retriever(self):
-        documents = self.store.get_documents()
-
-        self.store.save()
-
-        retriever = self.store.as_retriever(search_type="similarity", search_kwargs={"k": 5})
-        keyword_retriever = BM25Retriever.from_documents(
-            documents,
-            preprocess_func=lambda text: text.lower(),  # Simple preprocessing
+        # Import here to avoid circular import
+        from simba.retrieval.ensemble import EnsembleSearchRetriever
+        
+        # Create an ensemble retriever
+        ensemble = EnsembleSearchRetriever(
+            vector_store=self.store,
+            retrievers=retrievers,
+            weights=weights
         )
-        return EnsembleRetriever(retrievers=[retriever, keyword_retriever], weights=[0.7, 0.3])
+        
+        logger.debug(f"Created ensemble retriever with {len(ensemble.retrievers)} strategies")
+        
+        # Return as a LangChain retriever
+        return ensemble.as_retriever(**kwargs)
+
+
+def run_example():
+    """Example usage of the retriever."""
+    # Create a retriever with default config
+    retriever = Retriever()
+    
+    # Example query
+    query = "How does vector search work?"
+    
+    print(f"Query: {query}")
+    print(f"Default retriever type: {type(retriever.default_retriever).__name__}")
+    
+    # Retrieve using default configured retriever
+    print("\nUsing default configured retriever:")
+    docs = retriever.retrieve(query, k=3)
+    print(f"Found {len(docs)} documents")
+    
+    # Try different retrieval methods
+    for method in [
+        RetrievalMethod.DEFAULT,
+        RetrievalMethod.SEMANTIC,
+        RetrievalMethod.KEYWORD,
+        RetrievalMethod.HYBRID,
+        RetrievalMethod.ENSEMBLE
+    ]:
+        print(f"\nRetrieval method: {method}")
+        try:
+            docs = retriever.retrieve(query, method=method, k=3)
+            print(f"Found {len(docs)} documents")
+            for i, doc in enumerate(docs):
+                print(f"Document {i+1}: {doc.page_content[:100]}...")
+        except Exception as e:
+            print(f"Error with {method} retrieval: {str(e)}")
+    
+    print("\nDone!")
+
+
+if __name__ == "__main__":
+    run_example()
+
+
