@@ -109,26 +109,26 @@ class ChunkingConfig(BaseModel):
 
 class RetrievalConfig(BaseModel):
     """Configuration for document retrieval."""
+
     method: str = "default"  # default, semantic, keyword, hybrid, ensemble, reranked
-    
+
     # Default parameters for all retrieval methods
     k: int = 5
-    
+
     # Method-specific parameters
-    params: Dict[str, Any] = Field(default_factory=lambda: {
-        # Semantic retrieval parameters
-        "score_threshold": 0.5,
-        
-        # Hybrid retrieval parameters
-        "prioritize_semantic": True,
-        
-        # Ensemble retrieval parameters
-        "weights": [0.5, 0.5],  # Default weights for default + semantic
-        
-        # Reranking parameters (future implementation)
-        "reranker_model": "colbert",
-        "reranker_threshold": 0.7
-    })
+    params: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            # Semantic retrieval parameters
+            "score_threshold": 0.5,
+            # Hybrid retrieval parameters
+            "prioritize_semantic": True,
+            # Ensemble retrieval parameters
+            "weights": [0.5, 0.5],  # Default weights for default + semantic
+            # Reranking parameters (future implementation)
+            "reranker_model": "colbert",
+            "reranker_threshold": 0.7,
+        }
+    )
 
 
 class DatabaseConfig(BaseModel):

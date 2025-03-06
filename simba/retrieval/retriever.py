@@ -1,13 +1,14 @@
 """
 Main retriever interface for document retrieval.
 """
+
 import logging
-from typing import List, Dict, Any, Union, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from langchain.schema import Document
 
-from simba.core.factories.vector_store_factory import VectorStoreFactory
 from simba.core.config import settings
+from simba.core.factories.vector_store_factory import VectorStoreFactory
 from simba.retrieval.base import BaseRetriever, RetrievalMethod
 from simba.retrieval.factory import RetrieverFactory
 
@@ -19,27 +20,26 @@ class Retriever:
     Main retrieval interface for the application.
     This class serves as a facade over the various retrieval strategies.
     """
-    
+
     def __init__(self, config: Dict[str, Any] = None):
         """
         Initialize the retriever with a vector store and configuration.
-        
+
         Args:
             config: Optional configuration dictionary. If not provided,
                   will be loaded from application settings.
         """
         self.store = VectorStoreFactory.get_vector_store()
         self.factory = RetrieverFactory
-        
+
         # Get default retriever from configuration
         self.default_retriever = self.factory.from_config(config)
-        logger.info(f"Initialized retriever with default strategy: {type(self.default_retriever).__name__}")
-    
+        logger.info(
+            f"Initialized retriever with default strategy: {type(self.default_retriever).__name__}"
+        )
+
     def retrieve(
-        self, 
-        query: str, 
-        method: Union[str, RetrievalMethod] = None, 
-        **kwargs
+        self, query: str, method: Union[str, RetrievalMethod] = None, **kwargs
     ) -> List[Document]:
         """
         Retrieve documents using the specified method.
@@ -60,20 +60,20 @@ class Retriever:
             # Use the default retriever
             retriever = self.default_retriever
             logger.debug(f"Using default retrieval strategy for query: {query[:50]}...")
-        
+
         # Retrieve documents
         docs = retriever.retrieve(query, **kwargs)
         logger.debug(f"Retrieved {len(docs)} documents using {type(retriever).__name__}")
         return docs
-    
+
     def as_retriever(self, method: Union[str, RetrievalMethod] = None, **kwargs):
         """
         Return a LangChain-compatible retriever.
-        
+
         Args:
             method: Retrieval method to use. If None, uses the configured default.
             **kwargs: Additional parameters for the retriever
-            
+
         Returns:
             A LangChain retriever
         """
@@ -84,40 +84,40 @@ class Retriever:
         else:
             # Use the default retriever
             retriever = self.default_retriever
-            logger.debug(f"Creating LangChain retriever with default strategy: {type(retriever).__name__}")
-        
+            logger.debug(
+                f"Creating LangChain retriever with default strategy: {type(retriever).__name__}"
+            )
+
         # Return as a LangChain retriever
         return retriever.as_retriever(**kwargs)
-    
+
     def as_ensemble_retriever(
-        self, 
+        self,
         retrievers: Optional[List[BaseRetriever]] = None,
         weights: Optional[List[float]] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Create an ensemble retriever that combines multiple strategies.
-        
+
         Args:
             retrievers: List of retrievers to ensemble
             weights: Weights for each retriever
             **kwargs: Additional parameters for the ensemble
-            
+
         Returns:
             An ensemble retriever
         """
         # Import here to avoid circular import
         from simba.retrieval.ensemble import EnsembleSearchRetriever
-        
+
         # Create an ensemble retriever
         ensemble = EnsembleSearchRetriever(
-            vector_store=self.store,
-            retrievers=retrievers,
-            weights=weights
+            vector_store=self.store, retrievers=retrievers, weights=weights
         )
-        
+
         logger.debug(f"Created ensemble retriever with {len(ensemble.retrievers)} strategies")
-        
+
         # Return as a LangChain retriever
         return ensemble.as_retriever(**kwargs)
 
@@ -126,25 +126,25 @@ def run_example():
     """Example usage of the retriever."""
     # Create a retriever with default config
     retriever = Retriever()
-    
+
     # Example query
     query = "How does vector search work?"
-    
+
     print(f"Query: {query}")
     print(f"Default retriever type: {type(retriever.default_retriever).__name__}")
-    
+
     # Retrieve using default configured retriever
     print("\nUsing default configured retriever:")
     docs = retriever.retrieve(query, k=3)
     print(f"Found {len(docs)} documents")
-    
+
     # Try different retrieval methods
     for method in [
         RetrievalMethod.DEFAULT,
         RetrievalMethod.SEMANTIC,
         RetrievalMethod.KEYWORD,
         RetrievalMethod.HYBRID,
-        RetrievalMethod.ENSEMBLE
+        RetrievalMethod.ENSEMBLE,
     ]:
         print(f"\nRetrieval method: {method}")
         try:
@@ -154,11 +154,9 @@ def run_example():
                 print(f"Document {i+1}: {doc.page_content[:100]}...")
         except Exception as e:
             print(f"Error with {method} retrieval: {str(e)}")
-    
+
     print("\nDone!")
 
 
 if __name__ == "__main__":
     run_example()
-
-
