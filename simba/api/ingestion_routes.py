@@ -3,6 +3,8 @@ import os
 import logging
 from pathlib import Path
 from typing import List, Dict, Any
+import uuid
+import aiofiles
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, BackgroundTasks
 from fastapi.responses import FileResponse
@@ -12,7 +14,7 @@ from simba.core.factories.database_factory import get_database
 from simba.core.factories.vector_store_factory import VectorStoreFactory
 from simba.ingestion import Loader
 from simba.ingestion.document_ingestion import DocumentIngestionService
-from simba.ingestion.file_handling import save_file_locally
+from simba.ingestion.file_handling import save_file_locally, delete_file_locally
 from simba.models.simbadoc import SimbaDoc
 from simba.tasks.ingestion_tasks import ingest_document_task
 
@@ -97,20 +99,81 @@ def submit_ingestion_task(file_info: Dict[str, Any], folder_path: str):
             
         # Submit task
         logger.info(f"Submitting ingestion task for file: {filename} at path: {file_path}, size: {file_size}")
-        task = ingest_document_task.delay(
-            file_path=file_path,
-            file_name=filename,
-            file_size=file_size,
-            folder_path=folder_path
-        )
-        
-        logger.info(f"Task submitted with ID: {task.id}")
-        return {
-            "task_id": task.id,
-            "filename": filename,
-            "status": "processing",
-            "message": f"Document {filename} queued for ingestion"
-        }
+        try:
+            # Try to submit the task to Celery
+            task = ingest_document_task.delay(
+                file_path=file_path,
+                file_name=filename,
+                file_size=file_size,
+                folder_path=folder_path
+            )
+            
+            # Verify Celery accepted the task by checking if we can access the task ID
+            # This will fail if Celery is not responding
+            if not task or not task.id:
+                raise Exception("Celery did not return a valid task ID")
+                
+            logger.info(f"Task submitted with ID: {task.id}")
+            return {
+                "task_id": task.id,
+                "filename": filename,
+                "status": "processing",
+                "message": f"Document {filename} queued for ingestion"
+            }
+            
+        except Exception as celery_error:
+            # Celery failed or didn't respond, fall back to synchronous processing
+            logger.warning(f"Celery task submission failed: {str(celery_error)}. Falling back to synchronous processing.")
+            
+            try:
+                # Create a synchronous context for the async ingestion
+                loop = asyncio.get_event_loop()
+                
+                # Simulate the functionality of the Celery task
+                class MockUploadFile:
+                    def __init__(self, filename, size):
+                        self.filename = filename
+                        self.size = size
+                        self._file_path = file_path
+                    
+                    async def read(self):
+                        async with aiofiles.open(self._file_path, "rb") as f:
+                            return await f.read()
+                    
+                    async def seek(self, position):
+                        pass  # No need to implement for synchronous processing
+                        
+                    async def close(self):
+                        pass  # No need to implement for synchronous processing
+                
+                # Create a mock UploadFile object
+                mock_file = MockUploadFile(filename=filename, size=file_size)
+                
+                # Create a document ingestion service
+                ingestion_service = DocumentIngestionService()
+                
+                # Run the ingest_document method synchronously
+                doc = loop.run_until_complete(
+                    ingestion_service.ingest_document(file=mock_file, file_path=file_path)
+                )
+                
+                logger.info(f"Synchronous processing complete for {filename}")
+                return {
+                    "task_id": f"sync-{uuid.uuid4()}",  # Generate a unique ID for the sync task
+                    "filename": filename,
+                    "status": "completed",  # Mark as completed since it's done synchronously
+                    "message": f"Document {filename} processed synchronously",
+                    "doc_id": doc.metadata.get("id") if doc and hasattr(doc, "metadata") else None
+                }
+                
+            except Exception as sync_error:
+                logger.error(f"Synchronous processing also failed: {str(sync_error)}", exc_info=True)
+                return {
+                    "task_id": "error",
+                    "filename": filename,
+                    "status": "error",
+                    "message": f"Failed to process document (both async and sync): {str(sync_error)}"
+                }
     except Exception as e:
         logger.error(f"Error submitting task for {filename}: {str(e)}", exc_info=True)
         return {
