@@ -126,11 +126,6 @@ class IngestionApi {
   }
 
   async deleteDocument(id: string): Promise<void> {
-    const isConfirmed = window.confirm('Are you sure you want to delete this document?');
-    if (!isConfirmed) {
-      throw new Error('Delete cancelled by user');
-    }
-
     await this.request('/ingestion', {
       method: 'DELETE',
       headers: {

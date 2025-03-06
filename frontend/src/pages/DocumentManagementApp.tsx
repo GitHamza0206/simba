@@ -79,13 +79,11 @@ const DocumentManagementApp: React.FC = () => {
         description: "Document successfully deleted",
       });
     } catch (error: any) {
-      if (error.message !== 'Delete cancelled by user') {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error.message || "Failed to delete document",
-        });
-      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to delete document",
+      });
     }
   };
 
