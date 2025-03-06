@@ -20,11 +20,11 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 async def save_file_locally(file: UploadFile, store_path: Path) -> Path:
     """
     Save uploaded file to local storage asynchronously
-    
+
     Args:
         file: The uploaded file
         store_path: Directory path to save the file in
-        
+
     Returns:
         Path: The full path to the saved file
     """
@@ -36,7 +36,7 @@ async def save_file_locally(file: UploadFile, store_path: Path) -> Path:
         await out_file.write(content)
 
     await file.seek(0)  # Reset file pointer
-    
+
     return file_path  # Return the path to the saved file
 
 
