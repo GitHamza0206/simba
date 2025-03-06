@@ -16,17 +16,12 @@ class RetrieveRequest(BaseModel):
     query: str
     method: Optional[str] = "default"
     k: Optional[int] = 5
-    score_threshold: Optional[float] = None
+    score_threshold: Optional[float] = 0
     filter: Optional[dict] = None
 
 
 class RetrieveResponse(BaseModel):
     documents: List[Document]
-
-
-@retriever_route.get("/as_retriever")
-async def get_retriever():
-    return retriever.as_retriever()  # TODO: Add config in /dto/retriever_dto.py
 
 
 @retriever_route.post("/retrieve")
