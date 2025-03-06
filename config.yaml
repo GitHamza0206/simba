@@ -35,7 +35,27 @@ chunking:
   chunk_overlap: 200
 
 retrieval:
+  method: "hybrid" # Options: default, semantic, keyword, hybrid, ensemble, reranked
   k: 5
+  # Method-specific parameters
+  params:
+    # Semantic retrieval parameters
+    score_threshold: 0.5
+    
+    # Hybrid retrieval parameters
+    prioritize_semantic: true
+    
+    # Ensemble retrieval parameters
+    weights: [0.7, 0.3]  # Weights for semantic and keyword retrievers
+    
+    # Reranking parameters
+    reranker_model: colbert
+    reranker_threshold: 0.7
+
+# Database configuration
+database:
+  provider: litedb # Options: litedb, sqlite
+  additional_params: {}
 
 celery: 
   broker_url: ${CELERY_BROKER_URL:-redis://redis:6379/0}
