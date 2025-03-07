@@ -79,11 +79,13 @@ const DocumentManagementApp: React.FC = () => {
         description: "Document successfully deleted",
       });
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to delete document",
-      });
+      if (error.message !== 'Delete cancelled by user') {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message || "Failed to delete document",
+        });
+      }
     }
   };
 
@@ -105,82 +107,14 @@ const DocumentManagementApp: React.FC = () => {
     try {
       const fileArray = Array.from(files);
       setLoadingStatus("Uploading files...");
-      
-      // Get task information for uploaded files
-      const response = await ingestionApi.uploadDocuments(fileArray);
-      const tasks = response.tasks;
-      
-      setProgress(30);
-      setLoadingStatus(`Processing ${tasks.length} documents...`);
-      
-      // Extract tasks that are actually processing (not errored or queued)
-      const processingTasks = tasks.filter(task => task.status === 'processing');
-      
-      if (processingTasks.length > 0) {
-        // For better UX, update progress as we check tasks
-        const checkInterval = 1000; // 1 second between checks
-        const progressIncrement = 50 / processingTasks.length; // Distribute the remaining 50% across tasks
-        
-        // Set a reasonable timeout for all tasks
-        const timeoutMs = 90000; // 1.5 minute timeout for all files combined
-        const startTime = Date.now();
-        
-        // Process in batches to avoid overwhelming the browser
-        const batchSize = 3; // Check status for 3 files at a time
-        let completedTasks = 0;
-        
-        // Only process tasks that are in 'processing' state
-        for (let i = 0; i < processingTasks.length; i += batchSize) {
-          // Check if we've exceeded timeout
-          if (Date.now() - startTime > timeoutMs) {
-            console.log('Processing timeout exceeded, continuing with fetch');
-            break;
-          }
-          
-          const batch = processingTasks.slice(i, i + batchSize);
-          const promises = batch.map(async (task) => {
-            // Only poll for a set duration per task
-            const taskTimeoutMs = 30000; // 30 seconds per task
-            const taskStartTime = Date.now();
-            
-            try {
-              // Poll until task completes or times out
-              while (Date.now() - taskStartTime < taskTimeoutMs) {
-                const status = await ingestionApi.getIngestionTaskStatus(task.task_id);
-                
-                if (status.status === 'success' || status.status === 'failure') {
-                  completedTasks++;
-                  setProgress(Math.min(80, 30 + (completedTasks * progressIncrement)));
-                  return status;
-                }
-                
-                // Wait before checking again
-                await new Promise(resolve => setTimeout(resolve, checkInterval));
-              }
-            } catch (error) {
-              console.error(`Error checking task status for ${task.filename}:`, error);
-            }
-            
-            // If we get here, the task timed out or errored
-            return { status: 'unknown', message: 'Task status unknown' };
-          });
-          
-          // Wait for this batch to complete before moving to the next
-          await Promise.all(promises);
-        }
-      }
-      
-      // Final fetch to get the latest document list
-      setProgress(90);
-      setLoadingStatus("Finalizing...");
-      
-      // Give the background tasks some time to complete
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const uploadedDocs = await ingestionApi.uploadDocuments(fileArray);
+      setProgress(50);
+      setLoadingStatus("Processing documents...");
+      await new Promise(resolve => setTimeout(resolve, 1000));
       await fetchDocuments();
-      
       toast({
         title: "Success",
-        description: `${tasks.length} ${tasks.length === 1 ? 'file' : 'files'} uploaded successfully`,
+        description: `${uploadedDocs.length} ${uploadedDocs.length === 1 ? 'file' : 'files'} uploaded successfully`,
       });
     } catch (error: any) {
       console.error('Upload error:', error);

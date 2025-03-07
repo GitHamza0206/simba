@@ -54,16 +54,13 @@ const ChatApp: React.FC = () => {
 
   const handleChatUpload = async (files: FileList) => {
     try {
-      const response = await ingestionApi.uploadDocuments(Array.from(files));
+      await ingestionApi.uploadDocuments(Array.from(files));
       setIsUploadModalOpen(false);
-      
-      // Count of files that were actually queued
-      const fileCount = response.tasks.length;
 
       // Show toast in chat interface
       toast({
         title: "✅ Upload Successful",
-        description: `${fileCount} ${fileCount === 1 ? 'document' : 'documents'} queued for processing. Go to KMS to view them.`,
+        description: "Your documents have been uploaded. Go to KMS to process them.",
         className: "bg-green-50 text-green-900 border-green-200",
         duration: 5000
       });
