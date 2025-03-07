@@ -3,8 +3,10 @@ from typing import List
 
 from langchain.schema import Document
 from langchain_community.document_loaders import (
+    CSVLoader,
     TextLoader,
     UnstructuredExcelLoader,
+    UnstructuredImageLoader,
     UnstructuredMarkdownLoader,
     UnstructuredPDFLoader,
     UnstructuredPowerPointLoader,
@@ -21,6 +23,23 @@ class Loader:
             ".xlsx": UnstructuredExcelLoader,
             ".docx": UnstructuredWordDocumentLoader,
             ".txt": TextLoader,
+            ".png": UnstructuredImageLoader,
+            ".jpg": UnstructuredImageLoader,
+            ".jpeg": UnstructuredImageLoader,
+            ".gif": UnstructuredImageLoader,
+            ".bmp": UnstructuredImageLoader,
+            ".tiff": UnstructuredImageLoader,
+            ".ico": UnstructuredImageLoader,
+            ".csv": CSVLoader,
+            ".doc": UnstructuredWordDocumentLoader,
+            ".xls": UnstructuredExcelLoader,
+            ".ppt": UnstructuredPowerPointLoader,
+            ".rtf": UnstructuredWordDocumentLoader,
+            ".odt": UnstructuredWordDocumentLoader,
+            ".ods": UnstructuredExcelLoader,
+            ".odp": UnstructuredPowerPointLoader,
+            ".odg": UnstructuredImageLoader,
+            ".odc": UnstructuredImageLoader,
         }
         self.current_loader = None  # Track current loader
 

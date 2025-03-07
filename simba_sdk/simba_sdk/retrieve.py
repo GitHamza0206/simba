@@ -29,14 +29,14 @@ class RetrieveManager:
         Returns:
             Dict[str, Any]: List of available retrieval strategies
         """
-        url = f"{self.client.api_url}/retriever/as_retriever"
+        url = f"{self.client.api_url}/retriever/strategies"
         response = requests.get(url, headers=self.headers)
         response.raise_for_status()
         return response.json()
     
     def retrieve(self, 
                 query: str, 
-                method: str = "semantic", 
+                method: str = "default", 
                 filter: Optional[Dict[str, Any]] = None,
                 k: int = 5,
                 score_threshold: Optional[float] = None) -> Dict[str, Any]:

@@ -1,5 +1,7 @@
 from simba.retrieval import Retriever
 
+retriever = Retriever()
+
 
 def retrieve(state):
     """
@@ -15,9 +17,8 @@ def retrieve(state):
         print("---RETRIEVE---")
         question = state["messages"][-1].content
         # Retrieval with error handling
-        retriever = Retriever()
-        ensemble_retriever = retriever.as_retriever()
-        documents = ensemble_retriever.invoke(question)
+
+        documents = retriever.retrieve(question)
         print(f"Retrieved {len(documents)} documents")
 
         return {"documents": documents, "question": question}

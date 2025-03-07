@@ -63,6 +63,15 @@ def create_app():
         logger.info(f"Embedding Device: {settings.embedding.device}")
         logger.info(f"Vector Store Provider: {settings.vector_store.provider}")
         logger.info(f"Database Provider: {settings.database.provider}")
+
+        # Add retrieval strategy information
+        if hasattr(settings, "retrieval") and hasattr(settings.retrieval, "method"):
+            logger.info(f"Retrieval Method: {settings.retrieval.method}")
+            if hasattr(settings.retrieval, "k"):
+                logger.info(f"Retrieval Top-K: {settings.retrieval.k}")
+        else:
+            logger.info("Retrieval Method: default")
+
         logger.info(f"Base Directory: {settings.paths.base_dir}")
         logger.info(f"Upload Directory: {settings.paths.upload_dir}")
         logger.info(f"Vector Store Directory: {settings.paths.vector_store_dir}")
