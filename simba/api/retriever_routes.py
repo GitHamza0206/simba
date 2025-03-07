@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Body
 from langchain.schema import Document
@@ -71,5 +71,5 @@ async def get_retrieval_strategies() -> RetrievalStrategiesResponse:
         RetrievalMethod.ENSEMBLE.value: "Ensemble search that combines multiple retrieval strategies with weights",
         RetrievalMethod.RERANKED.value: "Semantic search followed by reranking for improved relevance",
     }
-    
+
     return RetrievalStrategiesResponse(strategies=strategy_descriptions)

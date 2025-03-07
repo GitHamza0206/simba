@@ -181,4 +181,3 @@ def ingest_document_task(
 
         # Force garbage collection again
         gc.collect()
-
