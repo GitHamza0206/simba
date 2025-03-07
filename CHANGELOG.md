@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.0](https://github.com/GitHamza0206/simba/compare/v0.2.0...v0.3.0) (2025-03-07)
+
+
+### ✨ Features
+
+* ingesting with celery & multiple delete ([0cb4315](https://github.com/GitHamza0206/simba/commit/0cb4315a2b338b4ac0e2c9618a524af6f7fc0743))
+* ingestion working with celery ([e9eea7d](https://github.com/GitHamza0206/simba/commit/e9eea7db8d5f4836668d22dc50a8fb3bcd15a7aa))
+* refacto retrieval, added abstract class and modulari ([684d51b](https://github.com/GitHamza0206/simba/commit/684d51b897d0d84e0cd66d22914eecaefed1caa0))
+* sdk ([c1cb8fe](https://github.com/GitHamza0206/simba/commit/c1cb8fe7fe4c0438815f06acb8fe50e5a808f2b6))
+
+
+### 🐛 Bug Fixes
+
+* fix multiple document delete ([b080786](https://github.com/GitHamza0206/simba/commit/b0807869bbddf48c883eced0320aa5df3cbc605e))
+* modify kwargs in as_retriver function ([bcec99d](https://github.com/GitHamza0206/simba/commit/bcec99daa01e9096817e5ec7602ee628919f92c4))
+
+
+### 📚 Documentation
+
+* add sdk quickstart in the readme ([b5478af](https://github.com/GitHamza0206/simba/commit/b5478af1331ffa7c8c8841c9b1eb63938b900904))
+
 ## [0.2.0](https://github.com/GitHamza0206/simba/compare/v0.1.1...v0.2.0) (2025-03-06)
 
 
