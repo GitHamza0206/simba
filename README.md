@@ -1,7 +1,7 @@
 <h1 align="center">Simba - Your Knowledge Management System</h1>
 
 <p align="center">
-<img src="/assets/logo.png" alt="Simba Logo" width="400", height="400"/>
+<img src="/assets/logo.png" alt="Simba Logo" width="400" height="400"/>
 </p>
 
 <p align="center">
@@ -36,7 +36,9 @@
 <!-- <a href="https://ibb.co/RHkRGcs"><img src="https://i.ibb.co/ryRDKHz/logo.jpg" alt="logo" border="0"></a> -->
 [![Twitter Follow](https://img.shields.io/twitter/follow/zeroualihamza?style=social)](https://x.com/zerou_hamza)
 
-Simba is an open source, portable KMS (knowledge management system) designed to integrate seamlessly with any Retrieval-Augmented Generation (RAG) system. With a modern UI and modular architecture, Simba allows developers to focus on building advanced AI solutions without worrying about the complexities of knowledge management.
+## 📖 Overview
+
+Simba is an open-source, portable Knowledge Management System (KMS) designed specifically for seamless integration with Retrieval-Augmented Generation (RAG) systems. With its intuitive UI, modular architecture, and powerful SDK, Simba simplifies knowledge management, allowing developers to focus on building advanced AI solutions.
 
 # Table of Contents
 
@@ -45,22 +47,23 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
   - [🎥 Demo](#-demo)
   - [🛠️ Getting Started](#️-getting-started)
     - [📋 Prerequisites](#-prerequisites)
+  - [🔌 Quickstart Simba SDK Usage](#-quickstart-simba-sdk-usage)
     - [📦 Installation](#-installation)
     - [🔑 Configuration](#-configuration)
-    - [🚀 Run Simba](#-run-simba)
-    - [🐳 Docker Deployment](#-docker-deployment)
-      - [Run on Specific Hardware](#run-on-specific-hardware)
+    - [🚀 Running Simba](#-running-simba)
+  - [🐳 Docker Deployment](#-docker-deployment)
   - [🏁 Roadmap](#-roadmap)
   - [🤝 Contributing](#-contributing)
   - [💬 Support \& Contact](#-support--contact)
 
 ## 🚀 Features
 
-- **🧩 Modular Architecture:** Plug in various vector stores, embedding models, chunkers, and parsers.
-- **🖥️ Modern UI:** Intuitive user interface to visualize and modify every document chunk.
-- **🔗 Seamless Integration:** Easily integrates with any RAG-based system.
-- **👨‍💻 Developer Focus:** Simplifies knowledge management so you can concentrate on building core AI functionality.
-- **📦 Open Source & Extensible:** Community-driven, with room for custom features and integrations.
+- **🔌 Powerful SDK:** Comprehensive Python SDK for easy integration.
+- **🧩 Modular Architecture:** Flexible integration of vector stores, embedding models, chunkers, and parsers.
+- **🖥️ Modern UI:** User-friendly interface for managing document chunks.
+- **🔗 Seamless Integration:** Effortlessly connects with any RAG-based system.
+- **👨‍💻 Developer-Centric:** Simplifies complex knowledge management tasks.
+- **📦 Open Source & Extensible:** Community-driven with extensive customization options.
 
 ## 🎥 Demo
 
@@ -70,46 +73,73 @@ Simba is an open source, portable KMS (knowledge management system) designed to 
 
 ### 📋 Prerequisites
 
-Before you begin, ensure you have met the following requirements:
+Ensure you have the following installed:
 
-- [Python](https://www.python.org/) 3.11+ & [poetry](https://python-poetry.org/)
+- [Python](https://www.python.org/) 3.11+
+- [Poetry](https://python-poetry.org/)
 - [Redis](https://redis.io/) 7.0+
 - [Node.js](https://nodejs.org/) 20+
-- [Git](https://git-scm.com/) for version control.
-- (Optional) Docker for containerized deployment.
+- [Git](https://git-scm.com/)
+- (Optional) Docker
+
+## 🔌 Quickstart Simba SDK Usage
+
+```bash
+pip install simba-client
+```
+
+Leverage Simba's SDK for powerful programmatic access:
+
+```python
+from simba_sdk import SimbaClient
+
+client = SimbaClient(api_url="http://localhost:8000") # you need to install simba-core and run simba server first 
+
+document = client.documents.create(file_path="path/to/your/document.pdf")
+document_id = document[0]["id"]
+
+parsing_result = client.parser.parse_document(document_id, parser="docling", sync=True)
+
+retrieval_results = client.retriever.retrieve(query="your-query")
+
+for result in retrieval_results["documents"]:
+    print(f"Content: {result['page_content']}")
+    print(f"Metadata: {result['metadata']['source']}")
+    print("====" * 10)
+```
+
+Explore more in the [Simba SDK documentation](https://github.com/GitHamza0206/simba/tree/main/simba_sdk).
 
 ### 📦 Installation
 
-install simba-core:
+Install Simba core :
 
 ```bash
 pip install simba-core
-
 ```
 
-Clone the repository and install dependencies:
+Or Clone and set up the repository:
 
 ```bash
 git clone https://github.com/GitHamza0206/simba.git
 cd simba
 poetry config virtualenvs.in-project true
 poetry install
-source .venv/bin/activate 
+source .venv/bin/activate
 ```
 
 ### 🔑 Configuration
 
-Create a `.env` file in the root directory:
+Create a `.env` file:
 
 ```bash
 OPENAI_API_KEY=your_openai_api_key
 REDIS_HOST=localhost
 CELERY_BROKER_URL=redis://localhost:6379/0
 CELERY_RESULT_BACKEND=redis://localhost:6379/1
-
 ```
 
-create or update config.yaml file in the root directory:
+Configure `config.yaml`:
 
 ```yaml
 # config.yaml
@@ -149,101 +179,85 @@ chunking:
   chunk_overlap: 200
 
 retrieval:
+  method: "hybrid" # Options: default, semantic, keyword, hybrid, ensemble, reranked
   k: 5
+  # Method-specific parameters
+  params:
+    # Semantic retrieval parameters
+    score_threshold: 0.5
+    
+    # Hybrid retrieval parameters
+    prioritize_semantic: true
+    
+    # Ensemble retrieval parameters
+    weights: [0.7, 0.3]  # Weights for semantic and keyword retrievers
+    
+    # Reranking parameters
+    reranker_model: colbert
+    reranker_threshold: 0.7
+
+# Database configuration
+database:
+  provider: litedb # Options: litedb, sqlite
+  additional_params: {}
 
 celery: 
   broker_url: ${CELERY_BROKER_URL:-redis://redis:6379/0}
   result_backend: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
-
-
 ```
 
-### 🚀 Run Simba
+### 🚀 Running Simba
 
-Run the server:
+Start the server, frontend, and parsers:
+
 ```bash
 simba server
-```
-
-Run the frontend:
-```bash
-simba front 
-```
-
-Run the parsers:
-```bash
+simba front
 simba parsers
 ```
-### 🐳 Docker Deployment
 
+## 🐳 Docker Deployment
 
-#### Run on Specific Hardware
+Deploy Simba using Docker:
 
-**For CPU:**
+- **CPU:**
 ```bash
 DEVICE=cpu make build
 DEVICE=cpu make up
 ```
 
-**For NVIDIA GPU with Ollama:**
+- **NVIDIA GPU:**
 ```bash
 DEVICE=cuda make build
 DEVICE=cuda make up
 ```
 
-**For Apple Silicon:**
+- **Apple Silicon:**
 ```bash
-# Note: MPS (Metal Performance Shaders) is NOT supported in Docker containers
-# For Docker, always use CPU mode even on Apple Silicon:
 DEVICE=cpu make build
 DEVICE=cpu make up
-
 ```
-
-**Run with Ollama service (for CPU):**
-```bash
-DEVICE=cpu ENABLE_OLLAMA=true make up
-```
-
-**Run in background mode:**
-```bash
-# All commands run in detached mode by default
-```
-
-
-For detailed Docker instructions, see the [Docker deployment guide](docker/README).
-
-
 
 ## 🏁 Roadmap
- 
-- [ ] 💻 pip install simba-core
-- [ ] 🔧 pip install simba-sdk
-- [ ] 🌐 www.simba-docs.com 
-- [ ] 🔒 Adding Auth & access management
-- [ ] 🕸️ Adding web scraping
-- [ ] ☁️ Pulling data from Azure / AWS / GCP
-- [ ] 📚 More parsers and chunkers available
-- [ ] 🎨 Better UX/UI
 
-  
+- [x] 💻 pip install simba-core
+- [x] 🔧 pip install simba-sdk
+- [ ] 🌐 www.simba-docs.com
+- [ ] 🔒 Auth & access management
+- [ ] 🕸️ Web scraping
+- [ ] ☁️ Cloud integrations (Azure/AWS/GCP)
+- [ ] 📚 Additional parsers and chunkers
+- [ ] 🎨 Enhanced UX/UI
 
 ## 🤝 Contributing
 
-Contributions are welcome! If you'd like to contribute to Simba, please follow these steps:
+We welcome contributions! Follow these steps:
 
-  
-
-- Fork the repository.
-
-- Create a new branch for your feature or bug fix.
-
-- Commit your changes with clear messages.
-
-- Open a pull request describing your changes.
-
-  
+- Fork the repository
+- Create a feature or bugfix branch
+- Commit clearly documented changes
+- Submit a pull request
 
 ## 💬 Support & Contact
 
-For support or inquiries, please open an issue 📌 on GitHub or contact repo owner at [Hamza Zerouali](mailto:zeroualihamza0206@gmail.com)
+For support or inquiries, open an issue on GitHub or contact [Hamza Zerouali](mailto:zeroualihamza0206@gmail.com).
