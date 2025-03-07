@@ -14,8 +14,8 @@ print("Testing retrieve functionality...")
 try:
     results = client.retriever.retrieve(
         query="who is john?",
-        strategy="semantic",
-        top_k=5
+        method="semantic",
+        k=5
     )
     print("Retrieve successful!")
     print(f"Results: {results}")

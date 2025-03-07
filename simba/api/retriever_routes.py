@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from fastapi import APIRouter, Body
 from langchain.schema import Document
@@ -24,9 +24,13 @@ class RetrieveResponse(BaseModel):
     documents: List[Document]
 
 
-@retriever_route.get("/as_retriever")
-async def get_retriever():
-    return retriever.as_retriever()  # TODO: Add config in /dto/retriever_dto.py
+class RetrievalStrategyInfo(BaseModel):
+    name: str
+    description: str
+
+
+class RetrievalStrategiesResponse(BaseModel):
+    strategies: Dict[str, str]
 
 
 @retriever_route.post("/retrieve")
@@ -49,3 +53,23 @@ async def retrieve_documents(request: RetrieveRequest) -> RetrieveResponse:
     )
 
     return RetrieveResponse(documents=documents)
+
+
+@retriever_route.get("/strategies")
+async def get_retrieval_strategies() -> RetrievalStrategiesResponse:
+    """
+    Get all available retrieval strategies.
+
+    Returns:
+        Dictionary of available retrieval strategies with descriptions
+    """
+    strategy_descriptions = {
+        RetrievalMethod.DEFAULT.value: "Default retrieval strategy that balances relevance and performance",
+        RetrievalMethod.SEMANTIC.value: "Semantic search using vector embeddings for meaning-based retrieval",
+        RetrievalMethod.KEYWORD.value: "Keyword-based search using traditional text matching techniques",
+        RetrievalMethod.HYBRID.value: "Hybrid search combining semantic and keyword approaches",
+        RetrievalMethod.ENSEMBLE.value: "Ensemble search that combines multiple retrieval strategies with weights",
+        RetrievalMethod.RERANKED.value: "Semantic search followed by reranking for improved relevance",
+    }
+    
+    return RetrievalStrategiesResponse(strategies=strategy_descriptions)
