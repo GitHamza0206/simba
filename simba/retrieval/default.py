@@ -33,11 +33,26 @@ class DefaultRetriever(BaseRetriever):
             query: The query string
             **kwargs: Additional parameters including:
                 - k: Number of documents to retrieve (overrides instance default)
+                - score_threshold: Minimum score threshold for results
+                - filter: Filter criteria
 
         Returns:
             List of relevant documents
         """
         k = kwargs.get("k", self.default_k)
+        score_threshold = kwargs.get("score_threshold", None)
+        filter_dict = kwargs.get("filter", None)
+        
+        # Create search kwargs dictionary with all parameters
+        search_kwargs = {"k": k}
+        
+        # Only add these if they are not None
+        if score_threshold is not None:
+            search_kwargs["score_threshold"] = score_threshold
+        
+        if filter_dict is not None:
+            search_kwargs["filter"] = filter_dict
+            
         return self.store.as_retriever(
-            search_type="similarity", search_kwargs={"k": k}
+            search_type="similarity", search_kwargs=search_kwargs
         ).get_relevant_documents(query)

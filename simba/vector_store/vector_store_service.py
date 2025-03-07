@@ -19,7 +19,7 @@ class VectorStoreService:
             raise ValueError("Both store and embeddings must be provided")
 
     def as_retriever(self, **kwargs):
-        return self.store.as_retriever(**kwargs)
+        return self.store.as_retriever()
 
     def save(self):
         # Ensure directory exists before saving
