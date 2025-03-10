@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SimbaDoc } from "@/types/document";
-import { ingestionApi } from "@/lib/ingestion_api";
+import { parsingApi } from "@/lib/parsing_api";
 
 interface ParserConfigModalProps {
   isOpen: boolean;
@@ -35,8 +35,13 @@ export function ParserConfigModal({
   const [availableParsers, setAvailableParsers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Debug logging
+  console.log("ParserConfigModal render:", { isOpen, documentId: document?.id });
+
   // Load available parsers when modal opens
   useEffect(() => {
+    console.log("ParserConfigModal useEffect triggered:", { isOpen, documentId: document?.id });
+    
     if (isOpen) {
       fetchParsers();
       if (document?.metadata.parser) {
@@ -50,7 +55,10 @@ export function ParserConfigModal({
   const fetchParsers = async () => {
     setIsLoading(true);
     try {
-      const parsers = await ingestionApi.getParsers();
+      const parsers = await parsingApi.getParsers();
+      console.log("Fetched parsers:", parsers);
+      
+      // getParsers already handles the response format and returns a string array
       setAvailableParsers(parsers);
     } catch (error) {
       console.error("Failed to fetch available parsers:", error);
@@ -76,10 +84,10 @@ export function ParserConfigModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={onClose} modal={true}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Parser Configuration</DialogTitle>
+          <DialogTitle>Parser Configuration{document ? ` - ${document.metadata.filename}` : ''}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
@@ -95,11 +103,15 @@ export function ParserConfigModal({
                 <SelectValue placeholder="Select a parser" />
               </SelectTrigger>
               <SelectContent>
-                {availableParsers.map((parser) => (
-                  <SelectItem key={parser} value={parser}>
-                    {parser}
-                  </SelectItem>
-                ))}
+                {availableParsers.length > 0 ? (
+                  availableParsers.map((parser) => (
+                    <SelectItem key={parser} value={parser}>
+                      {parser}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="docling">docling</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -109,6 +121,14 @@ export function ParserConfigModal({
               <p className="mt-1">
                 This parser uses Mistral's OCR capabilities to extract text from document images.
                 Make sure MISTRAL_API_KEY is set in your environment.
+              </p>
+            </div>
+          )}
+          {selectedParser === "docling" && (
+            <div className="col-span-4 px-1 py-2 text-sm bg-blue-50 rounded-md text-blue-700">
+              <p className="font-medium">Docling Parser</p>
+              <p className="mt-1">
+                This is the default parser that uses a combination of techniques to extract text from documents.
               </p>
             </div>
           )}

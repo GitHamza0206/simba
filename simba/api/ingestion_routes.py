@@ -128,12 +128,6 @@ async def get_loaders():
     }
 
 
-@ingestion.get("/parsers")
-async def get_parsers():
-    """Get supported parsers"""
-    return {"parsers": "docling"}
-
-
 @ingestion.get("/upload-directory")
 async def get_upload_directory():
     """Get upload directory path"""
