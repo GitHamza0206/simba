@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ingestionApi } from '@/lib/ingestion_api';
+import { parsingApi } from '@/lib/parsing_api';
 import { cn } from '@/lib/utils';
 
 interface ParsingStatusBoxProps {
@@ -21,7 +21,7 @@ export const ParsingStatusBox: React.FC<ParsingStatusBoxProps> = ({ taskId, onCo
 
     const pollStatus = async () => {
       try {
-        const result = await ingestionApi.getParseStatus(taskId);
+        const result = await parsingApi.getParseStatus(taskId);
         setStatus(result.status);
         
         if (result.status === 'SUCCESS') {

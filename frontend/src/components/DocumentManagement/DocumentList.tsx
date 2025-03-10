@@ -10,7 +10,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { DocumentType } from '@/types/document';
-import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play, Loader2, Pencil, CheckCircle } from 'lucide-react';
+import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play, Loader2, Pencil, CheckCircle, Settings } from 'lucide-react';
 import { Button } from '../ui/button';
 import { 
   DropdownMenu,
@@ -41,19 +41,29 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { embeddingApi, ingestionApi } from '@/lib/api_services';
+import { embeddingApi } from '@/lib/api_services';
+import { ingestionApi } from '@/lib/ingestion_api';
+import { parsingApi } from '@/lib/parsing_api';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { SimbaDoc } from '@/types/document';
-import { Metadata } from '@/types/document';
+import { SimbaDoc, Metadata } from '@/types/document';
 import { ParsingStatusBox } from './ParsingStatusBox';
+import { ParserConfigModal } from './ParserConfigModal';
+import { ParserConfigDebug } from './ParserConfigDebug';
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface Folder {
   id: string;
@@ -115,6 +125,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
   });
   
   const [parsingButtonStates, setParsingButtonStates] = useState<Record<string, boolean>>({});
+
+  // Add state for available parsers
+  const [availableParsers, setAvailableParsers] = useState<string[]>(["docling"]);
 
   // Save parsingTasks to localStorage whenever they change
   useEffect(() => {
@@ -213,6 +226,21 @@ const DocumentList: React.FC<DocumentListProps> = ({
       }
     }
   }, [documents, pendingUploads, onDocumentUpdate]);
+
+  // Add useEffect to fetch available parsers
+  useEffect(() => {
+    const fetchParsers = async () => {
+      try {
+        const parsers = await parsingApi.getParsers();
+        setAvailableParsers(parsers);
+      } catch (error) {
+        console.error("Failed to fetch available parsers:", error);
+        setAvailableParsers(["docling"]); // Fallback to docling
+      }
+    };
+
+    fetchParsers();
+  }, []);
 
   const formatDate = (dateString: string) => {
     if (dateString === "Unknown") return dateString;
@@ -728,16 +756,40 @@ const DocumentList: React.FC<DocumentListProps> = ({
       }
 
       // Start new parsing task
-      const result = await ingestionApi.startParsing(document.id, document.metadata.parser || 'docling');
-      setParsingTasks(prev => ({
-        ...prev,
-        [document.id]: result.task_id
-      }));
+      const result = await parsingApi.startParsing(document.id, document.metadata.parser || 'docling');
       
-      toast({
-        title: document.metadata.parsing_status === 'SUCCESS' ? "Re-parsing Started" : "Parsing Started",
-        description: "Document parsing has been queued"
-      });
+      // If we got a SimbaDoc directly (from Mistral OCR)
+      if (result && 'id' in result && 'metadata' in result) {
+        console.log('Received parsed document directly:', result);
+        
+        // Update the document in state
+        onDocumentUpdate(result);
+        
+        toast({
+          title: "Parsing Complete",
+          description: `Document parsed successfully with ${document.metadata.parser || 'docling'}`
+        });
+      }
+      // Otherwise handle as an async task (docling)
+      else if ('task_id' in result && result.task_id) {
+        setParsingTasks(prev => ({
+          ...prev,
+          [document.id]: result.task_id as string
+        }));
+        
+        toast({
+          title: document.metadata.parsing_status === 'SUCCESS' ? "Re-parsing Started" : "Parsing Started",
+          description: "Document parsing has been queued"
+        });
+      }
+      else {
+        console.error('Unexpected parsing response:', result);
+        toast({
+          title: "Error",
+          description: "Received unexpected response from parsing service",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -951,6 +1003,26 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
+  // Inside the DocumentList component, add state for parser config modal
+  const [isParserConfigModalOpen, setIsParserConfigModalOpen] = useState(false);
+  const [selectedDocumentForConfig, setSelectedDocumentForConfig] = useState<SimbaDoc | null>(null);
+
+  // Add a function to handle opening the parser config modal
+  const handleOpenParserConfig = (doc: SimbaDoc, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    console.log("Opening parser config for document:", doc.id);
+    
+    // Set the document first
+    setSelectedDocumentForConfig(doc);
+    
+    // Use setTimeout to ensure state updates have time to propagate
+    setTimeout(() => {
+      setIsParserConfigModalOpen(true);
+      console.log("Parser config modal state set to true");
+    }, 50);
+  };
+
   return (
     <div className="relative">
       <CardContent>
@@ -1153,9 +1225,84 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     >
                       {doc.metadata.parsing_status || 'Unparsed'}
                     </Badge>
+                    
+                    {/* Show parser badge (without default label) */}
+                    {doc.metadata.parser ? (
+                      <div className="relative">
+                        <Select
+                          value={doc.metadata.parser || "docling"}
+                          onValueChange={(value) => {
+                            const updatedDoc = {
+                              ...doc,
+                              metadata: {
+                                ...doc.metadata,
+                                parser: value
+                              }
+                            };
+                            onDocumentUpdate(updatedDoc);
+                            toast({
+                              title: "Parser Updated",
+                              description: `Parser changed to ${value}`,
+                            });
+                          }}
+                        >
+                          <SelectTrigger 
+                            className={cn(
+                              "h-6 min-w-0 px-2.5 py-0 border rounded-md text-xs font-semibold gap-1 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:opacity-70",
+                              doc.metadata.parser === 'docling' || !doc.metadata.parser
+                                ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" 
+                                : "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                            )}
+                          >
+                            <SelectValue>{doc.metadata.parser || "docling"}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableParsers.map((parserName) => (
+                              <SelectItem key={parserName} value={parserName}>
+                                {parserName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <Select
+                          value="docling"
+                          onValueChange={(value) => {
+                            const updatedDoc = {
+                              ...doc,
+                              metadata: {
+                                ...doc.metadata,
+                                parser: value
+                              }
+                            };
+                            onDocumentUpdate(updatedDoc);
+                            toast({
+                              title: "Parser Set",
+                              description: `Parser set to ${value}`,
+                            });
+                          }}
+                        >
+                          <SelectTrigger 
+                            className="h-6 min-w-0 px-2.5 py-0 border rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 gap-1 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:opacity-70"
+                          >
+                            <SelectValue>docling</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableParsers.map((parserName) => (
+                              <SelectItem key={parserName} value={parserName}>
+                                {parserName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
                     {parsingTasks[doc.id] && (
-                      <ParsingStatusBox 
-                        taskId={parsingTasks[doc.id]} 
+                      <ParsingStatusBox
+                        taskId={parsingTasks[doc.id]}
                         onComplete={(status) => handleParseComplete(doc.id, status)}
                         onCancel={() => handleParseCancel(doc.id)}
                       />
@@ -1228,7 +1375,26 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>{doc.metadata.parsing_status === 'SUCCESS' ? 'Re-parse document' : 'Parse document'}</p>
+                            <p>Parse document</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      {/* Parser Config button */}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              id={`parser-config-button-${doc.id}`}
+                              className="h-8 w-8 rounded-md hover:bg-gray-100 flex items-center justify-center"
+                              onClick={(e) => handleOpenParserConfig(doc, e)}
+                              type="button"
+                            >
+                              <Settings className="h-4 w-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Configure parser</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1406,6 +1572,19 @@ const DocumentList: React.FC<DocumentListProps> = ({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Parser Configuration Modal */}
+        <ParserConfigModal 
+          isOpen={isParserConfigModalOpen}
+          onClose={() => setIsParserConfigModalOpen(false)}
+          document={selectedDocumentForConfig}
+          onUpdate={(updatedDoc) => {
+            console.log("Document updated with new parser:", updatedDoc.metadata.parser);
+            onDocumentUpdate(updatedDoc);
+            setSelectedDocumentForConfig(updatedDoc);
+          }}
+        />
+
       </CardContent>
     </div>
   );

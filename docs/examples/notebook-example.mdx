@@ -1,0 +1,292 @@
+---
+title: 'Jupyter Notebook Example'
+description: 'Using Simba in Jupyter notebooks for interactive document analysis'
+---
+
+# Using Simba in Jupyter Notebooks
+
+This example demonstrates how to use Simba in Jupyter notebooks for interactive document analysis and retrieval.
+
+## Prerequisites
+
+- Simba installed and running
+- Jupyter notebook environment
+- Required Python packages: `simba-client`, `pandas`, `matplotlib`, `ipywidgets`
+
+## Setup
+
+First, install the necessary packages:
+
+```bash
+pip install simba-client pandas matplotlib ipywidgets
+```
+
+## Basic Integration
+
+Here's a complete notebook example showing Simba integration:
+
+```python
+# Import required libraries
+import pandas as pd
+import matplotlib.pyplot as plt
+import ipywidgets as widgets
+from IPython.display import display, Markdown
+from simba_sdk import SimbaClient
+
+# Initialize Simba client
+client = SimbaClient(api_url="http://localhost:8000")
+
+# Function to upload a document
+def upload_document(file_path):
+    response = client.documents.create(file_path=file_path)
+    return response[0]["id"]
+
+# Function to retrieve information
+def search_knowledge(query, top_k=5):
+    results = client.retrieval.retrieve(
+        query=query,
+        top_k=top_k
+    )
+    return results
+
+# Upload a document
+document_id = upload_document("sample-data.pdf")
+print(f"Document uploaded with ID: {document_id}")
+
+# Create a simple search interface
+query_input = widgets.Text(
+    value='',
+    placeholder='Enter your query',
+    description='Query:',
+    disabled=False,
+    layout=widgets.Layout(width='80%')
+)
+
+top_k_slider = widgets.IntSlider(
+    value=3,
+    min=1,
+    max=10,
+    step=1,
+    description='Results:',
+    disabled=False,
+    continuous_update=False,
+    orientation='horizontal',
+    readout=True,
+    readout_format='d'
+)
+
+output_area = widgets.Output()
+
+def on_search_clicked(b):
+    with output_area:
+        output_area.clear_output()
+        print("Searching...")
+        results = search_knowledge(query_input.value, top_k_slider.value)
+        
+        # Display results
+        for i, chunk in enumerate(results):
+            display(Markdown(f"### Result {i+1} (Score: {chunk['score']:.4f})"))
+            display(Markdown(f"```\n{chunk['content']}\n```"))
+            print("-" * 80)
+        
+        # Create a simple visualization of relevance scores
+        scores = [r['score'] for r in results]
+        plt.figure(figsize=(10, 4))
+        plt.bar(range(len(scores)), scores)
+        plt.xlabel('Result Index')
+        plt.ylabel('Relevance Score')
+        plt.title('Relevance Scores for Query Results')
+        plt.show()
+
+search_button = widgets.Button(description="Search")
+search_button.on_click(on_search_clicked)
+
+# Display the search interface
+display(widgets.HBox([query_input, search_button]))
+display(top_k_slider)
+display(output_area)
+```
+
+## Document Analysis Example
+
+This example shows how to analyze document chunks and their metadata:
+
+```python
+# Get all chunks for a document
+chunks = client.chunks.list(document_id=document_id)
+
+# Convert to pandas DataFrame for analysis
+import pandas as pd
+
+# Extract metadata and content
+chunk_data = []
+for chunk in chunks:
+    chunk_info = {
+        'id': chunk['id'],
+        'content_length': len(chunk['content']),
+        'page': chunk.get('metadata', {}).get('page', 'N/A'),
+    }
+    chunk_info.update(chunk.get('metadata', {}))
+    chunk_data.append(chunk_info)
+
+# Create DataFrame
+df = pd.DataFrame(chunk_data)
+
+# Display basic statistics
+display(Markdown("## Document Chunk Statistics"))
+display(df.describe())
+
+# Visualize content length distribution
+plt.figure(figsize=(10, 6))
+plt.hist(df['content_length'], bins=20)
+plt.xlabel('Chunk Content Length')
+plt.ylabel('Frequency')
+plt.title('Distribution of Chunk Lengths')
+plt.show()
+
+# Visualize chunks by page
+if 'page' in df.columns:
+    page_counts = df['page'].value_counts().sort_index()
+    plt.figure(figsize=(12, 6))
+    page_counts.plot(kind='bar')
+    plt.xlabel('Page Number')
+    plt.ylabel('Number of Chunks')
+    plt.title('Chunks per Page')
+    plt.show()
+```
+
+## Interactive Metadata Filtering
+
+This example demonstrates interactive filtering of document chunks by metadata:
+
+```python
+# Get all chunks with metadata
+chunks = client.chunks.list(document_id=document_id)
+df = pd.DataFrame([{**c.get('metadata', {}), 'id': c['id'], 'content': c['content']} for c in chunks])
+
+# Create dropdown for metadata fields
+available_fields = [col for col in df.columns if col not in ['id', 'content']]
+field_dropdown = widgets.Dropdown(
+    options=available_fields,
+    description='Filter by:',
+    disabled=False,
+)
+
+# Create text input for filter value
+filter_text = widgets.Text(
+    value='',
+    placeholder='Filter value',
+    description='Value:',
+    disabled=False
+)
+
+filter_output = widgets.Output()
+
+def on_filter_clicked(b):
+    with filter_output:
+        filter_output.clear_output()
+        field = field_dropdown.value
+        value = filter_text.value
+        
+        if not field or not value:
+            display(Markdown("Please select a field and enter a filter value"))
+            return
+            
+        # Filter the DataFrame
+        filtered_df = df[df[field].astype(str).str.contains(value, case=False)]
+        display(Markdown(f"## Found {len(filtered_df)} chunks matching '{value}' in '{field}'"))
+        
+        # Display the first 5 results
+        for i, (_, row) in enumerate(filtered_df.head(5).iterrows()):
+            display(Markdown(f"### Result {i+1}"))
+            display(Markdown(f"**ID:** {row['id']}"))
+            display(Markdown(f"**{field}:** {row[field]}"))
+            display(Markdown(f"**Content:**\n```\n{row['content'][:300]}...\n```"))
+            print("-" * 80)
+
+filter_button = widgets.Button(description="Apply Filter")
+filter_button.on_click(on_filter_clicked)
+
+# Display the filter interface
+display(widgets.HBox([field_dropdown, filter_text, filter_button]))
+display(filter_output)
+```
+
+## Exporting Results
+
+This example shows how to export search results to different formats:
+
+```python
+# Function to search and export results
+def search_and_export(query, export_format='csv'):
+    results = client.retrieval.retrieve(query=query, top_k=10)
+    
+    # Convert to DataFrame
+    results_df = pd.DataFrame([
+        {
+            'chunk_id': r['id'],
+            'content': r['content'],
+            'score': r['score'],
+            **r.get('metadata', {})
+        } for r in results
+    ])
+    
+    # Export based on format
+    if export_format == 'csv':
+        results_df.to_csv('search_results.csv', index=False)
+        return 'Exported to search_results.csv'
+    elif export_format == 'excel':
+        results_df.to_excel('search_results.xlsx', index=False)
+        return 'Exported to search_results.xlsx'
+    elif export_format == 'json':
+        results_df.to_json('search_results.json', orient='records')
+        return 'Exported to search_results.json'
+    else:
+        return results_df
+
+# Create export interface
+export_query = widgets.Text(
+    value='',
+    placeholder='Enter your query',
+    description='Query:',
+    disabled=False,
+    layout=widgets.Layout(width='70%')
+)
+
+format_dropdown = widgets.Dropdown(
+    options=['csv', 'excel', 'json', 'dataframe'],
+    value='csv',
+    description='Format:',
+    disabled=False,
+)
+
+export_output = widgets.Output()
+
+def on_export_clicked(b):
+    with export_output:
+        export_output.clear_output()
+        print(f"Searching for '{export_query.value}' and exporting as {format_dropdown.value}...")
+        result = search_and_export(export_query.value, format_dropdown.value)
+        
+        if isinstance(result, pd.DataFrame):
+            display(result)
+        else:
+            print(result)
+
+export_button = widgets.Button(description="Search & Export")
+export_button.on_click(on_export_clicked)
+
+# Display the export interface
+display(widgets.HBox([export_query, format_dropdown, export_button]))
+display(export_output)
+```
+
+## Best Practices
+
+When using Simba in Jupyter notebooks:
+
+- **Cache results** for repeated queries to reduce API calls
+- **Use visualizations** to better understand your document structure
+- **Create interactive widgets** for easier exploration
+- **Export results** for further analysis in other tools
+- **Use markdown cells** to document your analysis process 

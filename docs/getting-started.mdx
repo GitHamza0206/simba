@@ -1,0 +1,136 @@
+---
+title: 'Getting Started with Simba'
+description: 'Learn how to set up and start using Simba in your project'
+---
+
+## Prerequisites
+
+Before you begin, make sure you have the following installed:
+
+- **Python 3.11+**
+- **Redis 7.0+**
+- **Node.js 20+** (for the frontend)
+- **Git**
+- **Poetry** (for Python dependency management)
+
+## Quick Installation
+
+### Option 1: Install with pip
+
+The simplest way to get started with Simba is to install the client SDK:
+
+```bash
+pip install simba-core
+```
+
+### Option 2: Clone the Repository
+
+For a complete installation, including the backend and frontend:
+
+```bash
+git clone https://github.com/GitHamza0206/simba.git
+cd simba
+poetry install
+```
+
+## Running Simba
+
+### Backend Service
+
+To start the Simba backend service:
+
+```bash
+# In a new terminal, start Simba
+simba server 
+```
+
+By default, the backend will be available at http://localhost:8000.
+
+### Frontend (Optional)
+
+If you want to use the UI:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+The frontend will be available at http://localhost:5173.
+
+### Running Parsing Algorithms
+
+Simba leverages advanced parsing algorithms, such as Docling, to transform unstructured documents into structured formats suitable for efficient retrieval and analysis. To run the parsing process, execute:
+
+```bash
+simba parse
+```
+
+
+## Basic Usage
+
+### Connecting to Simba
+
+Here's a simple example of connecting to Simba using the SDK:
+
+```python
+from simba_sdk import SimbaClient
+
+# Initialize the client
+client = SimbaClient(api_url="http://localhost:8000")
+
+# Check connection
+status = client.health()
+print(f"Simba status: {status}")
+```
+
+### Adding a Document
+
+To add a document to your knowledge base:
+
+```python
+# Upload a file
+document = client.documents.create(file_path="path/to/your/document.pdf")
+document_id = document[0]["id"]
+print(f"Document uploaded with ID: {document_id}")
+
+# List all documents
+all_docs = client.documents.list()
+print(f"Total documents: {len(all_docs)}")
+```
+
+### Retrieving Knowledge
+
+To retrieve information from your knowledge base:
+
+```python
+# Basic retrieval
+results = client.retrieval.retrieve(
+    query="What is Simba?",
+    top_k=3  # Number of chunks to retrieve
+)
+
+# Display results
+for chunk in results:
+    print(f"Score: {chunk['score']}")
+    print(f"Content: {chunk['content']}")
+    print("---")
+```
+
+## Next Steps
+
+Now that you have Simba up and running, here are some next steps:
+
+- Learn more about [configuring Simba](/configuration)
+- Explore [vector stores](/core-concepts/vector-stores) for optimized retrieval
+- Understand [embeddings](/core-concepts/embeddings) and how they work
+- Customize the [chunking process](/core-concepts/chunking) for your specific needs
+- Check out our [examples](/examples/document-ingestion) for more advanced usage
+
+## Troubleshooting
+
+If you encounter any issues during setup:
+
+- Ensure Redis is running and accessible
+- Check that all prerequisites are installed
+- Verify port availability for both backend (8000) and frontend (5173)
+- See our [community support](/community/support) for more help 
