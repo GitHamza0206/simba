@@ -4,6 +4,7 @@ from typing import List
 from langchain.schema import Document
 from langchain_community.document_loaders import (
     CSVLoader,
+    PyPDFLoader,
     TextLoader,
     UnstructuredExcelLoader,
     UnstructuredImageLoader,
@@ -11,7 +12,6 @@ from langchain_community.document_loaders import (
     UnstructuredPDFLoader,
     UnstructuredPowerPointLoader,
     UnstructuredWordDocumentLoader,
-    PyPDFLoader,
 )
 
 
