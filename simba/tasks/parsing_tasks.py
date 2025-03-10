@@ -47,24 +47,24 @@ def parse_docling_task(document_id: str):
 def parse_mistral_ocr_task(self, document_id: str):
     """Parse a document using Mistral OCR"""
     logger.info(f"Starting Mistral OCR parsing for document: {document_id}")
-    
+
     try:
         # Get document from database
         db = get_database()
         vector_store = VectorStoreFactory.get_vector_store()
         simbadoc = db.get_document(document_id)
-        
+
         if not simbadoc:
             return {"status": "error", "error": "Document not found"}
-        
+
         # Parse document
         parser = MistralOCR()
         parsed_simba_doc = parser.parse(simbadoc)
-        
+
         # Update database
         vector_store.add_documents(parsed_simba_doc.documents)
         db.update_document(document_id, parsed_simba_doc)
-        
+
         # Return success
         return {
             "status": "success",
@@ -74,10 +74,14 @@ def parse_mistral_ocr_task(self, document_id: str):
                 "num_chunks": len(parsed_simba_doc.documents) if parsed_simba_doc.documents else 0,
                 "parsing_status": parsed_simba_doc.metadata.parsing_status,
                 "parsed_at": (
-                    parsed_simba_doc.metadata.parsed_at.isoformat() 
-                    if hasattr(parsed_simba_doc.metadata.parsed_at, 'isoformat')
-                    else parsed_simba_doc.metadata.parsed_at
-                ) if parsed_simba_doc.metadata.parsed_at else None,
+                    (
+                        parsed_simba_doc.metadata.parsed_at.isoformat()
+                        if hasattr(parsed_simba_doc.metadata.parsed_at, "isoformat")
+                        else parsed_simba_doc.metadata.parsed_at
+                    )
+                    if parsed_simba_doc.metadata.parsed_at
+                    else None
+                ),
             },
         }
     except Exception as e:

@@ -1,10 +1,11 @@
+import json
 import logging
 
 import torch
 from celery.app.control import Inspect
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from simba.core.factories.database_factory import get_database
 from simba.core.factories.vector_store_factory import VectorStoreFactory
@@ -12,7 +13,6 @@ from simba.models.simbadoc import SimbaDoc
 from simba.parsing.docling_parser import DoclingParser
 from simba.parsing.mistral_ocr import MistralOCR
 from simba.tasks.parsing_tasks import celery, parse_docling_task, parse_mistral_ocr_task
-import json
 
 logger = logging.getLogger(__name__)
 parsing = APIRouter()
@@ -26,9 +26,10 @@ async def get_parsers():
     """Get the list of parsers supported by the document ingestion service"""
     parsers = ["docling", "mistral_ocr"]
     logger.info(f"Returning parsers: {parsers}")
-    
+
     # Create a Response directly to prevent any transformation
     return JSONResponse(content={"parsers": parsers})
+
 
 class ParseDocumentRequest(BaseModel):
     document_id: str
@@ -57,14 +58,18 @@ async def parse_document(request: ParseDocumentRequest):
                 return await parse_document_sync(request.document_id, parser_type="mistral_ocr")
             else:
                 raise HTTPException(status_code=400, detail="Unsupported parser")
-        
+
         # Handle asynchronous parsing based on parser type
         if request.parser == "docling":
-            logger.info(f"Starting asynchronous docling parsing for document: {request.document_id}")
+            logger.info(
+                f"Starting asynchronous docling parsing for document: {request.document_id}"
+            )
             task = parse_docling_task.delay(request.document_id)
             return {"task_id": task.id, "status_url": f"parsing/tasks/{task.id}"}
         elif request.parser == "mistral_ocr":
-            logger.info(f"Starting asynchronous Mistral OCR parsing for document: {request.document_id}")
+            logger.info(
+                f"Starting asynchronous Mistral OCR parsing for document: {request.document_id}"
+            )
             task = parse_mistral_ocr_task.delay(request.document_id)
             return {"task_id": task.id, "status_url": f"parsing/tasks/{task.id}"}
         else:
@@ -80,7 +85,9 @@ async def parse_document(request: ParseDocumentRequest):
 async def parse_document_sync(document_id: str, parser_type: str = "docling"):
     """Parse a document synchronously"""
     try:
-        logger.info(f"Received synchronous parse request for document: {document_id} with parser: {parser_type}")
+        logger.info(
+            f"Received synchronous parse request for document: {document_id} with parser: {parser_type}"
+        )
 
         # Verify document exists first
         simbadoc: SimbaDoc = db.get_document(document_id)
@@ -95,7 +102,7 @@ async def parse_document_sync(document_id: str, parser_type: str = "docling"):
                 parser = MistralOCR()
             else:
                 raise HTTPException(status_code=400, detail="Unsupported parser")
-                
+
             parsed_simba_doc = parser.parse(simbadoc)
 
             # Update database
