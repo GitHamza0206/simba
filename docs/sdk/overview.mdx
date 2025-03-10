@@ -1,0 +1,94 @@
+---
+title: 'Simba SDK Overview'
+description: 'Introduction to the Simba SDK and its capabilities'
+---
+
+# Simba SDK Overview
+
+The Simba SDK is a Python client library that allows developers to easily integrate Simba's knowledge management capabilities into their applications.
+
+## Installation
+
+```bash
+pip install simba-client
+```
+
+## Quick Start
+
+```python
+from simba_sdk import SimbaClient
+
+client = SimbaClient(api_url="http://localhost:8000") # you need to install simba-core and run simba server first 
+
+document = client.documents.create(file_path="path/to/your/document.pdf")
+document_id = document[0]["id"]
+
+parsing_result = client.parser.parse_document(document_id, parser="docling", sync=True)
+
+retrieval_results = client.retriever.retrieve(
+  query="your-query",
+  method="default",
+  k=3,
+)
+
+for result in retrieval_results["documents"]:
+    print(f"Content: {result['page_content']}")
+    print(f"Metadata: {result['metadata']['source']}")
+    print("====" * 10)
+```
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Intuitive API" icon="wand-magic-sparkles">
+    Simple, Pythonic interface designed for developer productivity
+  </Card>
+  <Card title="Type Hints" icon="code">
+    Comprehensive type annotations for better IDE support
+  </Card>
+  <Card title="Async Support" icon="bolt">
+    Both synchronous and asynchronous operation modes
+  </Card>
+  <Card title="Error Handling" icon="shield">
+    Detailed error information with custom exception types
+  </Card>
+</CardGroup>
+
+## Configuration Options
+
+```python
+client = SimbaClient(
+    api_url="http://localhost:8000",
+    api_key="your-api-key",     # Optional for authenticated setups
+    timeout=30,                 # Request timeout in seconds
+    max_retries=3,              # Number of retry attempts
+    verify_ssl=True             # Verify SSL certificates
+)
+```
+
+## Available Modules
+
+| Module | Description |
+|--------|-------------|
+| `client.documents` | Document management |
+| `client.chunks` | Chunk operations |
+| `client.vector_stores` | Vector store configuration |
+| `client.embeddings` | Embedding model settings |
+| `client.retrieval` | Semantic search and retrieval |
+
+## Error Handling
+
+```python
+from simba_sdk import SimbaClient
+from simba_sdk.exceptions import SimbaApiError
+
+client = SimbaClient(api_url="http://localhost:8000")
+
+try:
+    results = client.retrieval.retrieve(query="What is RAG?")
+except SimbaApiError as e:
+    print(f"API Error: {e.message}")
+    print(f"Status Code: {e.status_code}")
+```
+
+For more detailed examples, check out our [document ingestion example](/examples/document-ingestion). 
