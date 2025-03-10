@@ -10,7 +10,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { DocumentType } from '@/types/document';
-import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play, Loader2, Pencil, CheckCircle } from 'lucide-react';
+import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play, Loader2, Pencil, CheckCircle, Settings } from 'lucide-react';
 import { Button } from '../ui/button';
 import { 
   DropdownMenu,
@@ -48,6 +48,7 @@ import { Badge } from "@/components/ui/badge";
 import { SimbaDoc } from '@/types/document';
 import { Metadata } from '@/types/document';
 import { ParsingStatusBox } from './ParsingStatusBox';
+import { ParserConfigModal } from './ParserConfigModal';
 import {
   HoverCard,
   HoverCardContent,
@@ -951,6 +952,17 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
+  // Inside the DocumentList component, add state for parser config modal
+  const [isParserConfigModalOpen, setIsParserConfigModalOpen] = useState(false);
+  const [selectedDocumentForConfig, setSelectedDocumentForConfig] = useState<SimbaDoc | null>(null);
+
+  // Add a function to handle opening the parser config modal
+  const handleOpenParserConfig = (doc: SimbaDoc, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedDocumentForConfig(doc);
+    setIsParserConfigModalOpen(true);
+  };
+
   return (
     <div className="relative">
       <CardContent>
@@ -1153,9 +1165,16 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     >
                       {doc.metadata.parsing_status || 'Unparsed'}
                     </Badge>
+                    
+                    {doc.metadata.parser && (
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                        {doc.metadata.parser}
+                      </Badge>
+                    )}
+                    
                     {parsingTasks[doc.id] && (
-                      <ParsingStatusBox 
-                        taskId={parsingTasks[doc.id]} 
+                      <ParsingStatusBox
+                        taskId={parsingTasks[doc.id]}
                         onComplete={(status) => handleParseComplete(doc.id, status)}
                         onCancel={() => handleParseCancel(doc.id)}
                       />
@@ -1228,7 +1247,27 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>{doc.metadata.parsing_status === 'SUCCESS' ? 'Re-parse document' : 'Parse document'}</p>
+                            <p>Parse document</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      {/* Parser Config button */}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              id={`parser-config-button-${doc.id}`}
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => handleOpenParserConfig(doc, e)}
+                              className="h-8 w-8"
+                            >
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Configure parser</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1406,6 +1445,17 @@ const DocumentList: React.FC<DocumentListProps> = ({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Parser Configuration Modal */}
+        <ParserConfigModal 
+          isOpen={isParserConfigModalOpen}
+          onClose={() => setIsParserConfigModalOpen(false)}
+          document={selectedDocumentForConfig}
+          onUpdate={(updatedDoc) => {
+            onDocumentUpdate(updatedDoc);
+            setSelectedDocumentForConfig(updatedDoc);
+          }}
+        />
       </CardContent>
     </div>
   );
