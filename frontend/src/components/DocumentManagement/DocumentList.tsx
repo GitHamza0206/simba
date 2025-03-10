@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { 
@@ -640,8 +640,22 @@ const DocumentList: React.FC<DocumentListProps> = ({
     return result;
   };
 
-  const enableDocument = async (doc: SimbaDoc, checked: boolean) => {
+  const [isEnabling, setIsEnabling] = useState<Set<string>>(new Set());
+
+  const enableDocument = async (doc: SimbaDoc, checked: boolean, silent = false) => {
     try {
+      // Prevent double-calling this function
+      if (isEnabling.has(doc.id)) {
+        console.log(`Already processing document ${doc.id}`);
+        return;
+      }
+      
+      setIsEnabling(prev => {
+        const next = new Set(prev);
+        next.add(doc.id);
+        return next;
+      });
+      
       // Update local state immediately for better UX
       const updatedDoc = { ...doc, metadata: { ...doc.metadata, enabled: checked }};
       onDocumentUpdate(updatedDoc);
@@ -656,10 +670,12 @@ const DocumentList: React.FC<DocumentListProps> = ({
           return next;
         });
         
-        toast({
-          title: "Document removed",
-          description: "Document removed from embeddings successfully"
-        });
+        if (!silent) {
+          toast({
+            title: "Document removed",
+            description: "Document removed from embeddings successfully"
+          });
+        }
       } else {  // If we're enabling the document
         // Call embed endpoint
         await embeddingApi.embedd_document(doc.id);
@@ -670,10 +686,12 @@ const DocumentList: React.FC<DocumentListProps> = ({
           return next;
         });
         
-        toast({
-          title: "Document embedded",
-          description: `Document embedded successfully.`
-        });
+        if (!silent) {
+          toast({
+            title: "Document embedded",
+            description: `Document embedded successfully.`
+          });
+        }
       }
     } catch (error) {
       // Revert local state on error
@@ -686,12 +704,24 @@ const DocumentList: React.FC<DocumentListProps> = ({
         return next;
       });
       
-      toast({
-        title: "Error",
-        description: error instanceof Error 
-          ? error.message 
-          : `Failed to ${checked ? 'embed' : 'remove'} document`,
-        variant: "destructive"
+      if (!silent) {
+        toast({
+          title: "Error",
+          description: error instanceof Error 
+            ? error.message 
+            : `Failed to ${checked ? 'embed' : 'remove'} document`,
+          variant: "destructive"
+        });
+      }
+      
+      // Rethrow for the caller to handle
+      throw error;
+    } finally {
+      // Remove from processing set
+      setIsEnabling(prev => {
+        const next = new Set(prev);
+        next.delete(doc.id);
+        return next;
       });
     }
   };
@@ -1023,6 +1053,183 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }, 50);
   };
 
+  const [parseLoading, setParseLoading] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Function to handle bulk delete of multiple documents
+  const handleMultipleDelete = async () => {
+    const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
+    
+    // Ask for confirmation once
+    if (!window.confirm(`Are you sure you want to delete ${selectedDocs.length} document(s)?`)) {
+      return;
+    }
+    
+    setDeleteLoading(true);
+    let hasErrors = false;
+    
+    // Show loading toast
+    toast({
+      title: "Deleting documents",
+      description: `Deleting ${selectedDocs.length} document(s)...`,
+    });
+    
+    // Process documents in batches to avoid overwhelming the API
+    for (const doc of selectedDocs) {
+      try {
+        // Use the API to delete without additional confirmations
+        await ingestionApi.deleteDocumentWithoutConfirmation(doc.id);
+      } catch (error) {
+        console.error(`Error deleting document ${doc.id}:`, error);
+        hasErrors = true;
+      }
+    }
+    
+    // Show success or error message
+    if (hasErrors) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete one or more documents",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: `Successfully deleted ${selectedDocs.length} document(s)`,
+      });
+    }
+    
+    // Refresh document list
+    await fetchDocuments();
+    setSelectedIds(new Set()); // Clear selection after deletion
+    setDeleteLoading(false);
+  };
+
+  // Function to toggle enable/disable for multiple documents
+  const toggleEnableMultiple = async (enable: boolean) => {
+    const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
+    const docsToUpdate = selectedDocs.filter(doc => doc.metadata.enabled !== enable);
+    
+    if (docsToUpdate.length === 0) {
+      // No documents to update, all already in the desired state
+      return;
+    }
+    
+    setToggleLoading(true);
+    
+    // Show loading toast
+    toast({
+      title: `${enable ? 'Enabling' : 'Disabling'} documents`,
+      description: `${enable ? 'Enabling' : 'Disabling'} ${docsToUpdate.length} document(s)...`,
+    });
+    
+    // IMPORTANT: First update the UI state immediately for all documents
+    // This creates a more responsive feel for the user
+    docsToUpdate.forEach(doc => {
+      const updatedDoc = { 
+        ...doc, 
+        metadata: { 
+          ...doc.metadata, 
+          enabled: enable 
+        }
+      };
+      onDocumentUpdate(updatedDoc);
+    });
+    
+    let successCount = 0;
+    let errorCount = 0;
+    const failedDocs = [];
+    
+    // Then make the API calls in the background
+    for (const doc of docsToUpdate) {
+      try {
+        await enableDocument(doc, enable, true); // Pass true for silent mode
+        successCount++;
+      } catch (error) {
+        console.error(`Error ${enable ? 'enabling' : 'disabling'} document ${doc.id}:`, error);
+        errorCount++;
+        failedDocs.push(doc);
+      }
+    }
+    
+    // If any operations failed, revert the UI state for those documents
+    if (failedDocs.length > 0) {
+      failedDocs.forEach(doc => {
+        const revertedDoc = { 
+          ...doc, 
+          metadata: { 
+            ...doc.metadata, 
+            enabled: !enable 
+          }
+        };
+        onDocumentUpdate(revertedDoc);
+      });
+    }
+    
+    // Show final status toast
+    if (errorCount > 0) {
+      toast({
+        variant: "destructive",
+        title: "Operation partially completed",
+        description: `${successCount} document(s) updated, ${errorCount} failed`,
+      });
+    } else if (successCount > 0) {
+      toast({
+        title: "Success",
+        description: `Successfully ${enable ? 'enabled' : 'disabled'} ${successCount} document(s)`,
+      });
+    }
+    
+    setToggleLoading(false);
+  };
+
+  // Function to parse multiple documents
+  const parseMultipleDocuments = async () => {
+    const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
+    
+    if (selectedDocs.length === 0) {
+      return;
+    }
+    
+    setParseLoading(true);
+    
+    // Show loading toast
+    toast({
+      title: "Parsing documents",
+      description: `Starting parsing for ${selectedDocs.length} document(s)...`,
+    });
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const doc of selectedDocs) {
+      try {
+        await handleParseClick(doc);
+        successCount++;
+      } catch (error) {
+        console.error(`Error parsing document ${doc.id}:`, error);
+        errorCount++;
+      }
+    }
+    
+    // Show final status toast
+    if (errorCount > 0) {
+      toast({
+        variant: "destructive",
+        title: "Operation partially completed",
+        description: `${successCount} document(s) parsing started, ${errorCount} failed`,
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: `Parsing started for ${successCount} document(s)`,
+      });
+    }
+    
+    setParseLoading(false);
+  };
+
   return (
     <div className="relative">
       <CardContent>
@@ -1208,7 +1415,29 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 <TableCell>
                   <Switch
                     checked={doc.metadata.enabled}
-                    onCheckedChange={(checked) => enableDocument(doc, checked)}
+                    disabled={isEnabling.has(doc.id)}
+                    onCheckedChange={(checked) => {
+                      // Skip if already processing
+                      if (isEnabling.has(doc.id)) {
+                        return;
+                      }
+                      
+                      const updatedDoc = { 
+                        ...doc, 
+                        metadata: { 
+                          ...doc.metadata, 
+                          enabled: checked 
+                        }
+                      };
+                      // Update UI state immediately
+                      onDocumentUpdate(updatedDoc);
+                      // Then trigger the API call
+                      enableDocument(doc, checked).catch(error => {
+                        // Error handling is done in enableDocument
+                        // This try/catch is just to prevent unhandled rejections
+                        console.error("Error toggling document:", error);
+                      });
+                    }}
                     aria-label="Toggle document embedding"
                   />
                 </TableCell>
@@ -1446,51 +1675,50 @@ const DocumentList: React.FC<DocumentListProps> = ({
           </TableBody>
         </Table>
 
-        {/* Bottom action bar */}
+        {/* Bottom action bar for multi-select */}
         {selectedIds.size > 0 && (
-          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white border rounded-lg px-6 py-4 shadow-lg flex justify-between items-center gap-8 z-50">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white border rounded-lg shadow-lg flex items-center z-50">
+            <div className="flex items-center py-2 px-4 border-r">
+              <span className="font-medium">
                 {selectedIds.size} {selectedIds.size === 1 ? 'document' : 'documents'} selected
               </span>
             </div>
-            <div className="flex gap-4">
+            
+            <div className="flex items-center gap-8 p-2">
               <Button 
-                size="lg"
-                variant="outline"
-                onClick={() => {
-                  const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
-                  selectedDocs.forEach(doc => handleParseClick(doc));
-                }}
+                size="sm"
+                variant="ghost"
+                className="flex items-center"
+                onClick={parseMultipleDocuments}
+                disabled={parseLoading}
               >
-                <Play className="h-4 w-4 mr-2" />
+                {parseLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
                 Parse Selected
               </Button>
+              
+              <div className="flex items-center">
+                <span className="mr-3">Enable/Disable</span>
+                <Switch 
+                  checked={selectedIds.size > 0 && documents.filter(doc => selectedIds.has(doc.id)).every(doc => doc.metadata.enabled)}
+                  onCheckedChange={(checked) => {
+                    // Disable during operation to prevent double-clicks
+                    if (toggleLoading) return;
+                    
+                    toggleEnableMultiple(checked);
+                  }}
+                  disabled={toggleLoading}
+                />
+              </div>
+              
               <Button 
-                size="lg"
-                variant="outline"
-                onClick={() => {
-                  const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
-                  selectedDocs.forEach(doc => {
-                    enableDocument(doc, true);
-                  });
-                }}
+                size="sm"
+                variant="destructive"
+                className="flex items-center"
+                onClick={handleMultipleDelete}
+                disabled={deleteLoading}
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Enable Selected
-              </Button>
-              <Button 
-                size="lg"
-                variant="outline"
-                onClick={() => {
-                  const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
-                  selectedDocs.forEach(doc => {
-                    enableDocument(doc, false);
-                  });
-                }}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Disable Selected
+                {deleteLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                Delete Documents
               </Button>
             </div>
           </div>

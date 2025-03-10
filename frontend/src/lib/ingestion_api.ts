@@ -96,6 +96,16 @@ class IngestionApi {
     });
   }
 
+  async deleteDocumentWithoutConfirmation(id: string): Promise<void> {
+    await this.request('/ingestion', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([id])
+    });
+  }
+
   async updateDocument(id: string, document: SimbaDoc): Promise<SimbaDoc> {
     return this.request(`/ingestion/update_document?doc_id=${id}`, {
       method: 'PUT',

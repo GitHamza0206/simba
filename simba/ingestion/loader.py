@@ -11,6 +11,7 @@ from langchain_community.document_loaders import (
     UnstructuredPDFLoader,
     UnstructuredPowerPointLoader,
     UnstructuredWordDocumentLoader,
+    PyPDFLoader,
 )
 
 
@@ -18,7 +19,7 @@ class Loader:
     def __init__(self):
         self.SUPPORTED_EXTENSIONS = {
             ".md": UnstructuredMarkdownLoader,
-            ".pdf": UnstructuredPDFLoader,
+            ".pdf": PyPDFLoader,
             ".pptx": UnstructuredPowerPointLoader,
             ".xlsx": UnstructuredExcelLoader,
             ".docx": UnstructuredWordDocumentLoader,
