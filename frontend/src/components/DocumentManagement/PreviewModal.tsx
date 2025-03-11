@@ -1,5 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
 import { useState, useEffect, useRef } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -16,6 +19,18 @@ interface PreviewModalProps {
   document: SimbaDoc | null;
   onUpdate: (document: SimbaDoc) => void;
 }
+
+// Add CSS styles at the component level
+const imageStyles = `
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+    margin: 10px 0 !important;
+    display: block !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 0.375rem !important;
+  }
+`;
 
 const PreviewModal: React.FC<PreviewModalProps> = ({ 
   isOpen, 
@@ -341,9 +356,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                       </div>
                     </div>
                     <div className="prose prose-sm max-w-none">
-                      <ReactMarkdown>
-                        {chunk.page_content}
-                      </ReactMarkdown>
+                      <ChunkContent content={chunk.page_content} />
                     </div>
                     <Separator className="my-2" />
                     <div className="text-xs text-muted-foreground break-all">
@@ -397,6 +410,32 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
       </DialogContent>
     </Dialog>
   );
-}; 
+};
+
+// Add this custom component inside the PreviewModal component
+const ChunkContent = ({ content }: { content: string }) => {
+  // For safety, verify content is a string
+  if (typeof content !== 'string') {
+    return <div>Invalid content</div>;
+  }
+
+  // CRITICAL FIX: Simply use dangerouslySetInnerHTML to render content directly
+  // This bypasses ReactMarkdown completely which may be causing rendering issues
+  return (
+    <>
+      <style>{imageStyles}</style>
+      <div 
+        className="prose prose-sm max-w-none overflow-auto p-2"
+        dangerouslySetInnerHTML={{ 
+          __html: content
+            // Convert markdown image syntax to HTML for reliable rendering
+            .replace(/!\[(.*?)\]\((data:image\/[^)]+)\)/g, '<img src="$2" alt="$1" />')
+            // Add line breaks for better readability
+            .replace(/\n/g, '<br />')
+        }} 
+      />
+    </>
+  );
+};
 
 export default PreviewModal; 

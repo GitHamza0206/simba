@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { 
@@ -10,7 +10,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { DocumentType } from '@/types/document';
-import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play, Loader2, Pencil, CheckCircle } from 'lucide-react';
+import { Search, Trash2, Plus, Filter, Eye, FileText, FileSpreadsheet, File, FileCode, FileImage, FolderPlus, Folder, FolderOpen, RefreshCcw, Play, Loader2, Pencil, CheckCircle, Settings } from 'lucide-react';
 import { Button } from '../ui/button';
 import { 
   DropdownMenu,
@@ -41,19 +41,29 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { embeddingApi, ingestionApi } from '@/lib/api_services';
+import { embeddingApi } from '@/lib/api_services';
+import { ingestionApi } from '@/lib/ingestion_api';
+import { parsingApi } from '@/lib/parsing_api';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { SimbaDoc } from '@/types/document';
-import { Metadata } from '@/types/document';
+import { SimbaDoc, Metadata } from '@/types/document';
 import { ParsingStatusBox } from './ParsingStatusBox';
+import { ParserConfigModal } from './ParserConfigModal';
+import { ParserConfigDebug } from './ParserConfigDebug';
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface Folder {
   id: string;
@@ -115,6 +125,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
   });
   
   const [parsingButtonStates, setParsingButtonStates] = useState<Record<string, boolean>>({});
+
+  // Add state for available parsers
+  const [availableParsers, setAvailableParsers] = useState<string[]>(["docling"]);
 
   // Save parsingTasks to localStorage whenever they change
   useEffect(() => {
@@ -213,6 +226,21 @@ const DocumentList: React.FC<DocumentListProps> = ({
       }
     }
   }, [documents, pendingUploads, onDocumentUpdate]);
+
+  // Add useEffect to fetch available parsers
+  useEffect(() => {
+    const fetchParsers = async () => {
+      try {
+        const parsers = await parsingApi.getParsers();
+        setAvailableParsers(parsers);
+      } catch (error) {
+        console.error("Failed to fetch available parsers:", error);
+        setAvailableParsers(["docling"]); // Fallback to docling
+      }
+    };
+
+    fetchParsers();
+  }, []);
 
   const formatDate = (dateString: string) => {
     if (dateString === "Unknown") return dateString;
@@ -612,8 +640,22 @@ const DocumentList: React.FC<DocumentListProps> = ({
     return result;
   };
 
-  const enableDocument = async (doc: SimbaDoc, checked: boolean) => {
+  const [isEnabling, setIsEnabling] = useState<Set<string>>(new Set());
+
+  const enableDocument = async (doc: SimbaDoc, checked: boolean, silent = false) => {
     try {
+      // Prevent double-calling this function
+      if (isEnabling.has(doc.id)) {
+        console.log(`Already processing document ${doc.id}`);
+        return;
+      }
+      
+      setIsEnabling(prev => {
+        const next = new Set(prev);
+        next.add(doc.id);
+        return next;
+      });
+      
       // Update local state immediately for better UX
       const updatedDoc = { ...doc, metadata: { ...doc.metadata, enabled: checked }};
       onDocumentUpdate(updatedDoc);
@@ -628,10 +670,12 @@ const DocumentList: React.FC<DocumentListProps> = ({
           return next;
         });
         
-        toast({
-          title: "Document removed",
-          description: "Document removed from embeddings successfully"
-        });
+        if (!silent) {
+          toast({
+            title: "Document removed",
+            description: "Document removed from embeddings successfully"
+          });
+        }
       } else {  // If we're enabling the document
         // Call embed endpoint
         await embeddingApi.embedd_document(doc.id);
@@ -642,10 +686,12 @@ const DocumentList: React.FC<DocumentListProps> = ({
           return next;
         });
         
-        toast({
-          title: "Document embedded",
-          description: `Document embedded successfully.`
-        });
+        if (!silent) {
+          toast({
+            title: "Document embedded",
+            description: `Document embedded successfully.`
+          });
+        }
       }
     } catch (error) {
       // Revert local state on error
@@ -658,12 +704,24 @@ const DocumentList: React.FC<DocumentListProps> = ({
         return next;
       });
       
-      toast({
-        title: "Error",
-        description: error instanceof Error 
-          ? error.message 
-          : `Failed to ${checked ? 'embed' : 'remove'} document`,
-        variant: "destructive"
+      if (!silent) {
+        toast({
+          title: "Error",
+          description: error instanceof Error 
+            ? error.message 
+            : `Failed to ${checked ? 'embed' : 'remove'} document`,
+          variant: "destructive"
+        });
+      }
+      
+      // Rethrow for the caller to handle
+      throw error;
+    } finally {
+      // Remove from processing set
+      setIsEnabling(prev => {
+        const next = new Set(prev);
+        next.delete(doc.id);
+        return next;
       });
     }
   };
@@ -728,16 +786,40 @@ const DocumentList: React.FC<DocumentListProps> = ({
       }
 
       // Start new parsing task
-      const result = await ingestionApi.startParsing(document.id, document.metadata.parser || 'docling');
-      setParsingTasks(prev => ({
-        ...prev,
-        [document.id]: result.task_id
-      }));
+      const result = await parsingApi.startParsing(document.id, document.metadata.parser || 'docling');
       
-      toast({
-        title: document.metadata.parsing_status === 'SUCCESS' ? "Re-parsing Started" : "Parsing Started",
-        description: "Document parsing has been queued"
-      });
+      // If we got a SimbaDoc directly (from Mistral OCR)
+      if (result && 'id' in result && 'metadata' in result) {
+        console.log('Received parsed document directly:', result);
+        
+        // Update the document in state
+        onDocumentUpdate(result);
+        
+        toast({
+          title: "Parsing Complete",
+          description: `Document parsed successfully with ${document.metadata.parser || 'docling'}`
+        });
+      }
+      // Otherwise handle as an async task (docling)
+      else if ('task_id' in result && result.task_id) {
+        setParsingTasks(prev => ({
+          ...prev,
+          [document.id]: result.task_id as string
+        }));
+        
+        toast({
+          title: document.metadata.parsing_status === 'SUCCESS' ? "Re-parsing Started" : "Parsing Started",
+          description: "Document parsing has been queued"
+        });
+      }
+      else {
+        console.error('Unexpected parsing response:', result);
+        toast({
+          title: "Error",
+          description: "Received unexpected response from parsing service",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -951,6 +1033,203 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
+  // Inside the DocumentList component, add state for parser config modal
+  const [isParserConfigModalOpen, setIsParserConfigModalOpen] = useState(false);
+  const [selectedDocumentForConfig, setSelectedDocumentForConfig] = useState<SimbaDoc | null>(null);
+
+  // Add a function to handle opening the parser config modal
+  const handleOpenParserConfig = (doc: SimbaDoc, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    console.log("Opening parser config for document:", doc.id);
+    
+    // Set the document first
+    setSelectedDocumentForConfig(doc);
+    
+    // Use setTimeout to ensure state updates have time to propagate
+    setTimeout(() => {
+      setIsParserConfigModalOpen(true);
+      console.log("Parser config modal state set to true");
+    }, 50);
+  };
+
+  const [parseLoading, setParseLoading] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Function to handle bulk delete of multiple documents
+  const handleMultipleDelete = async () => {
+    const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
+    
+    // Ask for confirmation once
+    if (!window.confirm(`Are you sure you want to delete ${selectedDocs.length} document(s)?`)) {
+      return;
+    }
+    
+    setDeleteLoading(true);
+    let hasErrors = false;
+    
+    // Show loading toast
+    toast({
+      title: "Deleting documents",
+      description: `Deleting ${selectedDocs.length} document(s)...`,
+    });
+    
+    // Process documents in batches to avoid overwhelming the API
+    for (const doc of selectedDocs) {
+      try {
+        // Use the API to delete without additional confirmations
+        await ingestionApi.deleteDocumentWithoutConfirmation(doc.id);
+      } catch (error) {
+        console.error(`Error deleting document ${doc.id}:`, error);
+        hasErrors = true;
+      }
+    }
+    
+    // Show success or error message
+    if (hasErrors) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete one or more documents",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: `Successfully deleted ${selectedDocs.length} document(s)`,
+      });
+    }
+    
+    // Refresh document list
+    await fetchDocuments();
+    setSelectedIds(new Set()); // Clear selection after deletion
+    setDeleteLoading(false);
+  };
+
+  // Function to toggle enable/disable for multiple documents
+  const toggleEnableMultiple = async (enable: boolean) => {
+    const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
+    const docsToUpdate = selectedDocs.filter(doc => doc.metadata.enabled !== enable);
+    
+    if (docsToUpdate.length === 0) {
+      // No documents to update, all already in the desired state
+      return;
+    }
+    
+    setToggleLoading(true);
+    
+    // Show loading toast
+    toast({
+      title: `${enable ? 'Enabling' : 'Disabling'} documents`,
+      description: `${enable ? 'Enabling' : 'Disabling'} ${docsToUpdate.length} document(s)...`,
+    });
+    
+    // IMPORTANT: First update the UI state immediately for all documents
+    // This creates a more responsive feel for the user
+    docsToUpdate.forEach(doc => {
+      const updatedDoc = { 
+        ...doc, 
+        metadata: { 
+          ...doc.metadata, 
+          enabled: enable 
+        }
+      };
+      onDocumentUpdate(updatedDoc);
+    });
+    
+    let successCount = 0;
+    let errorCount = 0;
+    const failedDocs = [];
+    
+    // Then make the API calls in the background
+    for (const doc of docsToUpdate) {
+      try {
+        await enableDocument(doc, enable, true); // Pass true for silent mode
+        successCount++;
+      } catch (error) {
+        console.error(`Error ${enable ? 'enabling' : 'disabling'} document ${doc.id}:`, error);
+        errorCount++;
+        failedDocs.push(doc);
+      }
+    }
+    
+    // If any operations failed, revert the UI state for those documents
+    if (failedDocs.length > 0) {
+      failedDocs.forEach(doc => {
+        const revertedDoc = { 
+          ...doc, 
+          metadata: { 
+            ...doc.metadata, 
+            enabled: !enable 
+          }
+        };
+        onDocumentUpdate(revertedDoc);
+      });
+    }
+    
+    // Show final status toast
+    if (errorCount > 0) {
+      toast({
+        variant: "destructive",
+        title: "Operation partially completed",
+        description: `${successCount} document(s) updated, ${errorCount} failed`,
+      });
+    } else if (successCount > 0) {
+      toast({
+        title: "Success",
+        description: `Successfully ${enable ? 'enabled' : 'disabled'} ${successCount} document(s)`,
+      });
+    }
+    
+    setToggleLoading(false);
+  };
+
+  // Function to parse multiple documents
+  const parseMultipleDocuments = async () => {
+    const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
+    
+    if (selectedDocs.length === 0) {
+      return;
+    }
+    
+    setParseLoading(true);
+    
+    // Show loading toast
+    toast({
+      title: "Parsing documents",
+      description: `Starting parsing for ${selectedDocs.length} document(s)...`,
+    });
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const doc of selectedDocs) {
+      try {
+        await handleParseClick(doc);
+        successCount++;
+      } catch (error) {
+        console.error(`Error parsing document ${doc.id}:`, error);
+        errorCount++;
+      }
+    }
+    
+    // Show final status toast
+    if (errorCount > 0) {
+      toast({
+        variant: "destructive",
+        title: "Operation partially completed",
+        description: `${successCount} document(s) parsing started, ${errorCount} failed`,
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: `Parsing started for ${successCount} document(s)`,
+      });
+    }
+    
+    setParseLoading(false);
+  };
+
   return (
     <div className="relative">
       <CardContent>
@@ -1136,7 +1415,29 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 <TableCell>
                   <Switch
                     checked={doc.metadata.enabled}
-                    onCheckedChange={(checked) => enableDocument(doc, checked)}
+                    disabled={isEnabling.has(doc.id)}
+                    onCheckedChange={(checked) => {
+                      // Skip if already processing
+                      if (isEnabling.has(doc.id)) {
+                        return;
+                      }
+                      
+                      const updatedDoc = { 
+                        ...doc, 
+                        metadata: { 
+                          ...doc.metadata, 
+                          enabled: checked 
+                        }
+                      };
+                      // Update UI state immediately
+                      onDocumentUpdate(updatedDoc);
+                      // Then trigger the API call
+                      enableDocument(doc, checked).catch(error => {
+                        // Error handling is done in enableDocument
+                        // This try/catch is just to prevent unhandled rejections
+                        console.error("Error toggling document:", error);
+                      });
+                    }}
                     aria-label="Toggle document embedding"
                   />
                 </TableCell>
@@ -1153,9 +1454,84 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     >
                       {doc.metadata.parsing_status || 'Unparsed'}
                     </Badge>
+                    
+                    {/* Show parser badge (without default label) */}
+                    {doc.metadata.parser ? (
+                      <div className="relative">
+                        <Select
+                          value={doc.metadata.parser || "docling"}
+                          onValueChange={(value) => {
+                            const updatedDoc = {
+                              ...doc,
+                              metadata: {
+                                ...doc.metadata,
+                                parser: value
+                              }
+                            };
+                            onDocumentUpdate(updatedDoc);
+                            toast({
+                              title: "Parser Updated",
+                              description: `Parser changed to ${value}`,
+                            });
+                          }}
+                        >
+                          <SelectTrigger 
+                            className={cn(
+                              "h-6 min-w-0 px-2.5 py-0 border rounded-md text-xs font-semibold gap-1 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:opacity-70",
+                              doc.metadata.parser === 'docling' || !doc.metadata.parser
+                                ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" 
+                                : "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                            )}
+                          >
+                            <SelectValue>{doc.metadata.parser || "docling"}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableParsers.map((parserName) => (
+                              <SelectItem key={parserName} value={parserName}>
+                                {parserName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <Select
+                          value="docling"
+                          onValueChange={(value) => {
+                            const updatedDoc = {
+                              ...doc,
+                              metadata: {
+                                ...doc.metadata,
+                                parser: value
+                              }
+                            };
+                            onDocumentUpdate(updatedDoc);
+                            toast({
+                              title: "Parser Set",
+                              description: `Parser set to ${value}`,
+                            });
+                          }}
+                        >
+                          <SelectTrigger 
+                            className="h-6 min-w-0 px-2.5 py-0 border rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 gap-1 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:opacity-70"
+                          >
+                            <SelectValue>docling</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableParsers.map((parserName) => (
+                              <SelectItem key={parserName} value={parserName}>
+                                {parserName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
                     {parsingTasks[doc.id] && (
-                      <ParsingStatusBox 
-                        taskId={parsingTasks[doc.id]} 
+                      <ParsingStatusBox
+                        taskId={parsingTasks[doc.id]}
                         onComplete={(status) => handleParseComplete(doc.id, status)}
                         onCancel={() => handleParseCancel(doc.id)}
                       />
@@ -1228,7 +1604,26 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>{doc.metadata.parsing_status === 'SUCCESS' ? 'Re-parse document' : 'Parse document'}</p>
+                            <p>Parse document</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      {/* Parser Config button */}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              id={`parser-config-button-${doc.id}`}
+                              className="h-8 w-8 rounded-md hover:bg-gray-100 flex items-center justify-center"
+                              onClick={(e) => handleOpenParserConfig(doc, e)}
+                              type="button"
+                            >
+                              <Settings className="h-4 w-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Configure parser</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1280,51 +1675,50 @@ const DocumentList: React.FC<DocumentListProps> = ({
           </TableBody>
         </Table>
 
-        {/* Bottom action bar */}
+        {/* Bottom action bar for multi-select */}
         {selectedIds.size > 0 && (
-          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white border rounded-lg px-6 py-4 shadow-lg flex justify-between items-center gap-8 z-50">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white border rounded-lg shadow-lg flex items-center z-50">
+            <div className="flex items-center py-2 px-4 border-r">
+              <span className="font-medium">
                 {selectedIds.size} {selectedIds.size === 1 ? 'document' : 'documents'} selected
               </span>
             </div>
-            <div className="flex gap-4">
+            
+            <div className="flex items-center gap-8 p-2">
               <Button 
-                size="lg"
-                variant="outline"
-                onClick={() => {
-                  const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
-                  selectedDocs.forEach(doc => handleParseClick(doc));
-                }}
+                size="sm"
+                variant="ghost"
+                className="flex items-center"
+                onClick={parseMultipleDocuments}
+                disabled={parseLoading}
               >
-                <Play className="h-4 w-4 mr-2" />
+                {parseLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
                 Parse Selected
               </Button>
+              
+              <div className="flex items-center">
+                <span className="mr-3">Enable/Disable</span>
+                <Switch 
+                  checked={selectedIds.size > 0 && documents.filter(doc => selectedIds.has(doc.id)).every(doc => doc.metadata.enabled)}
+                  onCheckedChange={(checked) => {
+                    // Disable during operation to prevent double-clicks
+                    if (toggleLoading) return;
+                    
+                    toggleEnableMultiple(checked);
+                  }}
+                  disabled={toggleLoading}
+                />
+              </div>
+              
               <Button 
-                size="lg"
-                variant="outline"
-                onClick={() => {
-                  const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
-                  selectedDocs.forEach(doc => {
-                    enableDocument(doc, true);
-                  });
-                }}
+                size="sm"
+                variant="destructive"
+                className="flex items-center"
+                onClick={handleMultipleDelete}
+                disabled={deleteLoading}
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Enable Selected
-              </Button>
-              <Button 
-                size="lg"
-                variant="outline"
-                onClick={() => {
-                  const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
-                  selectedDocs.forEach(doc => {
-                    enableDocument(doc, false);
-                  });
-                }}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Disable Selected
+                {deleteLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                Delete Documents
               </Button>
             </div>
           </div>
@@ -1406,6 +1800,19 @@ const DocumentList: React.FC<DocumentListProps> = ({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Parser Configuration Modal */}
+        <ParserConfigModal 
+          isOpen={isParserConfigModalOpen}
+          onClose={() => setIsParserConfigModalOpen(false)}
+          document={selectedDocumentForConfig}
+          onUpdate={(updatedDoc) => {
+            console.log("Document updated with new parser:", updatedDoc.metadata.parser);
+            onDocumentUpdate(updatedDoc);
+            setSelectedDocumentForConfig(updatedDoc);
+          }}
+        />
+
       </CardContent>
     </div>
   );

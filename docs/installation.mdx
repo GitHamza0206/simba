@@ -1,0 +1,191 @@
+---
+title: 'Installation'
+description: 'Detailed installation instructions for Simba'
+---
+
+# Installing Simba
+
+This guide provides detailed instructions for installing Simba in various environments. Choose the method that works best for your needs.
+
+## Installation Methods
+
+<Tabs>
+  <Tab title="pip (SDK only)">
+    ### Python Package Installation
+
+    If you only need to use the Simba client in your existing projects, you can install it via pip:
+
+    ```bash
+    pip install simba-client
+    ```
+
+    This will install the Simba SDK, allowing you to connect to a running Simba instance.
+
+    To verify your installation:
+
+    ```python
+    from simba_sdk import SimbaClient
+    
+    # This should print the installed version
+    print(SimbaClient.__version__)
+    ```
+  </Tab>
+  <Tab title="Source (Full System)">
+    ### Clone the Repository
+
+    For a complete installation including the backend and frontend:
+
+    ```bash
+    git clone https://github.com/GitHamza0206/simba.git
+    cd simba
+    ```
+
+    ### Backend Installation
+
+    Simba uses Poetry for dependency management:
+
+    ```bash
+    # Install Poetry if not already installed
+    curl -sSL https://install.python-poetry.org | python3 -
+    
+    # Install dependencies
+    poetry install
+    ```
+
+    ### Frontend Installation
+
+    ```bash
+    cd frontend
+    npm install
+    ```
+
+    This will set up both the backend and frontend components of Simba.
+  </Tab>
+  <Tab title="Docker">
+    ### Using Docker Compose
+
+    Simba provides a Docker Compose setup for easy deployment:
+
+    ```bash
+    # Clone the repository
+    git clone https://github.com/GitHamza0206/simba.git
+    cd simba
+    
+    # Start services with Docker Compose
+    docker-compose up -d
+    ```
+
+    This will start:
+    - The Simba backend API
+    - Redis for caching and task queue
+    - The Simba frontend UI
+
+    All services will be properly configured to work together.
+
+    ### Using Individual Containers
+
+    You can also run individual components:
+
+    ```bash
+    # Run just the backend
+    docker run -p 8000:8000 -e REDIS_URL=redis://redis:6379 simba/backend
+    
+    # Run just the frontend
+    docker run -p 5173:5173 -e API_URL=http://localhost:8000 simba/frontend
+    ```
+  </Tab>
+</Tabs>
+
+## System Requirements
+
+### Minimum Requirements
+
+- **CPU**: 2 cores
+- **RAM**: 4 GB
+- **Disk Space**: 1 GB
+- **Python**: 3.11+
+- **Redis**: 7.0+
+- **Node.js** (for frontend): 20+
+
+### Recommended Requirements
+
+- **CPU**: 4+ cores
+- **RAM**: 8+ GB
+- **Disk Space**: 10+ GB (depending on your document volume)
+- **Python**: 3.11+
+- **Redis**: 7.0+
+- **Node.js** (for frontend): 20+
+
+## Dependencies
+
+Simba has the following key dependencies:
+
+<AccordionGroup>
+  <Accordion title="Core Dependencies">
+    - **FastAPI**: Web framework for the backend API
+    - **Redis**: For caching and task queues
+    - **SQLAlchemy**: ORM for database interactions
+    - **Celery**: Distributed task queue for background processing
+    - **Pydantic**: Data validation and settings management
+  </Accordion>
+  <Accordion title="Vector Store Support">
+    - **FAISS**: Facebook AI Similarity Search for efficient vector storage
+    - **Chroma**: ChromaDB integration for document embeddings
+    - **Pinecone** (optional): For cloud-based vector storage
+    - **Milvus** (optional): For distributed vector search
+  </Accordion>
+  <Accordion title="Machine Learning">
+    - **Sentence Transformers**: For text embeddings
+    - **PyTorch** (optional): For custom embedding models
+    - **HuggingFace Transformers** (optional): For text processing
+  </Accordion>
+  <Accordion title="Frontend">
+    - **React**: UI library
+    - **TypeScript**: For type-safe JavaScript
+    - **Vite**: Frontend build tool
+    - **Tailwind CSS**: Utility-first CSS framework
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+### Common Installation Issues
+
+#### Poetry Installation Fails
+
+```bash
+# Try installing with pip instead
+pip install poetry
+```
+
+#### Redis Connection Issues
+
+```bash
+# Check if Redis is running
+redis-cli ping
+# Should return PONG
+```
+
+#### Backend Startup Issues
+
+```bash
+# Check environment variables
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+#### Frontend Build Issues
+
+```bash
+# Clear npm cache
+npm cache clean --force
+npm install
+```
+
+## Next Steps
+
+Once you have Simba installed, proceed to:
+
+1. [Configure your installation](/configuration)
+2. [Set up your first document collection](/examples/document-ingestion)
+3. [Connect your application to Simba](/sdk/client) 

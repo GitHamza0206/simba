@@ -1,15 +1,20 @@
+import json
 import logging
+import os
 
 import torch
 from celery.app.control import Inspect
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from simba.core.factories.database_factory import get_database
 from simba.core.factories.vector_store_factory import VectorStoreFactory
+from simba.embeddings import EmbeddingService
 from simba.models.simbadoc import SimbaDoc
 from simba.parsing.docling_parser import DoclingParser
-from simba.tasks.parsing_tasks import celery, parse_docling_task
+from simba.parsing.mistral_ocr import MistralOCR
+from simba.tasks.parsing_tasks import celery, parse_docling_task, parse_mistral_ocr_task
 
 logger = logging.getLogger(__name__)
 parsing = APIRouter()
@@ -17,11 +22,17 @@ parsing = APIRouter()
 db = get_database()
 vector_store = VectorStoreFactory.get_vector_store()
 
+PARSERS = {"docling": DoclingParser, "mistral_ocr": MistralOCR}
+
 
 @parsing.get("/parsers")
 async def get_parsers():
     """Get the list of parsers supported by the document ingestion service"""
-    return {"parsers": "docling"}
+    parsers = list(PARSERS.keys())
+    logger.info(f"Returning parsers: {parsers}")
+
+    # Create a Response directly to prevent any transformation
+    return JSONResponse(content={"parsers": parsers})
 
 
 class ParseDocumentRequest(BaseModel):
@@ -41,20 +52,33 @@ async def parse_document(request: ParseDocumentRequest):
         if not simbadoc:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        # If sync is True, parse synchronously
+        # Handle synchronous parsing for any parser type
         if request.sync:
+
+            logger.info(f"Processing synchronously with parser: {request.parser}")
             if request.parser == "docling":
-                return await parse_document_sync(request.document_id)
+                return await parse_document_sync(request.document_id, parser_type="docling")
+            elif request.parser == "mistral_ocr":
+                return await parse_document_sync(request.document_id, parser_type="mistral_ocr")
             else:
                 raise HTTPException(status_code=400, detail="Unsupported parser")
 
-        # Otherwise, parse asynchronously using Celery
-        elif request.parser == "docling":
+        # Handle asynchronous parsing based on parser type
+        if request.parser == "docling":
+            logger.info(
+                f"Starting asynchronous docling parsing for document: {request.document_id}"
+            )
             task = parse_docling_task.delay(request.document_id)
+            return {"task_id": task.id, "status_url": f"parsing/tasks/{task.id}"}
+        elif request.parser == "mistral_ocr":
+            logger.info(
+                f"Starting asynchronous Mistral OCR parsing for document: {request.document_id}"
+            )
+            task = parse_mistral_ocr_task.delay(request.document_id)
+            return {"task_id": task.id, "status_url": f"parsing/tasks/{task.id}"}
         else:
-            raise HTTPException(status_code=400, detail="Unsupported parser")
-
-        return {"task_id": task.id, "status_url": f"parsing/tasks/{task.id}"}
+            logger.error(f"Unsupported parser: {request.parser}")
+            raise HTTPException(status_code=400, detail=f"Unsupported parser: {request.parser}")
 
     except Exception as e:
         logger.error(f"Error processing parse request: {e}", exc_info=True)
@@ -62,50 +86,35 @@ async def parse_document(request: ParseDocumentRequest):
 
 
 @parsing.post("/parse/sync")
-async def parse_document_sync(document_id: str):
+async def parse_document_sync(document_id: str, parser_type: str = "docling"):
     """Parse a document synchronously"""
     try:
-        logger.info(f"Received synchronous parse request for document: {document_id}")
+        logger.info(
+            f"Received synchronous parse request for document: {document_id} with parser: {parser_type}"
+        )
 
         # Verify document exists first
         simbadoc: SimbaDoc = db.get_document(document_id)
         if not simbadoc:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        # Perform parsing directly
-        try:
-            parser = DoclingParser()
-            parsed_simba_doc = parser.parse(simbadoc)
+        # Get parser
+        if parser_type not in PARSERS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Parser {parser_type} not found. Available parsers: {list(PARSERS.keys())}",
+            )
 
-            # Update database
-            vector_store.add_documents(parsed_simba_doc.documents)
-            db.update_document(document_id, parsed_simba_doc)
+        parser = PARSERS[parser_type]()
 
-            # Return the parsed document data
-            return {
-                "status": "success",
-                "document_id": parsed_simba_doc.id,
-                "result": {
-                    "document_id": parsed_simba_doc.id,
-                    "num_chunks": (
-                        len(parsed_simba_doc.documents) if parsed_simba_doc.documents else 0
-                    ),
-                    "parsing_status": parsed_simba_doc.metadata.parsing_status,
-                    "parsed_at": (
-                        parsed_simba_doc.metadata.parsed_at.isoformat()
-                        if parsed_simba_doc.metadata.parsed_at
-                        else None
-                    ),
-                },
-            }
-        except Exception as e:
-            logger.error(f"Parsing failed: {str(e)}", exc_info=True)
-            return {"status": "error", "document_id": document_id, "error": str(e)}
-        finally:
-            # Clean up any remaining GPU memory
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+        # Parse document
+        parsed_simba_doc = parser.parse(simbadoc)
 
+        # Update database
+        db.update_document(document_id, parsed_simba_doc)
+
+        # Return the parsed document data
+        return parsed_simba_doc
     except Exception as e:
         logger.error(f"Error processing synchronous parse request: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

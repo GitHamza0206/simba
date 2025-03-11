@@ -96,6 +96,16 @@ class IngestionApi {
     });
   }
 
+  async deleteDocumentWithoutConfirmation(id: string): Promise<void> {
+    await this.request('/ingestion', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([id])
+    });
+  }
+
   async updateDocument(id: string, document: SimbaDoc): Promise<SimbaDoc> {
     return this.request(`/ingestion/update_document?doc_id=${id}`, {
       method: 'PUT',
@@ -111,9 +121,32 @@ class IngestionApi {
     return response.loaders;
   }
 
+  /**
+   * @deprecated Use parsingApi.getParsers() instead
+   * This method is kept for backward compatibility
+   */
   async getParsers(): Promise<string[]> {
-    const response = await this.request<{ parsers: string[] }>('/parsers');
-    return response.parsers;
+    console.warn('IngestionApi.getParsers is deprecated. Use parsingApi.getParsers instead.');
+    
+    try {
+      const response = await this.request<{ parsers: string[] | string }>('/parsers');
+      
+      // Handle string response (backward compatibility)
+      if (typeof response.parsers === 'string') {
+        return [response.parsers];
+      }
+      
+      // Handle array response
+      if (Array.isArray(response.parsers)) {
+        return response.parsers;
+      }
+      
+      console.warn('Unexpected parsers response format:', response);
+      return ['docling']; // Default fallback
+    } catch (error) {
+      console.error('Error fetching parsers:', error);
+      return ['docling']; // Default fallback on error
+    }
   }
 
   async getUploadDirectory(): Promise<string> {
@@ -121,19 +154,39 @@ class IngestionApi {
     return response.path;
   }
 
-  async startParsing(documentId: string, parser: string): Promise<{ task_id: string }> {
-    return this.request('/parse', {
+  /**
+   * @deprecated Use parsingApi.startParsing() instead
+   * This method is kept for backward compatibility
+   */
+  async startParsing(documentId: string, parser: string): Promise<{ task_id?: string } | SimbaDoc> {
+    console.warn('IngestionApi.startParsing is deprecated. Use parsingApi.startParsing instead.');
+    
+    // For Mistral OCR, always use synchronous processing
+    const sync = parser === 'mistral_ocr' ? true : false;
+    
+    console.log(`Starting parsing for ${documentId} using ${parser} (sync: ${sync})`);
+    
+    const response = await this.request<{ task_id?: string } | SimbaDoc>('/parse', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         document_id: documentId,
-        parser: parser
+        parser: parser,
+        sync: sync
       })
     });
+    
+    // The response could be either a task_id (for docling) or a SimbaDoc (for Mistral OCR)
+    console.log('Parse response:', response);
+    return response;
   }
 
+  /**
+   * @deprecated Use parsingApi.getParseStatus() instead
+   * This method is kept for backward compatibility
+   */
   async getParseStatus(taskId: string): Promise<{
     status: string;
     result?: {
@@ -142,6 +195,7 @@ class IngestionApi {
       error?: string;
     };
   }> {
+    console.warn('IngestionApi.getParseStatus is deprecated. Use parsingApi.getParseStatus instead.');
     return this.request(`/parsing/tasks/${taskId}`);
   }
 }

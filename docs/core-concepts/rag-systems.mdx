@@ -1,0 +1,128 @@
+---
+title: 'Retrieval-Augmented Generation (RAG) Systems'
+description: 'Understanding RAG systems and how Simba enhances them'
+---
+
+# Retrieval-Augmented Generation (RAG) Systems
+
+Retrieval-Augmented Generation (RAG) combines large language models (LLMs) with external knowledge retrieval to provide more accurate and contextually relevant responses.
+
+## What is RAG?
+
+RAG systems combine two key components:
+
+1. **Retriever**: Fetches relevant information from a knowledge base
+2. **Generator**: Uses the retrieved information to generate accurate responses
+
+Advantages:
+- Reduces hallucinations in LLM outputs
+- Enables access to domain-specific knowledge
+- Provides up-to-date information
+- Improves factual accuracy
+
+## How RAG Systems Work
+
+1. **Ingestion Pipeline**:
+   - Documents are parsed into manageable chunks
+   - Chunks are converted into embeddings (vector representations)
+   - Embeddings are stored in a vector database
+
+2. **Query Processing**:
+   - User query is converted into an embedding
+   - Vector database retrieves relevant chunks based on similarity
+   - Retrieved chunks provide context for the LLM
+
+3. **Response Generation**:
+   - LLM generates a response using both the query and retrieved context
+
+## How Simba Enhances RAG Systems
+
+Simba provides a complete knowledge management system designed specifically for RAG applications:
+
+### 1. Flexible Ingestion Pipeline
+- Support for multiple document formats
+- Configurable chunking strategies
+- Multiple embedding model options
+
+### 2. Vector Store Abstraction
+- Unified API across different vector store backends
+- Easy switching between vector stores
+- Metadata filtering capabilities
+
+### 3. Retrieval Optimization
+- Query preprocessing
+- Contextual retrieval
+- Result filtering and reranking
+
+### 4. Developer Experience
+- Simple Python SDK
+- Intuitive API design
+
+## Example: Basic RAG with Simba
+
+```python
+from simba_sdk import SimbaClient
+from openai import OpenAI
+
+# Initialize Simba client
+client = SimbaClient(api_url="http://localhost:8000")
+
+# Upload documents to knowledge base
+client.documents.create(file_path="knowledge_document.pdf")
+
+# Retrieve relevant information
+results = client.retrieval.retrieve(
+    query="What is the capital of France?",
+    top_k=3
+)
+
+# Use retrieved information with an LLM
+openai_client = OpenAI()
+context = "\n".join([r["content"] for r in results])
+prompt = f"""Answer based on the following context:
+{context}
+Question: What is the capital of France?"""
+
+response = openai_client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": prompt}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+## Best Practices for RAG with Simba
+
+1. **Optimize chunk size** for your specific use case
+2. **Choose appropriate embedding models** for your domain
+3. **Use metadata filtering** to narrow down search space
+4. **Monitor and evaluate** retrieval quality
+
+## Common RAG Challenges and Simba Solutions
+
+| Challenge | Simba Solution |
+|-----------|----------------|
+| Document format variety | Multi-format parser support |
+| Chunking strategy optimization | Configurable chunking parameters |
+| Vector store selection | Pluggable vector store backends |
+| Embedding model choice | Multiple embedding models support |
+| Query-document mismatch | Query transformation options |
+| Context window limitations | Smart context assembly |
+| Relevance scoring | Configurable similarity metrics |
+
+## Advanced RAG Techniques
+
+- **Multi-stage Retrieval**: Iterative refinement of search results
+- **Query Decomposition**: Breaking complex queries into simpler sub-queries
+- **Hypothetical Document Embeddings**: Generating synthetic queries for better retrieval
+- **Self-RAG**: Having the LLM critique and improve its own retrievals
+
+## Next Steps
+
+- Learn about [Vector Stores](/core-concepts/vector-stores) in Simba
+- Explore [Embedding Models](/core-concepts/embeddings) options
+- Understand [Chunking Strategies](/core-concepts/chunking)
+- Try our [Document Ingestion Example](/examples/document-ingestion) 

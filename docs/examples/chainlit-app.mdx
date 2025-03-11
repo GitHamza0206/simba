@@ -1,0 +1,325 @@
+---
+title: 'Chainlit Integration'
+description: 'Building a chat interface with Simba and Chainlit'
+---
+
+# Building a Chat Interface with Simba and Chainlit
+
+This example demonstrates how to create an interactive chat interface using Simba for knowledge retrieval and Chainlit for the user interface.
+
+## Prerequisites
+
+- Simba installed and running
+- Python 3.9+
+- Required packages: `simba-client`, `chainlit`, `openai`
+
+## Project Setup
+
+1. Create a new directory for your project:
+
+```bash
+mkdir simba-chainlit-app
+cd simba-chainlit-app
+```
+
+2. Install the required packages:
+
+```bash
+pip install simba-client chainlit openai
+```
+
+3. Create a basic Chainlit app structure:
+
+```
+simba-chainlit-app/
+├── app.py
+├── chainlit.md
+└── .env
+```
+
+## Basic Implementation
+
+Here's the `app.py` file with a basic implementation:
+
+```python
+import os
+import chainlit as cl
+from chainlit.playground.providers import ChatOpenAI
+from simba_sdk import SimbaClient
+from openai import OpenAI
+
+# Initialize clients
+simba_client = SimbaClient(api_url="http://localhost:8000")
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+@cl.on_chat_start
+async def start():
+    """Setup the chat session"""
+    # Set up the chatbot settings
+    await cl.Message(content="""
+    # Welcome to Simba Knowledge Assistant
+    I can answer questions based on your documents. How can I help you today?
+    """).send()
+    
+    # Store the chat history
+    cl.user_session.set("messages", [
+        {"role": "system", "content": "You are a helpful assistant. Answer based on the context provided."}
+    ])
+
+@cl.on_message
+async def main(message: cl.Message):
+    """Process each user message"""
+    # Get user query
+    query = message.content
+    
+    # Show processing steps
+    await cl.Message(content=f"Searching for information about: '{query}'...").send()
+    
+    # Search using Simba
+    with cl.Step("Retrieving relevant documents...") as step:
+        results = simba_client.retrieval.retrieve(
+            query=query,
+            top_k=3
+        )
+        
+        # Display the retrieved chunks
+        for i, chunk in enumerate(results):
+            step.output = cl.Text(
+                content=chunk["content"],
+                name=f"Chunk {i+1} (Score: {chunk['score']:.4f})"
+            )
+    
+    # Prepare context for LLM
+    context = "\n\n".join([r["content"] for r in results])
+    prompt = f"""Answer the following question based on the provided context. If the answer is not in the context, say "I don't have enough information to answer that question."
+
+Context:
+{context}
+
+Question: {query}
+"""
+    
+    # Get chat history
+    messages = cl.user_session.get("messages")
+    messages.append({"role": "user", "content": prompt})
+    
+    # Generate response using OpenAI
+    with cl.Step("Generating answer...") as step:
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            temperature=0.2,
+        )
+        answer = response.choices[0].message.content
+        step.output = answer
+    
+    # Update chat history
+    messages.append({"role": "assistant", "content": answer})
+    cl.user_session.set("messages", messages)
+    
+    # Send the final answer
+    await cl.Message(content=answer).send()
+```
+
+Create a `chainlit.md` file for the welcome screen:
+
+```markdown
+# Simba Knowledge Assistant
+
+Welcome to the Simba Knowledge Assistant! This app demonstrates integrating Simba's knowledge retrieval capabilities with Chainlit's conversational interface.
+
+## Features
+
+- Ask questions about your documents
+- View relevant document chunks
+- Get AI-generated answers based on your knowledge base
+
+## How to Use
+
+1. Type your question in the chat input
+2. The system will retrieve relevant information from your documents
+3. An AI will generate an answer based on the retrieved information
+```
+
+Create a `.env` file for your OpenAI API key:
+
+```
+OPENAI_API_KEY=your-openai-api-key
+```
+
+## Running the App
+
+Start the Chainlit app:
+
+```bash
+chainlit run app.py
+```
+
+Your app will be available at http://localhost:8000
+
+## Adding File Upload Support
+
+To allow users to upload documents directly to Simba through the Chainlit interface, enhance your `app.py`:
+
+```python
+@cl.on_chat_start
+async def start():
+    """Setup the chat session"""
+    # Set up the chatbot settings
+    await cl.Message(content="""
+    # Welcome to Simba Knowledge Assistant
+    I can answer questions based on your documents. You can upload new documents or ask me questions.
+    """).send()
+    
+    # Store the chat history
+    cl.user_session.set("messages", [
+        {"role": "system", "content": "You are a helpful assistant. Answer based on the context provided."}
+    ])
+    
+    # Store uploaded document IDs
+    cl.user_session.set("document_ids", [])
+
+@cl.on_file_upload
+async def handle_file_upload(file: cl.File):
+    """Process uploaded files"""
+    # Save file temporarily
+    temp_path = f"/tmp/{file.name}"
+    with open(temp_path, "wb") as f:
+        f.write(await file.get_bytes())
+    
+    # Upload to Simba
+    try:
+        response = simba_client.documents.create(file_path=temp_path)
+        document_id = response[0]["id"]
+        
+        # Store the document ID
+        document_ids = cl.user_session.get("document_ids")
+        document_ids.append(document_id)
+        cl.user_session.set("document_ids", document_ids)
+        
+        # Notify user
+        await cl.Message(
+            content=f"✅ Document '{file.name}' uploaded successfully! You can now ask questions about it."
+        ).send()
+        
+    except Exception as e:
+        await cl.Message(
+            content=f"❌ Error uploading document: {str(e)}"
+        ).send()
+    
+    # Clean up
+    os.remove(temp_path)
+```
+
+## Adding Document Listing
+
+Add a function to display available documents:
+
+```python
+@cl.action_callback("List Documents")
+async def list_documents():
+    """List available documents"""
+    # Get all documents from Simba
+    try:
+        documents = simba_client.documents.list()
+        
+        if not documents:
+            await cl.Message(content="No documents found in the knowledge base.").send()
+            return
+        
+        # Create a markdown table of documents
+        table = "| ID | Filename | Status | Chunks |\n| --- | --- | --- | --- |\n"
+        for doc in documents:
+            table += f"| {doc['id']} | {doc['filename']} | {doc['status']} | {doc.get('chunks_count', 'N/A')} |\n"
+        
+        await cl.Message(content=f"## Available Documents\n\n{table}").send()
+        
+    except Exception as e:
+        await cl.Message(content=f"Error listing documents: {str(e)}").send()
+
+# Add actions to the UI
+@cl.on_chat_start
+async def setup_actions():
+    """Setup chat actions"""
+    cl.Action(name="List Documents", description="Show available documents")
+```
+
+## Adding Memory Management
+
+Add conversation memory to make the chat more context-aware:
+
+```python
+from langchain.memory import ConversationBufferMemory
+
+@cl.on_chat_start
+async def start():
+    """Setup the chat session"""
+    # Initialize memory
+    memory = ConversationBufferMemory(return_messages=True)
+    cl.user_session.set("memory", memory)
+    
+    # Welcome message
+    await cl.Message(content="""
+    # Welcome to Simba Knowledge Assistant
+    I can answer questions based on your documents. My memory is enabled, so I'll remember our conversation context.
+    """).send()
+
+@cl.on_message
+async def main(message: cl.Message):
+    """Process each user message"""
+    # Get user query and memory
+    query = message.content
+    memory = cl.user_session.get("memory")
+    
+    # Get chat context
+    chat_history = memory.chat_memory.messages
+    
+    # Search using Simba and generate response (same as before)
+    # ...
+    
+    # Update memory
+    memory.chat_memory.add_user_message(query)
+    memory.chat_memory.add_ai_message(answer)
+    cl.user_session.set("memory", memory)
+```
+
+## Deployment Considerations
+
+When deploying your Chainlit app with Simba:
+
+1. Configure environment variables for production:
+   ```
+   SIMBA_API_URL=https://your-simba-instance.com
+   OPENAI_API_KEY=your-openai-api-key
+   ```
+
+2. For Docker deployment, create a Dockerfile:
+   ```dockerfile
+   FROM python:3.10-slim
+   
+   WORKDIR /app
+   
+   COPY requirements.txt .
+   RUN pip install --no-cache-dir -r requirements.txt
+   
+   COPY . .
+   
+   CMD ["chainlit", "run", "app.py", "--host", "0.0.0.0", "--port", "8000"]
+   ```
+
+3. Create a `requirements.txt` file:
+   ```
+   simba-client
+   chainlit
+   openai
+   ```
+
+## Best Practices
+
+When building Chainlit apps with Simba:
+
+- **Provide context**: Show users which documents were used to answer their questions
+- **Handle errors gracefully**: Display user-friendly messages when Simba or OpenAI encounters issues
+- **Add feedback mechanisms**: Allow users to rate answer quality
+- **Implement authentication**: Protect sensitive documents with user authentication
+- **Monitor usage**: Track token usage and popular queries to optimize costs 

@@ -1,0 +1,797 @@
+---
+title: 'React Frontend Integration'
+description: 'Building a document search interface with Simba and React'
+---
+
+# Building a Document Search Interface with React
+
+This example demonstrates how to create a React-based web interface that connects to Simba for document search and retrieval.
+
+## Prerequisites
+
+- Simba running on your server
+- Node.js and npm installed
+- Basic knowledge of React
+
+## Project Setup
+
+1. Create a new React app:
+
+```bash
+npx create-react-app simba-search-interface
+cd simba-search-interface
+```
+
+2. Install necessary dependencies:
+
+```bash
+npm install axios react-router-dom @chakra-ui/react @emotion/react @emotion/styled framer-motion react-icons
+```
+
+## Application Structure
+
+Let's create a simple document search interface with the following features:
+- Document search with relevance scores
+- Document viewing and uploading
+- Result filtering by metadata
+
+## API Service
+
+First, create a service to interact with the Simba API:
+
+```jsx
+// src/services/simbaService.js
+import axios from 'axios';
+
+const API_URL = process.env.REACT_APP_SIMBA_API_URL || 'http://localhost:8000';
+
+const simbaApi = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add auth token if available
+simbaApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem('simba_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Search documents
+export const searchDocuments = async (query, topK = 5, filters = {}) => {
+  try {
+    const response = await simbaApi.post('/api/v1/retrieval/search', {
+      query,
+      top_k: topK,
+      filters
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error searching documents:', error);
+    throw error;
+  }
+};
+
+// Get all documents
+export const getDocuments = async () => {
+  try {
+    const response = await simbaApi.get('/api/v1/documents');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching documents:', error);
+    throw error;
+  }
+};
+
+// Upload a document
+export const uploadDocument = async (file, metadata = {}) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    if (Object.keys(metadata).length > 0) {
+      formData.append('metadata', JSON.stringify(metadata));
+    }
+    
+    const response = await simbaApi.post('/api/v1/documents', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    throw error;
+  }
+};
+
+// Get document chunks
+export const getDocumentChunks = async (documentId) => {
+  try {
+    const response = await simbaApi.get(`/api/v1/chunks?document_id=${documentId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching chunks:', error);
+    throw error;
+  }
+};
+```
+
+## Search Component
+
+Create a component for searching documents:
+
+```jsx
+// src/components/Search.jsx
+import React, { useState } from 'react';
+import {
+  Box,
+  Input,
+  Button,
+  VStack,
+  Text,
+  Heading,
+  Container,
+  SimpleGrid,
+  Spinner,
+  Badge,
+  Select,
+  HStack,
+  useToast,
+} from '@chakra-ui/react';
+import { searchDocuments } from '../services/simbaService';
+
+function Search() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [topK, setTopK] = useState(5);
+  const toast = useToast();
+
+  const handleSearch = async () => {
+    if (!query.trim()) {
+      toast({
+        title: 'Query is empty',
+        description: 'Please enter a search query',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await searchDocuments(query, topK);
+      setResults(response.data || []);
+    } catch (error) {
+      toast({
+        title: 'Search error',
+        description: error.message || 'Failed to search documents',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  return (
+    <Container maxW="container.xl" py={8}>
+      <VStack spacing={6} align="stretch">
+        <Heading as="h1" size="xl">
+          Simba Document Search
+        </Heading>
+
+        <HStack>
+          <Input
+            placeholder="Enter your search query..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyPress={handleKeyPress}
+            size="lg"
+            flex="1"
+          />
+          <Select 
+            value={topK} 
+            onChange={(e) => setTopK(Number(e.target.value))}
+            width="100px"
+          >
+            <option value={3}>Top 3</option>
+            <option value={5}>Top 5</option>
+            <option value={10}>Top 10</option>
+          </Select>
+          <Button 
+            colorScheme="blue" 
+            onClick={handleSearch}
+            isLoading={isLoading}
+            size="lg"
+          >
+            Search
+          </Button>
+        </HStack>
+
+        {isLoading ? (
+          <Box textAlign="center" py={10}>
+            <Spinner size="xl" />
+            <Text mt={4}>Searching documents...</Text>
+          </Box>
+        ) : (
+          <>
+            {results.length > 0 ? (
+              <VStack spacing={4} align="stretch">
+                <Text fontSize="lg" fontWeight="medium">
+                  Found {results.length} results
+                </Text>
+                <SimpleGrid columns={{ base: 1, md: 1 }} spacing={6}>
+                  {results.map((result, index) => (
+                    <Box
+                      key={index}
+                      p={5}
+                      shadow="md"
+                      borderWidth="1px"
+                      borderRadius="md"
+                      bg="white"
+                    >
+                      <HStack spacing={2} mb={2}>
+                        <Badge colorScheme="green">
+                          Score: {result.score.toFixed(4)}
+                        </Badge>
+                        {result.metadata && result.metadata.source && (
+                          <Badge colorScheme="blue">
+                            {result.metadata.source}
+                          </Badge>
+                        )}
+                        {result.metadata && result.metadata.page && (
+                          <Badge>
+                            Page {result.metadata.page}
+                          </Badge>
+                        )}
+                      </HStack>
+                      <Text fontWeight="bold" mb={2}>
+                        Result {index + 1}
+                      </Text>
+                      <Text whiteSpace="pre-wrap">{result.content}</Text>
+                    </Box>
+                  ))}
+                </SimpleGrid>
+              </VStack>
+            ) : query !== '' && (
+              <Box textAlign="center" py={10}>
+                <Text>No results found. Try a different query.</Text>
+              </Box>
+            )}
+          </>
+        )}
+      </VStack>
+    </Container>
+  );
+}
+
+export default Search;
+```
+
+## Document Upload Component
+
+Create a component for uploading documents:
+
+```jsx
+// src/components/DocumentUpload.jsx
+import React, { useState } from 'react';
+import {
+  Box,
+  Button,
+  FormControl,
+  FormLabel,
+  Input,
+  VStack,
+  Container,
+  Heading,
+  Text,
+  useToast,
+  Progress,
+  Textarea,
+  HStack,
+  IconButton,
+} from '@chakra-ui/react';
+import { AddIcon, CloseIcon } from '@chakra-ui/icons';
+import { uploadDocument } from '../services/simbaService';
+
+function DocumentUpload() {
+  const [file, setFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [metadata, setMetadata] = useState([{ key: '', value: '' }]);
+  const toast = useToast();
+
+  const handleFileChange = (e) => {
+    if (e.target.files.length > 0) {
+      setFile(e.target.files[0]);
+    }
+  };
+
+  const handleMetadataChange = (index, field, value) => {
+    const newMetadata = [...metadata];
+    newMetadata[index][field] = value;
+    setMetadata(newMetadata);
+  };
+
+  const addMetadataField = () => {
+    setMetadata([...metadata, { key: '', value: '' }]);
+  };
+
+  const removeMetadataField = (index) => {
+    const newMetadata = [...metadata];
+    newMetadata.splice(index, 1);
+    setMetadata(newMetadata);
+  };
+
+  const handleUpload = async () => {
+    if (!file) {
+      toast({
+        title: 'No file selected',
+        description: 'Please select a file to upload',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    // Simulate progress (in a real app, you might get this from the upload)
+    const progressInterval = setInterval(() => {
+      setUploadProgress((prev) => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return prev + 10;
+      });
+    }, 500);
+
+    try {
+      // Convert metadata array to object
+      const metadataObj = {};
+      metadata.forEach((item) => {
+        if (item.key && item.value) {
+          metadataObj[item.key] = item.value;
+        }
+      });
+
+      const response = await uploadDocument(file, metadataObj);
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      
+      toast({
+        title: 'Upload Successful',
+        description: `Document ${file.name} has been uploaded successfully!`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      
+      // Reset form
+      setFile(null);
+      setMetadata([{ key: '', value: '' }]);
+      
+      // Reset file input
+      document.getElementById('file-upload').value = '';
+      
+    } catch (error) {
+      clearInterval(progressInterval);
+      toast({
+        title: 'Upload Failed',
+        description: error.message || 'Failed to upload document',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <Container maxW="container.md" py={8}>
+      <VStack spacing={6} align="stretch">
+        <Heading as="h1" size="xl">
+          Upload Document
+        </Heading>
+        
+        <Box p={6} shadow="md" borderWidth="1px" borderRadius="md" bg="white">
+          <VStack spacing={4} align="stretch">
+            <FormControl isRequired>
+              <FormLabel>Select Document</FormLabel>
+              <Input
+                id="file-upload"
+                type="file"
+                onChange={handleFileChange}
+                padding={1}
+                disabled={isUploading}
+              />
+              {file && (
+                <Text mt={2} fontSize="sm">
+                  Selected: {file.name} ({(file.size / 1024).toFixed(2)} KB)
+                </Text>
+              )}
+            </FormControl>
+
+            <Heading as="h3" size="sm" mt={4}>
+              Metadata (Optional)
+            </Heading>
+            <Text fontSize="sm" color="gray.600">
+              Add key-value pairs to help organize and search your document.
+            </Text>
+
+            {metadata.map((item, index) => (
+              <HStack key={index}>
+                <FormControl>
+                  <Input
+                    placeholder="Key (e.g., author)"
+                    value={item.key}
+                    onChange={(e) =>
+                      handleMetadataChange(index, 'key', e.target.value)
+                    }
+                    disabled={isUploading}
+                  />
+                </FormControl>
+                <FormControl>
+                  <Input
+                    placeholder="Value (e.g., John Doe)"
+                    value={item.value}
+                    onChange={(e) =>
+                      handleMetadataChange(index, 'value', e.target.value)
+                    }
+                    disabled={isUploading}
+                  />
+                </FormControl>
+                {metadata.length > 1 && (
+                  <IconButton
+                    icon={<CloseIcon />}
+                    onClick={() => removeMetadataField(index)}
+                    aria-label="Remove field"
+                    size="sm"
+                    disabled={isUploading}
+                  />
+                )}
+              </HStack>
+            ))}
+
+            <Button
+              leftIcon={<AddIcon />}
+              size="sm"
+              variant="outline"
+              onClick={addMetadataField}
+              alignSelf="flex-start"
+              disabled={isUploading}
+            >
+              Add Metadata Field
+            </Button>
+
+            {isUploading && (
+              <Box mt={4}>
+                <Text mb={2}>Uploading: {uploadProgress}%</Text>
+                <Progress value={uploadProgress} size="sm" colorScheme="blue" />
+              </Box>
+            )}
+
+            <Button
+              colorScheme="blue"
+              onClick={handleUpload}
+              isLoading={isUploading}
+              loadingText="Uploading..."
+              mt={4}
+            >
+              Upload Document
+            </Button>
+          </VStack>
+        </Box>
+      </VStack>
+    </Container>
+  );
+}
+
+export default DocumentUpload;
+```
+
+## Document List Component
+
+Create a component to list and manage documents:
+
+```jsx
+// src/components/DocumentList.jsx
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Container,
+  Heading,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Button,
+  Badge,
+  Spinner,
+  Text,
+  useToast,
+  HStack,
+  IconButton,
+} from '@chakra-ui/react';
+import { DeleteIcon, ViewIcon } from '@chakra-ui/icons';
+import { getDocuments } from '../services/simbaService';
+
+function DocumentList() {
+  const [documents, setDocuments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const toast = useToast();
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
+
+  const fetchDocuments = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getDocuments();
+      setDocuments(response.data || []);
+    } catch (error) {
+      toast({
+        title: 'Error fetching documents',
+        description: error.message || 'Failed to load documents',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'green';
+      case 'processing':
+        return 'blue';
+      case 'failed':
+        return 'red';
+      default:
+        return 'gray';
+    }
+  };
+
+  return (
+    <Container maxW="container.xl" py={8}>
+      <HStack justify="space-between" mb={6}>
+        <Heading as="h1" size="xl">
+          Documents
+        </Heading>
+        <Button colorScheme="blue" onClick={fetchDocuments} isLoading={isLoading}>
+          Refresh
+        </Button>
+      </HStack>
+
+      {isLoading ? (
+        <Box textAlign="center" py={10}>
+          <Spinner size="xl" />
+          <Text mt={4}>Loading documents...</Text>
+        </Box>
+      ) : (
+        <>
+          {documents.length > 0 ? (
+            <Box overflowX="auto">
+              <Table variant="simple">
+                <Thead>
+                  <Tr>
+                    <Th>Filename</Th>
+                    <Th>Status</Th>
+                    <Th>Chunks</Th>
+                    <Th>Upload Date</Th>
+                    <Th>Actions</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {documents.map((doc) => (
+                    <Tr key={doc.id}>
+                      <Td>{doc.filename}</Td>
+                      <Td>
+                        <Badge colorScheme={getStatusColor(doc.status)}>
+                          {doc.status}
+                        </Badge>
+                      </Td>
+                      <Td>{doc.chunks_count || 'N/A'}</Td>
+                      <Td>
+                        {new Date(doc.created_at).toLocaleDateString()}
+                      </Td>
+                      <Td>
+                        <HStack spacing={2}>
+                          <IconButton
+                            icon={<ViewIcon />}
+                            aria-label="View document"
+                            size="sm"
+                            colorScheme="blue"
+                          />
+                          <IconButton
+                            icon={<DeleteIcon />}
+                            aria-label="Delete document"
+                            size="sm"
+                            colorScheme="red"
+                          />
+                        </HStack>
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </Box>
+          ) : (
+            <Box textAlign="center" py={10}>
+              <Text>No documents found. Upload some documents to get started.</Text>
+            </Box>
+          )}
+        </>
+      )}
+    </Container>
+  );
+}
+
+export default DocumentList;
+```
+
+## App Component and Routing
+
+Set up the main App component with routing:
+
+```jsx
+// src/App.jsx
+import React from 'react';
+import { ChakraProvider, Box, Flex } from '@chakra-ui/react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import Search from './components/Search';
+import DocumentUpload from './components/DocumentUpload';
+import DocumentList from './components/DocumentList';
+
+function Navbar() {
+  return (
+    <Box bg="blue.600" px={4} py={3} color="white">
+      <Flex maxW="container.xl" mx="auto" align="center" justify="space-between">
+        <Box fontWeight="bold" fontSize="xl">
+          Simba Document Search
+        </Box>
+        <Flex>
+          <Link to="/">
+            <Box px={4} py={1} _hover={{ textDecoration: 'underline' }}>
+              Search
+            </Box>
+          </Link>
+          <Link to="/documents">
+            <Box px={4} py={1} _hover={{ textDecoration: 'underline' }}>
+              Documents
+            </Box>
+          </Link>
+          <Link to="/upload">
+            <Box px={4} py={1} _hover={{ textDecoration: 'underline' }}>
+              Upload
+            </Box>
+          </Link>
+        </Flex>
+      </Flex>
+    </Box>
+  );
+}
+
+function App() {
+  return (
+    <ChakraProvider>
+      <Router>
+        <Box minH="100vh" bg="gray.50">
+          <Navbar />
+          <Box>
+            <Routes>
+              <Route path="/" element={<Search />} />
+              <Route path="/documents" element={<DocumentList />} />
+              <Route path="/upload" element={<DocumentUpload />} />
+            </Routes>
+          </Box>
+        </Box>
+      </Router>
+    </ChakraProvider>
+  );
+}
+
+export default App;
+```
+
+## Environment Configuration
+
+Create a `.env` file in the project root:
+
+```
+REACT_APP_SIMBA_API_URL=http://localhost:8000
+```
+
+## Running the Application
+
+Start the React development server:
+
+```bash
+npm start
+```
+
+Your application will be available at http://localhost:3000.
+
+## Deployment Considerations
+
+1. Build the production version:
+
+```bash
+npm run build
+```
+
+2. For Docker deployment, create a Dockerfile:
+
+```dockerfile
+FROM node:16-alpine as build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=build /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+3. Create a simple NGINX configuration (nginx.conf) for client-side routing:
+
+```
+server {
+    listen 80;
+    
+    location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # Proxy API requests to Simba backend
+    location /api/ {
+        proxy_pass http://simba-backend:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+## Best Practices
+
+When building React applications with Simba:
+
+- **Implement authentication**: Add JWT-based authentication for production use
+- **Add error boundaries**: Handle API failures gracefully
+- **Implement pagination**: For document lists and search results
+- **Consider server-side rendering**: For better SEO and initial load performance
+- **Use React Query or similar**: For efficient data fetching and caching
+- **Add detailed document viewers**: For better document exploration
+- **Implement advanced filtering**: By metadata, date ranges, etc. 

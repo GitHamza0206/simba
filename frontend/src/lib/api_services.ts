@@ -9,13 +9,15 @@ import { ingestionApi } from './ingestion_api';
 import { embeddingApi } from './embedding_api';
 import { previewApi } from './preview_api';
 import { folderApi } from './folder_api';
-
+import { parsingApi } from './parsing_api';
 // Re-export all services
 export {
   ingestionApi,
   embeddingApi,
   previewApi,
-  folderApi
+  folderApi,
+  parsingApi,
+
 };
 
 // Example usage in components:
