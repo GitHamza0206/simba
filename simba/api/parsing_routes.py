@@ -1,5 +1,6 @@
 import json
 import logging
+import os 
 
 import torch
 from celery.app.control import Inspect
@@ -13,6 +14,9 @@ from simba.models.simbadoc import SimbaDoc
 from simba.parsing.docling_parser import DoclingParser
 from simba.parsing.mistral_ocr import MistralOCR
 from simba.tasks.parsing_tasks import celery, parse_docling_task, parse_mistral_ocr_task
+from simba.embeddings.multimodal_embedder import MultimodalEmbedder
+from simba.splitting.multimodal_chunker import MultimodalChunker
+from simba.embeddings import EmbeddingService
 
 logger = logging.getLogger(__name__)
 parsing = APIRouter()
@@ -20,11 +24,16 @@ parsing = APIRouter()
 db = get_database()
 vector_store = VectorStoreFactory.get_vector_store()
 
+PARSERS = {
+    "docling": DoclingParser,
+    "mistral_ocr": MistralOCR
+}
+
 
 @parsing.get("/parsers")
 async def get_parsers():
     """Get the list of parsers supported by the document ingestion service"""
-    parsers = ["docling", "mistral_ocr"]
+    parsers = list(PARSERS.keys())
     logger.info(f"Returning parsers: {parsers}")
 
     # Create a Response directly to prevent any transformation
@@ -94,31 +103,26 @@ async def parse_document_sync(document_id: str, parser_type: str = "docling"):
         if not simbadoc:
             raise HTTPException(status_code=404, detail="Document not found")
 
-        # Perform parsing directly
-        try:
-            if parser_type == "docling":
-                parser = DoclingParser()
-            elif parser_type == "mistral_ocr":
-                parser = MistralOCR()
-            else:
-                raise HTTPException(status_code=400, detail="Unsupported parser")
+        # Get parser
+        if parser_type not in PARSERS:
+            raise HTTPException(
+                status_code=400, detail=f"Parser {parser_type} not found. Available parsers: {list(PARSERS.keys())}"
+            )
+            
+        parser = PARSERS[parser_type]()
+        
+        # Parse document
+        parsed_simba_doc = parser.parse(simbadoc)
 
-            parsed_simba_doc = parser.parse(simbadoc)
+        # Process multimodal content using the EmbeddingService
+        embedding_service = EmbeddingService()
+        processed_doc = embedding_service.process_multimodal_document(document_id)
+        
+        # Update database
+        db.update_document(document_id, parsed_simba_doc)
 
-            # Update database
-            vector_store.add_documents(parsed_simba_doc.documents)
-            db.update_document(document_id, parsed_simba_doc)
-
-            # Return the parsed document data
-            return parsed_simba_doc
-        except Exception as e:
-            logger.error(f"Parsing failed: {str(e)}", exc_info=True)
-            return {"status": "error", "document_id": document_id, "error": str(e)}
-        finally:
-            # Clean up any remaining GPU memory
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-
+        # Return the parsed document data
+        return parsed_simba_doc
     except Exception as e:
         logger.error(f"Error processing synchronous parse request: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
