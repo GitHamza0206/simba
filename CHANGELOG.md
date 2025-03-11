@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.4.0](https://github.com/GitHamza0206/simba/compare/v0.3.0...v0.4.0) (2025-03-11)
+
+
+### ✨ Features
+
+* add Mistral OCR integration with image support ([dc1315f](https://github.com/GitHamza0206/simba/commit/dc1315f941d12be2a3839d56906a2f0ebdcc709b))
+* handle multiple documents edit / delete / parse ([310165e](https://github.com/GitHamza0206/simba/commit/310165ece7d40e1b0d35103a0a2cade0d03a3e3c))
+* Refactor embedding and parsing services with new EmbeddingService ([b6ef53c](https://github.com/GitHamza0206/simba/commit/b6ef53c1d9f1041e00671ffa369b4e1d5bc716e6))
+
+
+### 🐛 Bug Fixes
+
+* doc preview with latin-1 ([cf2292d](https://github.com/GitHamza0206/simba/commit/cf2292db54805bb9bbd2b45b732bd3217f546fc6))
+* mistral ocr result embedding are removable & images are kept in UI ([c4f10c5](https://github.com/GitHamza0206/simba/commit/c4f10c5ff0901602a46c2df36be91585e284758c))
+* Simplify embedding processing and remove multimodal embedding components & Mistral_ocr is removable ([aa2ffdb](https://github.com/GitHamza0206/simba/commit/aa2ffdb100f7def1d499b77ccd4c2ba660ce018e))
+
+
+### 📚 Documentation
+
+* added first draft of documentation with mintlify ([ee55cd4](https://github.com/GitHamza0206/simba/commit/ee55cd429d6ddee1d75dd206f56d6a1fc0bcca8f))
+
+
+### 💎 Style
+
+* adding parser badge inside document list ([8fd15b0](https://github.com/GitHamza0206/simba/commit/8fd15b063990af68b0594b665b616585a4f663dd))
+
 ## [0.3.0](https://github.com/GitHamza0206/simba/compare/v0.2.0...v0.3.0) (2025-03-07)
 
 
