@@ -14,9 +14,9 @@ from simba.models.simbadoc import SimbaDoc
 from simba.parsing.docling_parser import DoclingParser
 from simba.parsing.mistral_ocr import MistralOCR
 from simba.tasks.parsing_tasks import celery, parse_docling_task, parse_mistral_ocr_task
-from simba.embeddings.multimodal_embedder import MultimodalEmbedder
-from simba.splitting.multimodal_chunker import MultimodalChunker
+
 from simba.embeddings import EmbeddingService
+
 
 logger = logging.getLogger(__name__)
 parsing = APIRouter()
@@ -114,10 +114,6 @@ async def parse_document_sync(document_id: str, parser_type: str = "docling"):
         # Parse document
         parsed_simba_doc = parser.parse(simbadoc)
 
-        # Process multimodal content using the EmbeddingService
-        embedding_service = EmbeddingService()
-        processed_doc = embedding_service.process_multimodal_document(document_id)
-        
         # Update database
         db.update_document(document_id, parsed_simba_doc)
 

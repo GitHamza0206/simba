@@ -6,8 +6,8 @@ from langchain.schema import Document
 from simba.core.factories.database_factory import get_database
 from simba.core.factories.vector_store_factory import VectorStoreFactory
 from simba.models.simbadoc import SimbaDoc
-from simba.splitting import MultimodalChunker
-from simba.embeddings.multimodal_embedder import MultimodalEmbedder
+
+from simba.embeddings.utils import _clean_documents
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,6 @@ class EmbeddingService:
     - Adding documents to the vector store
     - Retrieving embedded documents
     - Deleting documents from the vector store
-    - Processing multimodal content (text and images)
     """
 
     def __init__(self):
@@ -40,6 +39,9 @@ class EmbeddingService:
             
             # Convert to Langchain documents
             langchain_documents = [doc for simbadoc in simba_documents for doc in simbadoc.documents]
+            
+            # Clean documents
+            langchain_documents = _clean_documents(langchain_documents)
             
             # Add documents to vector store
             self.vector_store.add_documents(langchain_documents)
@@ -71,6 +73,9 @@ class EmbeddingService:
                 raise ValueError(f"Document {doc_id} not found")
                 
             langchain_documents = simbadoc.documents
+
+            # Clean documents
+            langchain_documents = _clean_documents(langchain_documents)
             
             try:
                 # Add documents to vector store
@@ -163,39 +168,4 @@ class EmbeddingService:
             logger.error(f"Error clearing vector store: {str(e)}")
             raise
     
-    def process_multimodal_document(self, document_id: str) -> SimbaDoc:
-        """
-        Process a document with multimodal content (text and images).
-        
-        Args:
-            document_id: ID of the document to process
-            
-        Returns:
-            Updated SimbaDoc
-        """
-        try:
-            # Get document from database
-            simbadoc: SimbaDoc = self.database.get_document(document_id)
-            if not simbadoc:
-                raise ValueError(f"Document {document_id} not found")
-            
-            # Process the document to extract text and image chunks
-            text_chunks, image_chunks = self.chunker.process_documents(simbadoc.documents)
-            
-            # Generate embeddings
-            text_embeddings = self.embedder.generate_text_embeddings(text_chunks)
-            image_embeddings = self.embedder.generate_image_embeddings(image_chunks)
-            
-            # Add text embeddings to vector store
-            # Note: Currently we're not storing image embeddings in the vector store
-            # This would require extending the vector store to handle multimodal data
-            self.vector_store.add_documents(text_embeddings)
-            
-            # Update document in the database
-            self.database.update_document(document_id, simbadoc)
-            
-            return simbadoc
-            
-        except Exception as e:
-            logger.error(f"Error processing multimodal document {document_id}: {str(e)}")
-            raise 
+    
