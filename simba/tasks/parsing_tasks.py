@@ -24,7 +24,7 @@ def parse_docling_task(document_id: str):
 
         # Use EmbeddingService to handle embedding and storage
         embedding_service.embed_document(document_id)
-        
+
         # Update database
         db.update_document(document_id, parsed_simba_doc)
 
@@ -60,7 +60,7 @@ def parse_mistral_ocr_task(self, document_id: str):
 
         # Process multimodal document using the embedding service
         embedding_service.process_multimodal_document(document_id)
-        
+
         # Update database
         db.update_document(document_id, parsed_simba_doc)
 

@@ -1,6 +1,6 @@
 import json
 import logging
-import os 
+import os
 
 import torch
 from celery.app.control import Inspect
@@ -10,13 +10,11 @@ from pydantic import BaseModel
 
 from simba.core.factories.database_factory import get_database
 from simba.core.factories.vector_store_factory import VectorStoreFactory
+from simba.embeddings import EmbeddingService
 from simba.models.simbadoc import SimbaDoc
 from simba.parsing.docling_parser import DoclingParser
 from simba.parsing.mistral_ocr import MistralOCR
 from simba.tasks.parsing_tasks import celery, parse_docling_task, parse_mistral_ocr_task
-
-from simba.embeddings import EmbeddingService
-
 
 logger = logging.getLogger(__name__)
 parsing = APIRouter()
@@ -24,10 +22,7 @@ parsing = APIRouter()
 db = get_database()
 vector_store = VectorStoreFactory.get_vector_store()
 
-PARSERS = {
-    "docling": DoclingParser,
-    "mistral_ocr": MistralOCR
-}
+PARSERS = {"docling": DoclingParser, "mistral_ocr": MistralOCR}
 
 
 @parsing.get("/parsers")
@@ -106,11 +101,12 @@ async def parse_document_sync(document_id: str, parser_type: str = "docling"):
         # Get parser
         if parser_type not in PARSERS:
             raise HTTPException(
-                status_code=400, detail=f"Parser {parser_type} not found. Available parsers: {list(PARSERS.keys())}"
+                status_code=400,
+                detail=f"Parser {parser_type} not found. Available parsers: {list(PARSERS.keys())}",
             )
-            
+
         parser = PARSERS[parser_type]()
-        
+
         # Parse document
         parsed_simba_doc = parser.parse(simbadoc)
 

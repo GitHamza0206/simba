@@ -5,9 +5,8 @@ from langchain.schema import Document
 
 from simba.core.factories.database_factory import get_database
 from simba.core.factories.vector_store_factory import VectorStoreFactory
-from simba.models.simbadoc import SimbaDoc
-
 from simba.embeddings.utils import _clean_documents
+from simba.models.simbadoc import SimbaDoc
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +23,11 @@ class EmbeddingService:
         """Initialize the EmbeddingService with necessary components."""
         self.vector_store = VectorStoreFactory.get_vector_store()
         self.database = get_database()
-    
+
     def embed_all_documents(self) -> List[Document]:
         """
         Embed all documents in the database into the vector store.
-        
+
         Returns:
             List of embedded langchain documents
         """
@@ -36,33 +35,35 @@ class EmbeddingService:
             # Get all documents from the database
             all_documents = self.database.get_all_documents()
             simba_documents = [cast(SimbaDoc, doc) for doc in all_documents]
-            
+
             # Convert to Langchain documents
-            langchain_documents = [doc for simbadoc in simba_documents for doc in simbadoc.documents]
-            
+            langchain_documents = [
+                doc for simbadoc in simba_documents for doc in simbadoc.documents
+            ]
+
             # Clean documents
             langchain_documents = _clean_documents(langchain_documents)
-            
+
             # Add documents to vector store
             self.vector_store.add_documents(langchain_documents)
-            
+
             # Update enabled status for each document
             for doc in simba_documents:
                 doc.metadata.enabled = True
                 self.database.update_document(doc.id, doc)
-            
+
             return langchain_documents
         except Exception as e:
             logger.error(f"Error embedding all documents: {str(e)}")
             raise
-    
+
     def embed_document(self, doc_id: str) -> List[Document]:
         """
         Embed a specific document into the vector store.
-        
+
         Args:
             doc_id: The ID of the document to embed
-            
+
         Returns:
             List of embedded langchain documents
         """
@@ -71,36 +72,36 @@ class EmbeddingService:
             simbadoc: SimbaDoc = self.database.get_document(doc_id)
             if not simbadoc:
                 raise ValueError(f"Document {doc_id} not found")
-                
+
             langchain_documents = simbadoc.documents
 
             # Clean documents
             langchain_documents = _clean_documents(langchain_documents)
-            
+
             try:
                 # Add documents to vector store
                 self.vector_store.add_documents(langchain_documents)
-                
+
                 # Update document status
                 simbadoc.metadata.enabled = True
                 self.database.update_document(doc_id, simbadoc)
-            
+
             except ValueError as ve:
                 # If the error is about existing IDs, consider it a success
                 if "Tried to add ids that already exist" in str(ve):
                     return langchain_documents
                 raise ve  # Re-raise if it's a different ValueError
-            
+
             return langchain_documents
-        
+
         except Exception as e:
             logger.error(f"Error embedding document {doc_id}: {str(e)}")
             raise
-    
+
     def get_embedded_documents(self) -> List[Document]:
         """
         Get all documents from the vector store.
-        
+
         Returns:
             List of embedded documents
         """
@@ -109,14 +110,14 @@ class EmbeddingService:
         except Exception as e:
             logger.error(f"Error getting embedded documents: {str(e)}")
             raise
-    
+
     def delete_document_chunks(self, chunk_ids: List[str]) -> Dict[str, str]:
         """
         Delete specific document chunks from the vector store.
-        
+
         Args:
             chunk_ids: List of chunk IDs to delete
-            
+
         Returns:
             Dictionary with status message
         """
@@ -126,14 +127,14 @@ class EmbeddingService:
         except Exception as e:
             logger.error(f"Error deleting document chunks: {str(e)}")
             raise
-    
+
     def delete_document(self, doc_id: str) -> Dict[str, str]:
         """
         Delete all chunks of a document from the vector store.
-        
+
         Args:
             doc_id: Document ID to delete
-            
+
         Returns:
             Dictionary with status message
         """
@@ -141,23 +142,23 @@ class EmbeddingService:
             simbadoc: SimbaDoc = self.database.get_document(doc_id)
             if not simbadoc:
                 raise ValueError(f"Document {doc_id} not found")
-                
+
             docs_ids = [doc.id for doc in simbadoc.documents]
             self.vector_store.delete_documents(docs_ids)
-            
+
             # Update document status
             simbadoc.metadata.enabled = False
             self.database.update_document(doc_id, simbadoc)
-            
+
             return {"message": f"Document {doc_id} deleted from vector store"}
         except Exception as e:
             logger.error(f"Error deleting document {doc_id}: {str(e)}")
             raise
-    
+
     def clear_store(self) -> Dict[str, str]:
         """
         Clear the entire vector store.
-        
+
         Returns:
             Dictionary with status message
         """
@@ -167,5 +168,3 @@ class EmbeddingService:
         except Exception as e:
             logger.error(f"Error clearing vector store: {str(e)}")
             raise
-    
-    

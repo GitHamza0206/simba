@@ -209,8 +209,11 @@ async def preview_document(doc_id: str):
             # Encode non-ASCII characters as per RFC 5987
             # See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition
             import urllib.parse
+
             encoded_filename = urllib.parse.quote(safe_filename)
-            content_disposition = f'inline; filename="{encoded_filename}"; filename*=UTF-8\'\'{encoded_filename}'
+            content_disposition = (
+                f"inline; filename=\"{encoded_filename}\"; filename*=UTF-8''{encoded_filename}"
+            )
         except Exception as e:
             logger.warning(f"Error encoding filename '{safe_filename}': {str(e)}")
             # Fallback to a simple ASCII filename if encoding fails
