@@ -1,3 +1,4 @@
+import uuid
 import base64
 import json
 import logging
@@ -233,6 +234,7 @@ class MistralOCR(BaseParser):
 
                     # Create langchain document with the processed content
                     langchain_document = Document(
+                        id=uuid.uuid4(),
                         page_content=page_content,
                         metadata={
                             "page_number": page.index if hasattr(page, "index") else page_idx + 1

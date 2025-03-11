@@ -4,13 +4,11 @@ import torch
 
 from simba.core.celery_config import celery_app as celery  # Rename for backward compatibility
 from simba.core.factories.database_factory import get_database
-from simba.core.factories.vector_store_factory import VectorStoreFactory
+from simba.embeddings import EmbeddingService
 from simba.parsing.docling_parser import DoclingParser
 from simba.parsing.mistral_ocr import MistralOCR
 
 logger = logging.getLogger(__name__)
-
-vector_store = VectorStoreFactory.get_vector_store()
 
 
 @celery.task(name="parse_docling")
@@ -18,17 +16,16 @@ def parse_docling_task(document_id: str):
     try:
         parser = DoclingParser()
         db = get_database()
+        embedding_service = EmbeddingService()
 
         original_doc = db.get_document(document_id)
 
         parsed_simba_doc = parser.parse(original_doc)
 
+        # Use EmbeddingService to handle embedding and storage
+        embedding_service.embed_document(document_id)
+        
         # Update database
-        vector_store.add_documents(parsed_simba_doc.documents)
-        print("---")
-        print("adding documents to store : ", parsed_simba_doc.documents)
-        print("---")
-
         db.update_document(document_id, parsed_simba_doc)
 
         return {"status": "success", "document_id": parsed_simba_doc.id}
@@ -51,7 +48,7 @@ def parse_mistral_ocr_task(self, document_id: str):
     try:
         # Get document from database
         db = get_database()
-        vector_store = VectorStoreFactory.get_vector_store()
+        embedding_service = EmbeddingService()
         simbadoc = db.get_document(document_id)
 
         if not simbadoc:
@@ -61,8 +58,10 @@ def parse_mistral_ocr_task(self, document_id: str):
         parser = MistralOCR()
         parsed_simba_doc = parser.parse(simbadoc)
 
+        # Process multimodal document using the embedding service
+        embedding_service.process_multimodal_document(document_id)
+        
         # Update database
-        vector_store.add_documents(parsed_simba_doc.documents)
         db.update_document(document_id, parsed_simba_doc)
 
         # Return success
