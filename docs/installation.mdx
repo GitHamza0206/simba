@@ -1,9 +1,10 @@
 ---
 title: 'Installation'
 description: 'Detailed installation instructions for Simba'
+icon: "🔌"
 ---
 
-# Installing Simba
+# Installation
 
 This guide provides detailed instructions for installing Simba in various environments. Choose the method that works best for your needs.
 
@@ -29,6 +30,24 @@ This guide provides detailed instructions for installing Simba in various enviro
     # This should print the installed version
     print(SimbaClient.__version__)
     ```
+
+
+    ```python
+    from simba_sdk import SimbaClient
+
+    client = SimbaClient(api_url="http://simba.cloud.api:8000")
+    document = client.documents.create(file_path="path/to/your/document.pdf")
+    document_id = document[0]["id"]
+
+    parsing_result = client.parser.parse_document(document_id, parser="docling", sync=True)
+
+    retrieval_results = client.retriever.retrieve(query="your-query")
+
+    for result in retrieval_results["documents"]:
+        print(f"Content: {result['page_content']}")
+        print(f"Metadata: {result['metadata']['source']}")
+        print("====" * 10)
+    ```
   </Tab>
   <Tab title="Source (Full System)">
     ### Clone the Repository
@@ -47,32 +66,68 @@ This guide provides detailed instructions for installing Simba in various enviro
     ```bash
     # Install Poetry if not already installed
     curl -sSL https://install.python-poetry.org | python3 -
-    
-    # Install dependencies
-    poetry install
     ```
 
-    ### Frontend Installation
-
     ```bash
-    cd frontend
-    npm install
+    # Install dependencies
+    poetry config virtualenvs.in-project true
+    poetry install
+    source .venv/bin/activate
     ```
 
     This will set up both the backend and frontend components of Simba.
-  </Tab>
-  <Tab title="Docker">
-    ### Using Docker Compose
 
-    Simba provides a Docker Compose setup for easy deployment:
+    To run the backend server:
+
+    ```bash
+    simba server 
+    ```
+
+    To run the frontend server:
+
+    ```bash
+    simba front 
+    ```
+    to run parsers :
+
+    ```bash
+    simba parsers 
+    ```
+
+  </Tab>  
+  <Tab title="Docker">
+    ### Using Makefile
+
+    Simba provides a Makefile for easy deployment:
 
     ```bash
     # Clone the repository
     git clone https://github.com/GitHamza0206/simba.git
-    cd simba
-    
-    # Start services with Docker Compose
-    docker-compose up -d
+    cd simba  
+    ```
+    For CPU:
+
+    ```bash
+    # Build the Docker image
+    DEVICE=cpu make build
+    # Start the Docker container
+    DEVICE=cpu make up
+    ```
+    For NVIDIA GPU:
+
+    ```bash
+    # Build the Docker image
+    DEVICE=cuda make build
+    # Start the Docker container
+    DEVICE=cuda make up
+    ```
+    For Apple Silicon:
+
+    ```bash
+    # Build the Docker image
+    DEVICE=cpu make build
+    # Start the Docker container
+    DEVICE=cpu make up
     ```
 
     This will start:
@@ -82,17 +137,13 @@ This guide provides detailed instructions for installing Simba in various enviro
 
     All services will be properly configured to work together.
 
-    ### Using Individual Containers
-
-    You can also run individual components:
+    To stop the services:
 
     ```bash
-    # Run just the backend
-    docker run -p 8000:8000 -e REDIS_URL=redis://redis:6379 simba/backend
-    
-    # Run just the frontend
-    docker run -p 5173:5173 -e API_URL=http://localhost:8000 simba/frontend
+    make down
     ```
+
+    You can find more information about Docker setup here: [Docker Setup](/docs/docker-setup)
   </Tab>
 </Tabs>
 
@@ -123,8 +174,9 @@ Simba has the following key dependencies:
 <AccordionGroup>
   <Accordion title="Core Dependencies">
     - **FastAPI**: Web framework for the backend API
+    - **Ollama**: For running the LLM inference (optional)
     - **Redis**: For caching and task queues
-    - **SQLAlchemy**: ORM for database interactions
+    - **PostgreSQL**: For database interactions
     - **Celery**: Distributed task queue for background processing
     - **Pydantic**: Data validation and settings management
   </Accordion>
@@ -134,9 +186,8 @@ Simba has the following key dependencies:
     - **Pinecone** (optional): For cloud-based vector storage
     - **Milvus** (optional): For distributed vector search
   </Accordion>
-  <Accordion title="Machine Learning">
-    - **Sentence Transformers**: For text embeddings
-    - **PyTorch** (optional): For custom embedding models
+  <Accordion title="Embedding Models">
+    - **OpenAI**: For text embeddings
     - **HuggingFace Transformers** (optional): For text processing
   </Accordion>
   <Accordion title="Frontend">
@@ -147,45 +198,16 @@ Simba has the following key dependencies:
   </Accordion>
 </AccordionGroup>
 
-## Troubleshooting
+# Troubleshooting
 
-### Common Installation Issues
+to be added...
 
-#### Poetry Installation Fails
 
-```bash
-# Try installing with pip instead
-pip install poetry
-```
-
-#### Redis Connection Issues
-
-```bash
-# Check if Redis is running
-redis-cli ping
-# Should return PONG
-```
-
-#### Backend Startup Issues
-
-```bash
-# Check environment variables
-cp .env.example .env
-# Edit .env with your configuration
-```
-
-#### Frontend Build Issues
-
-```bash
-# Clear npm cache
-npm cache clean --force
-npm install
-```
 
 ## Next Steps
 
 Once you have Simba installed, proceed to:
 
-1. [Configure your installation](/configuration)
-2. [Set up your first document collection](/examples/document-ingestion)
-3. [Connect your application to Simba](/sdk/client) 
+1. [Configure your installation](/docs/configuration)
+2. [Set up your first document collection](/docs/examples/document-ingestion)
+3. [Connect your application to Simba](/docs/sdk/client) 
