@@ -1,131 +1,97 @@
 ---
-title: Getting Started
-description: Install and configure Simba for your environment
+title: Overview
 ---
 
-# Getting Started
+Simba is an open-source, portable Knowledge Management System (KMS) specifically designed to integrate seamlessly with Retrieval-Augmented Generation (RAG) systems. It provides a comprehensive solution for managing, processing, and retrieving knowledge from various document sources to enhance AI applications with contextual information.
 
-This guide will help you set up Simba in your environment. Follow these steps to install, configure, and run Simba for your knowledge management needs.
+## Key Features
 
-## Installation Options
+* **🔌 Powerful SDK:** Comprehensive Python SDK (`simba-sdk`) for easy integration
 
-You have a few options for installing Simba:
+* **🧩 Modular Architecture:** Flexible integration of vector stores, embedding models, chunkers, and parsers
 
-### 1. Install Simba Core (pip)
+* **🖥️ Modern UI:** User-friendly interface for managing document chunks and monitoring system performance
 
-The easiest way to get started is to install the core Simba package using pip:
+* **🔗 Seamless Integration:** Effortlessly connects with any RAG-based system
 
-```bash
-pip install simba-core
-```
+* **👨‍💻 Developer-Centric:** Simplifies complex knowledge management tasks
 
-### 2. Clone from GitHub (for development)
+* **📦 Open Source & Extensible:** Community-driven with extensive customization options
 
-For development or if you want to modify Simba:
+## System Architecture Overview
 
-```bash
-git clone https://github.com/GitHamza0206/simba.git
-cd simba
-poetry config virtualenvs.in-project true
-poetry install
-source .venv/bin/activate
-```
+Simba employs a modular architecture with these key components:
 
-### 3. Using Docker (for deployment)
+* **Document Processors:** Parse and extract content from various document formats
 
-See the [Deployment Guide](deployment.md) for Docker instructions.
+* **Chunkers:** Divide documents into semantically meaningful segments
 
-## Configuration
+* **Embedding Models:** Convert text into vector representations
 
-### Environment Variables
+* **Vector Stores:** Index and store embeddings for efficient retrieval
 
-Create a `.env` file in the root directory and add your environment variables:
+* **Retrieval Engine:** Find relevant information using various retrieval strategies
 
-```bash
-OPENAI_API_KEY=your_openai_api_key
-REDIS_HOST=localhost
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/1
-```
+* **API Layer:** Expose functionality through a RESTful interface
 
-### System Configuration
+* **SDK:** Provide programmatic access to all functionality
 
-Review and modify `config.yaml` in the root directory to adjust settings like LLM provider, embedding model, vector store, etc:
+## Demo
 
-```yaml
-# config.yaml
+![Watch the demo](/assets/demo.gif)
 
-project:
-  name: "Simba"
-  version: "1.0.0"
-  api_version: "/api/v1"
+## Who is Simba for?
 
-paths:
-  base_dir: null  # Will be set programmatically
-  faiss_index_dir: "vector_stores/faiss_index"
-  vector_store_dir: "vector_stores"
+Simba is ideal for:
 
-llm:
-  provider: "openai"
-  model_name: "gpt-4o-mini"
-  temperature: 0.0
-  max_tokens: null
-  streaming: true
-  additional_params: {}
+* **AI Engineers:** Building RAG applications that require contextual knowledge
 
-embedding:
-  provider: "huggingface"
-  model_name: "BAAI/bge-base-en-v1.5"
-  device: "mps"
-  additional_params: {}
+* **Developers:** Creating context-aware applications with minimal boilerplate
 
-vector_store:
-  provider: "faiss"
-  collection_name: "simba_collection"
-  additional_params: {}
+* **Organizations:** Seeking to leverage their internal knowledge for AI applications
 
-chunking:
-  chunk_size: 512
-  chunk_overlap: 200
+## Deployment Options
 
-retrieval:
-  method: "hybrid"
-  k: 5
-  params:
-    score_threshold: 0.5
-    prioritize_semantic: true
-    weights: [0.7, 0.3]
-    reranker_model: colbert
-    reranker_threshold: 0.7
+Simba offers two primary deployment models to suit different organizational needs:
 
-database:
-  provider: litedb
-  additional_params: {}
+<CardGroup cols={2}>
+  <Card title="Cloud" icon="cloud" href="/getting-started/cloud">
+    Get started using Simba through our Cloud&#x20;
 
-celery: 
-  broker_url: ${CELERY_BROKER_URL:-redis://redis:6379/0}
-  result_backend: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
-```
+    offering, free of charge.
+    Perfect for fast serverless deployment.
+  </Card>
 
-## Running Simba
+  <Card title="Self Hosted" icon="server" href="/getting-started/self-hosted">
+    Host your own full-featured Simba system. Ideal for on premise use cases.
+    Complete control over your data & infra.
+  </Card>
+</CardGroup>
 
-Start the Simba components:
+### Cloud-Hosted Solution
 
-```bash
-simba server  # Start the backend API server
-simba front   # Start the frontend UI
-simba parsers # Start the document parsing service
-```
+The Simba Cloud offering provides a fully-managed service where you can:
 
-Now you should be able to access the Simba frontend in your browser (usually at `http://localhost:3000` if running locally).
+* Start using Simba immediately without infrastructure setup
 
-## Next Steps
+* Access your knowledge base from anywhere
 
-After installation, you can:
+* Scale resources automatically based on your needs
 
-* **Explore the Simba UI** to upload and manage documents
-* **Try the [Simba SDK](sdk_reference.md)** to interact programmatically with your knowledge base
-* **Check out the examples** for demonstrations of common use cases
-* **Connect Simba** to your existing RAG applications
+* Benefit from automatic updates and maintenance
 
-For deployment options including cloud and self-hosted setups, see the [Deployment Guide](deployment.md).
+### Self-Hosted Solution
+
+For organizations requiring complete control over their infrastructure and data:
+
+* Deploy Simba in your own environment (on-premises or cloud VPC)
+
+* Maintain full control over your sensitive data
+
+* Customize and extend functionality as needed
+
+* Integrate with existing internal systems
+
+Both deployment options provide access to the same powerful Simba SDK, allowing you to programmatically interact with your knowledge base.
+
+Let's get started and explore how Simba can empower your RAG projects!

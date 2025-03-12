@@ -42,7 +42,20 @@
       "group": "Getting Started",
       "pages": [
         "overview",
-        "Quickstart",
+        {
+          "name": "Quickstart",
+          "children": [
+            {
+              "name": "Cloud",
+              "url": "quickstart/cloud",
+              "default": true
+            },
+            {
+              "name": "Self-Hosted",
+              "url": "quickstart/self-host"
+            }
+          ]
+        },
         "configuration"
       ]
     },
@@ -73,4 +86,4 @@
     "twitter": "https://twitter.com/zerou_hamza",
     "github": "https://github.com/GitHamza0206/simba"
   }
-} 
+}

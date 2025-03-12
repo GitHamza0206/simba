@@ -1,0 +1,593 @@
+---
+title: "Quickstart"
+description: "Getting started with Simba installed on your local system "
+---
+
+***
+
+This guide will walk you through installing and running simba on your local system using both pip, git or docker&#x20;
+
+you can choose the method that suits you best, if you want to use the SDK for free, we recommand using the pip installation method, if you want to have more control over the source code we recommand installing the full system. If you want to use the prebuilt solution, we recommand docker.&#x20;
+
+## Installation Methods
+
+<Tabs>
+  <Tab title="pip (SDK & Core)">
+    <Steps>
+      <Step title="Install simba-core">
+        `simba-core` is the PyPi package that contains the server logic and API, it is necessary to run it to be able to use the SDK
+
+        ```python
+        pip install simba-core 
+        ```
+
+        <Tip>
+          To install the dependencies faster we recommand using `uv`&#x20;
+
+          ```python
+          pip install uv 
+          uv pip install simba-core
+          ```
+        </Tip>
+      </Step>
+
+      <Step title="Create a config.yaml file ">
+        The config.yaml file is one of the most important files of this setup, because it's what will parameter the Embedding model, vector store type, retreival strategy , database, worker celery for parsing and also the llm you're using
+
+        Go to your project root and create config.yaml, you can get inspired from this one below&#x20;
+
+        ```yaml
+        project:
+          name: "Simba"
+          version: "1.0.0"
+          api_version: "/api/v1"
+
+        paths:
+          base_dir: null  # Will be set programmatically
+          faiss_index_dir: "vector_stores/faiss_index"
+          vector_store_dir: "vector_stores"
+
+        llm:
+          provider: "openai" #OPTIONS:ollama,openai
+          model_name: "gpt-4o-mini"
+          temperature: 0.0
+          max_tokens: null
+          streaming: true
+          additional_params: {}
+
+        embedding:
+          provider: "huggingface"
+          model_name: "BAAI/bge-base-en-v1.5"
+          device: "cpu"  # OPTIONS: cpu,cuda,mps
+          additional_params: {}
+
+        vector_store:
+          provider: "faiss"
+          collection_name: "simba_collection"
+
+          additional_params: {}
+
+        chunking:
+          chunk_size: 512
+          chunk_overlap: 200
+
+        retrieval:
+          method: "hybrid" # OPTIONS: default, semantic, keyword, hybrid, ensemble, reranked
+          k: 5
+          # Method-specific parameters
+          params:
+            # Semantic retrieval parameters
+            score_threshold: 0.5
+            
+            # Hybrid retrieval parameters
+            prioritize_semantic: true
+            
+            # Ensemble retrieval parameters
+            weights: [0.7, 0.3]  # Weights for semantic and keyword retrievers
+            
+            # Reranking parameters
+            reranker_model: colbert
+            reranker_threshold: 0.7
+
+        # Database configuration
+        database:
+          provider: litedb # Options: litedb, sqlite
+          additional_params: {}
+
+        celery: 
+          broker_url: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+          result_backend: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+        ```
+
+        <Note>
+          The config file should be at the same place where your running simba, otherwise that's not going to work&#x20;
+        </Note>
+      </Step>
+
+      <Step title="Create .env file">
+        If you need to use openai, or mistral AI, or you want to log the chatbot traces using langsmith, or use ollama, you should specify it in your .env
+
+        ```
+        OPENAI_API_KEY=your_openai_api_key  #(optional)
+        MISTRAL_API_KEY=your_mistral_api_key #(optional)
+        LANGCHAIN_TRACING_V2=true #(optional) 
+        LANGCHAIN_API_KEY=your_langchain_api_key (#optional)
+        REDIS_HOST=localhost 
+        CELERY_BROKER_URL=redis://localhost:6379/0
+        CELERY_RESULT_BACKEND=redis://localhost:6379/1
+        ```
+      </Step>
+
+      <Step title="Run the server">
+        Now that you have your .env, and config.yaml, you can run the following command&#x20;
+
+        ```
+        simba server 
+        ```
+
+        This will start the server at http://localhost:8000. You will see a logging message in the console&#x20;
+
+        ```
+        Starting Simba server...
+        INFO:     Started server process [62940]
+        INFO:     Waiting for application startup.
+        2025-03-12 16:42:50 - simba.__main__ - INFO - ==================================================
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Starting SIMBA Application
+        2025-03-12 16:42:50 - simba.__main__ - INFO - ==================================================
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Project Name: Simba
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Version: 1.0.0
+        2025-03-12 16:42:50 - simba.__main__ - INFO - LLM Provider: openai
+        2025-03-12 16:42:50 - simba.__main__ - INFO - LLM Model: gpt-4o
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Embedding Provider: huggingface
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Embedding Model: BAAI/bge-base-en-v1.5
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Embedding Device: mps
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Vector Store Provider: faiss
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Database Provider: litedb
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Retrieval Method: hybrid
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Retrieval Top-K: 5
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Base Directory: /Users/mac/Documents/simba
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Upload Directory: /Users/mac/Documents/simba/uploads
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Vector Store Directory: /Users/mac/Documents/simba/vector_stores
+        2025-03-12 16:42:50 - simba.__main__ - INFO - ==================================================
+        INFO:     Application startup complete.
+        INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+        ```
+      </Step>
+
+      <Step title="Install SDK ">
+        You can now install the SDK to start using simba SDK in local mode&#x20;
+
+        ```
+        pip install simba-client  
+        ```
+      </Step>
+
+      <Step title="Basic usage ">
+        ```python
+        from simba_sdk import SimbaClient
+              
+        client = SimbaClient(api_url="http://localhost:8000") 
+        document = client.documents.create(file_path="path/to/your/document.pdf")
+        document_id = document[0]["id"]
+              
+        parsing_result = client.parser.parse_document(document_id,parser="docling", sync=True)
+              
+        retrieval_results = client.retriever.retrieve(query="your-query")
+              
+        for result in retrieval_results["documents"]:
+          print(f"Content: {result['page_content']}")
+          print(f"Metadata: {result['metadata']['source']}")
+          print("====" * 10)
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Source (Full System)">
+    <Steps>
+      <Step title="Clone the repository">
+        For a complete installation including the backend and frontend
+
+        ```
+        git clone https://github.com/GitHamza0206/simba.git
+        cd simba
+        ```
+      </Step>
+
+      <Step title="Backend installation">
+        Simba uses Poetry for dependency management
+
+        <CodeGroup>
+          ```bash MacOS/Linux
+          curl -sSL https://install.python-poetry.org | python3 -
+          ```
+
+          ```
+          pip install poetry 
+          ```
+        </CodeGroup>
+
+        then install the virtual environement and activate it&#x20;
+      </Step>
+
+      <Step title="Modify the config.yaml file ">
+        The config.yaml file is one of the most important files of this setup, because it's what will parameter the Embedding model, vector store type, retreival strategy , database, worker celery for parsing and also the llm you're using
+
+        Go to your project root and create config.yaml, you can get inspired from this one below&#x20;
+
+        ```yaml
+        project:
+          name: "Simba"
+          version: "1.0.0"
+          api_version: "/api/v1"
+
+        paths:
+          base_dir: null  # Will be set programmatically
+          faiss_index_dir: "vector_stores/faiss_index"
+          vector_store_dir: "vector_stores"
+
+        llm:
+          provider: "openai" #OPTIONS:ollama,openai
+          model_name: "gpt-4o-mini"
+          temperature: 0.0
+          max_tokens: null
+          streaming: true
+          additional_params: {}
+
+        embedding:
+          provider: "huggingface"
+          model_name: "BAAI/bge-base-en-v1.5"
+          device: "cpu"  # OPTIONS: cpu,cuda,mps
+          additional_params: {}
+
+        vector_store:
+          provider: "faiss"
+          collection_name: "simba_collection"
+
+          additional_params: {}
+
+        chunking:
+          chunk_size: 512
+          chunk_overlap: 200
+
+        retrieval:
+          method: "hybrid" # OPTIONS: default, semantic, keyword, hybrid, ensemble, reranked
+          k: 5
+          # Method-specific parameters
+          params:
+            # Semantic retrieval parameters
+            score_threshold: 0.5
+            
+            # Hybrid retrieval parameters
+            prioritize_semantic: true
+            
+            # Ensemble retrieval parameters
+            weights: [0.7, 0.3]  # Weights for semantic and keyword retrievers
+            
+            # Reranking parameters
+            reranker_model: colbert
+            reranker_threshold: 0.7
+
+        # Database configuration
+        database:
+          provider: litedb # Options: litedb, sqlite
+          additional_params: {}
+
+        celery: 
+          broker_url: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+          result_backend: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+        ```
+      </Step>
+
+      <Step title="Create .env ">
+        If you need to use openai, or mistral AI, or you want to log the chatbot traces using langsmith, or use ollama, you should specify it in your .env
+
+        ```
+        OPENAI_API_KEY=your_openai_api_key  #(optional)
+        MISTRAL_API_KEY=your_mistral_api_key #(optional)
+        LANGCHAIN_TRACING_V2=true #(optional) 
+        LANGCHAIN_API_KEY=your_langchain_api_key (#optional)
+        REDIS_HOST=localhost 
+        CELERY_BROKER_URL=redis://localhost:6379/0
+        CELERY_RESULT_BACKEND=redis://localhost:6379/1
+        ```
+      </Step>
+
+      <Step title="Run the server">
+        ```
+        simba server 
+        ```
+
+        This will start the server at http://localhost:8000. You will see a logging message in the console&#x20;
+
+        ```
+        Starting Simba server...
+        INFO:     Started server process [62940]
+        INFO:     Waiting for application startup.
+        2025-03-12 16:42:50 - simba.__main__ - INFO - ==================================================
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Starting SIMBA Application
+        2025-03-12 16:42:50 - simba.__main__ - INFO - ==================================================
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Project Name: Simba
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Version: 1.0.0
+        2025-03-12 16:42:50 - simba.__main__ - INFO - LLM Provider: openai
+        2025-03-12 16:42:50 - simba.__main__ - INFO - LLM Model: gpt-4o
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Embedding Provider: huggingface
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Embedding Model: BAAI/bge-base-en-v1.5
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Embedding Device: mps
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Vector Store Provider: faiss
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Database Provider: litedb
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Retrieval Method: hybrid
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Retrieval Top-K: 5
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Base Directory: /Users/mac/Documents/simba
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Upload Directory: /Users/mac/Documents/simba/uploads
+        2025-03-12 16:42:50 - simba.__main__ - INFO - Vector Store Directory: /Users/mac/Documents/simba/vector_stores
+        2025-03-12 16:42:50 - simba.__main__ - INFO - ==================================================
+        INFO:     Application startup complete.
+        INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+        ```
+      </Step>
+
+      <Step title="Run the front UI ">
+        you can run the frontend by running&#x20;
+
+        ```
+        simba front
+        ```
+
+        or navigate to `/frontend` and run&#x20;
+
+        ```
+        cd /frontend
+        npm install 
+        npm run dev 
+        ```
+
+        then you should see your local instance at http://localhost:5173&#x20;
+      </Step>
+
+      <Step title="Run Parsers ">
+        If you want to enable document parsers, you should start the `celery worker` instance, this is necessary if you want to run docling parser. Celery requires redis , to start redis you have to open a terminal and run&#x20;
+
+        ```
+        redis-server
+        ```
+
+        Once redis is running you can open a new terminal and run&#x20;
+
+        ```
+        simba parsers 
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Docker">
+    ### Docker setup
+
+    we use makefile to build simba, this is easiest setup
+
+    <Steps>
+      <Step title="Clone repository">
+        ```
+        git clone https://github.com/GitHamza0206/simba.git
+        cd simba  
+        ```
+      </Step>
+
+      <Step title="Create a config.yaml file ">
+        The config.yaml file is one of the most important files of this setup, because it's what will parameter the Embedding model, vector store type, retreival strategy , database, worker celery for parsing and also the llm you're using
+
+        Go to your project root and create config.yaml, you can get inspired from this one below&#x20;
+
+        ```yaml
+        project:
+          name: "Simba"
+          version: "1.0.0"
+          api_version: "/api/v1"
+
+        paths:
+          base_dir: null  # Will be set programmatically
+          faiss_index_dir: "vector_stores/faiss_index"
+          vector_store_dir: "vector_stores"
+
+        llm:
+          provider: "openai" #OPTIONS:ollama,openai
+          model_name: "gpt-4o-mini"
+          temperature: 0.0
+          max_tokens: null
+          streaming: true
+          additional_params: {}
+
+        embedding:
+          provider: "huggingface"
+          model_name: "BAAI/bge-base-en-v1.5"
+          device: "cpu"  # OPTIONS: cpu,cuda,mps
+          additional_params: {}
+
+        vector_store:
+          provider: "faiss"
+          collection_name: "simba_collection"
+
+          additional_params: {}
+
+        chunking:
+          chunk_size: 512
+          chunk_overlap: 200
+
+        retrieval:
+          method: "hybrid" # OPTIONS: default, semantic, keyword, hybrid, ensemble, reranked
+          k: 5
+          # Method-specific parameters
+          params:
+            # Semantic retrieval parameters
+            score_threshold: 0.5
+            
+            # Hybrid retrieval parameters
+            prioritize_semantic: true
+            
+            # Ensemble retrieval parameters
+            weights: [0.7, 0.3]  # Weights for semantic and keyword retrievers
+            
+            # Reranking parameters
+            reranker_model: colbert
+            reranker_threshold: 0.7
+
+        # Database configuration
+        database:
+          provider: litedb # Options: litedb, sqlite
+          additional_params: {}
+
+        celery: 
+          broker_url: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+          result_backend: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+        ```
+      </Step>
+
+      <Step title="Create .env file">
+        If you need to use openai, or mistral AI, or you want to log the chatbot traces using langsmith, or use ollama, you should specify it in your .env
+
+        ```
+        OPENAI_API_KEY=your_openai_api_key  #(optional)
+        MISTRAL_API_KEY=your_mistral_api_key #(optional)
+        LANGCHAIN_TRACING_V2=true #(optional) 
+        LANGCHAIN_API_KEY=your_langchain_api_key (#optional)
+        REDIS_HOST=localhost 
+        CELERY_BROKER_URL=redis://localhost:6379/0
+        CELERY_RESULT_BACKEND=redis://localhost:6379/1
+        ```
+      </Step>
+
+      <Step title="Build & up images">
+        <CodeGroup>
+          ```bash cpu
+          # Build the Docker image
+          DEVICE=cpu make build
+          # Start the Docker container
+          DEVICE=cpu make up
+          ```
+
+          ```bash cuda (Nvidia)
+          # Build the Docker image
+          DEVICE=cuda make build
+          # Start the Docker container
+          DEVICE=cuda make up
+          ```
+
+          ```bash mps (Apple Silicon)
+          # Build the Docker image
+          DEVICE=cpu make build
+          # Start the Docker container
+          DEVICE=cpu make up
+          ```
+        </CodeGroup>
+      </Step>
+
+      <Step title="Build & up images (With ollama)">
+        <CodeGroup>
+          ```bash cpu
+          # Build the Docker image
+          ENABLE_OLLAMA=True DEVICE=cpu make build
+          # Start the Docker container
+          ENABLE_OLLAMA=True DEVICE=cpu make up
+          ```
+
+          ```bash cuda (Nvidia)
+          # Build the Docker image
+          ENABLE_OLLAMA=True DEVICE=cuda make build
+          # Start the Docker container
+          ENABLE_OLLAMA=True DEVICE=cuda make up
+          ```
+
+          ```bash mps (Apple Silicon)
+          # Build the Docker image
+          ENABLE_OLLAMA=True DEVICE=cpu make build
+          # Start the Docker container
+          ENABLE_OLLAMA=True DEVICE=cpu make up
+          ```
+        </CodeGroup>
+      </Step>
+    </Steps>
+
+    ###
+
+    This will start:
+
+    * The Simba backend API
+
+    * Redis for caching and task queue
+
+    * Celery workers for parsing tasks
+
+    * The Simba frontend UI
+
+    All services will be properly configured to work together.
+
+    To stop the services:
+
+    ```bash
+    make down
+    ```
+
+    You can find more information about Docker setup here: [Docker Setup](/docs/docker-setup)
+  </Tab>
+</Tabs>
+
+## Dependencies
+
+Simba has the following key dependencies:
+
+<AccordionGroup>
+  <Accordion title="Core Dependencies">
+    * **FastAPI**: Web framework for the backend API
+
+    * **Ollama**: For running the LLM inference (optional)
+
+    * **Redis**: For caching and task queues
+
+    * **PostgreSQL**: For database interactions
+
+    * **Celery**: Distributed task queue for background processing
+
+    * **Pydantic**: Data validation and settings management
+  </Accordion>
+
+  <Accordion title="Vector Store Support">
+    * **FAISS**: Facebook AI Similarity Search for efficient vector storage
+
+    * **Chroma**: ChromaDB integration for document embeddings
+
+    * **Pinecone** (optional): For cloud-based vector storage
+
+    * **Milvus** (optional): For distributed vector search
+  </Accordion>
+
+  <Accordion title="Embedding Models">
+    * **OpenAI**: For text embeddings
+
+    * **HuggingFace Transformers** (optional): For text processing
+  </Accordion>
+
+  <Accordion title="Frontend">
+    * **React**: UI library
+
+    * **TypeScript**: For type-safe JavaScript
+
+    * **Vite**: Frontend build tool
+
+    * **Tailwind CSS**: Utility-first CSS framework
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+to be added...
+
+## Next Steps
+
+Once you have Simba installed, proceed to:
+
+1. [Configure your installation](/docs/configuration)
+
+2. [Set up your first document collection](/docs/examples/document-ingestion)
+
+3. [Connect your application to Simba](/docs/sdk/client)

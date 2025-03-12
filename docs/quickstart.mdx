@@ -1,9 +1,7 @@
 ---
-title: 'Quickstart'
-description: 'This guide provides detailed instructions for installing Simba in various environments. Choose the method that works best for your needs.'
+title: "Quickstart"
+description: "This guide provides detailed instructions for installing Simba in various environments. Choose the method that works best for your needs."
 ---
-
-
 
 ## Installation Methods
 
@@ -23,7 +21,7 @@ description: 'This guide provides detailed instructions for installing Simba in 
 
     ```python
     from simba_sdk import SimbaClient
-    
+
     # This should print the installed version
     print(SimbaClient.__version__)
     ```
@@ -47,6 +45,7 @@ description: 'This guide provides detailed instructions for installing Simba in 
         print("====" * 10)
     ```
   </Tab>
+
   <Tab title="Source (Full System)">
     ### Clone the Repository
 
@@ -86,13 +85,14 @@ description: 'This guide provides detailed instructions for installing Simba in 
     ```bash
     simba front 
     ```
+
     to run parsers :
 
     ```bash
     simba parsers 
     ```
+  </Tab>
 
-  </Tab>  
   <Tab title="Docker">
     ### Using Makefile
 
@@ -103,6 +103,7 @@ description: 'This guide provides detailed instructions for installing Simba in 
     git clone https://github.com/GitHamza0206/simba.git
     cd simba  
     ```
+
     For CPU:
 
     ```bash
@@ -111,6 +112,7 @@ description: 'This guide provides detailed instructions for installing Simba in 
     # Start the Docker container
     DEVICE=cpu make up
     ```
+
     For NVIDIA GPU:
 
     ```bash
@@ -119,6 +121,7 @@ description: 'This guide provides detailed instructions for installing Simba in 
     # Start the Docker container
     DEVICE=cuda make up
     ```
+
     For Apple Silicon:
 
     ```bash
@@ -129,9 +132,12 @@ description: 'This guide provides detailed instructions for installing Simba in 
     ```
 
     This will start:
-    - The Simba backend API
-    - Redis for caching and task queue
-    - The Simba frontend UI
+
+    * The Simba backend API
+
+    * Redis for caching and task queue
+
+    * The Simba frontend UI
 
     All services will be properly configured to work together.
 
@@ -149,21 +155,31 @@ description: 'This guide provides detailed instructions for installing Simba in 
 
 ### Minimum Requirements
 
-- **CPU**: 2 cores
-- **RAM**: 4 GB
-- **Disk Space**: 1 GB
-- **Python**: 3.11+
-- **Redis**: 7.0+
-- **Node.js** (for frontend): 20+
+* **CPU**: 2 cores
+
+* **RAM**: 4 GB
+
+* **Disk Space**: 1 GB
+
+* **Python**: 3.11+
+
+* **Redis**: 7.0+
+
+* **Node.js** (for frontend): 20+
 
 ### Recommended Requirements
 
-- **CPU**: 4+ cores
-- **RAM**: 8+ GB
-- **Disk Space**: 10+ GB (depending on your document volume)
-- **Python**: 3.11+
-- **Redis**: 7.0+
-- **Node.js** (for frontend): 20+
+* **CPU**: 4+ cores
+
+* **RAM**: 8+ GB
+
+* **Disk Space**: 10+ GB (depending on your document volume)
+
+* **Python**: 3.11+
+
+* **Redis**: 7.0+
+
+* **Node.js** (for frontend): 20+
 
 ## Dependencies
 
@@ -171,28 +187,43 @@ Simba has the following key dependencies:
 
 <AccordionGroup>
   <Accordion title="Core Dependencies">
-    - **FastAPI**: Web framework for the backend API
-    - **Ollama**: For running the LLM inference (optional)
-    - **Redis**: For caching and task queues
-    - **PostgreSQL**: For database interactions
-    - **Celery**: Distributed task queue for background processing
-    - **Pydantic**: Data validation and settings management
+    * **FastAPI**: Web framework for the backend API
+
+    * **Ollama**: For running the LLM inference (optional)
+
+    * **Redis**: For caching and task queues
+
+    * **PostgreSQL**: For database interactions
+
+    * **Celery**: Distributed task queue for background processing
+
+    * **Pydantic**: Data validation and settings management
   </Accordion>
+
   <Accordion title="Vector Store Support">
-    - **FAISS**: Facebook AI Similarity Search for efficient vector storage
-    - **Chroma**: ChromaDB integration for document embeddings
-    - **Pinecone** (optional): For cloud-based vector storage
-    - **Milvus** (optional): For distributed vector search
+    * **FAISS**: Facebook AI Similarity Search for efficient vector storage
+
+    * **Chroma**: ChromaDB integration for document embeddings
+
+    * **Pinecone** (optional): For cloud-based vector storage
+
+    * **Milvus** (optional): For distributed vector search
   </Accordion>
+
   <Accordion title="Embedding Models">
-    - **OpenAI**: For text embeddings
-    - **HuggingFace Transformers** (optional): For text processing
+    * **OpenAI**: For text embeddings
+
+    * **HuggingFace Transformers** (optional): For text processing
   </Accordion>
+
   <Accordion title="Frontend">
-    - **React**: UI library
-    - **TypeScript**: For type-safe JavaScript
-    - **Vite**: Frontend build tool
-    - **Tailwind CSS**: Utility-first CSS framework
+    * **React**: UI library
+
+    * **TypeScript**: For type-safe JavaScript
+
+    * **Vite**: Frontend build tool
+
+    * **Tailwind CSS**: Utility-first CSS framework
   </Accordion>
 </AccordionGroup>
 
@@ -200,12 +231,12 @@ Simba has the following key dependencies:
 
 to be added...
 
-
-
 ## Next Steps
 
 Once you have Simba installed, proceed to:
 
 1. [Configure your installation](/docs/configuration)
+
 2. [Set up your first document collection](/docs/examples/document-ingestion)
-3. [Connect your application to Simba](/docs/sdk/client) 
+
+3. [Connect your application to Simba](/docs/sdk/client)

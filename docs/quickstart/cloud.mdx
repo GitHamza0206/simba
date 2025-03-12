@@ -1,0 +1,65 @@
+---
+title: "Quickstart"
+description: "Getting started with Simba cloud using the SDK "
+---
+
+***
+
+<Info>
+  This page is under construction and will be avaialble soon&#x20;
+
+  DISCLAIMER, the bellow doc is not working&#x20;
+</Info>
+
+<Steps>
+  <Step title="Create an Account">
+    Create an account with [Simba cloud ](https://github.com/GitHamza0206/simba). It's free!&#x20;
+
+    <Tip>
+      If you want to deploy locally, please refer here&#x20;
+    </Tip>
+  </Step>
+
+  <Step title="Install the SDK ">
+    Only Python is available with the SDK, you can install it via pip&#x20;
+
+    ```python Python
+    pip install simba-client
+    ```
+  </Step>
+
+  <Step title="Generate API Key ">
+    After signing into Simba cloud, click `create new API KEY `
+
+    <Frame as="div">
+      Adjust the caption and image of your Frame component here.
+    </Frame>
+
+    make sure to create a `.env` file&#x20;
+
+    ```python
+    SIMBA_API_KEY="sb-..." 
+    ```
+  </Step>
+
+  <Step title="Basic usage">
+    ```python
+    from simba_sdk import SimbaClient
+          
+    client = SimbaClient(api_url="http://simba.cloud.api:8000") 
+    document = client.documents.create(file_path="path/to/your/document.pdf")
+    document_id = document[0]["id"]
+          
+    parsing_result = client.parser.parse_document(document_id,parser="docling", sync=True)
+          
+    retrieval_results = client.retriever.retrieve(query="your-query")
+          
+    for result in retrieval_results["documents"]:
+      print(f"Content: {result['page_content']}")
+      print(f"Metadata: {result['metadata']['source']}")
+      print("====" * 10)
+    ```
+  </Step>
+</Steps>
+
+##
