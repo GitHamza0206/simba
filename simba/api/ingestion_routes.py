@@ -103,8 +103,12 @@ async def delete_document(uids: List[str]):
         # Delete documents from vector store
         for uid in uids:
             simbadoc = db.get_document(uid)
-            if simbadoc.metadata.enabled:
-                store.delete_documents([doc.id for doc in simbadoc.documents])
+            if simbadoc and simbadoc.metadata.enabled:
+                try:
+                    store.delete_documents([doc.id for doc in simbadoc.documents])
+                except Exception as e:
+                    # Log the error but continue with deletion
+                    logger.warning(f"Error deleting document {uid} from vector store: {str(e)}. Continuing with database deletion.")
 
         # Delete documents from database
         db.delete_documents(uids)

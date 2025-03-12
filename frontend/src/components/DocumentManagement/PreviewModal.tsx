@@ -3,6 +3,9 @@ import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css'; // Import KaTeX CSS
 import { useState, useEffect, useRef } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -29,6 +32,22 @@ const imageStyles = `
     display: block !important;
     border: 1px solid #e5e7eb !important;
     border-radius: 0.375rem !important;
+  }
+`;
+
+// Add enhanced KaTeX styles
+const mathStyles = `
+  .katex {
+    font-size: 1.1em !important;
+    line-height: 1.5 !important;
+  }
+  .katex-display {
+    margin: 1em 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+  .math-inline {
+    padding: 0 0.15em !important;
   }
 `;
 
@@ -419,21 +438,74 @@ const ChunkContent = ({ content }: { content: string }) => {
     return <div>Invalid content</div>;
   }
 
-  // CRITICAL FIX: Simply use dangerouslySetInnerHTML to render content directly
-  // This bypasses ReactMarkdown completely which may be causing rendering issues
+  // Check if content contains LaTeX-style math that would benefit from KaTeX
+  const hasMathContent = /\$.*?\$|\${2}.*?\${2}/g.test(content);
+  
+  // Check if content contains image markdown syntax that needs special handling
+  const hasImageSyntax = /!\[(.*?)\]\((data:image\/[^)]+)\)/g.test(content);
+
+  // If we detect image syntax, use the original rendering method which worked for images
+  if (hasImageSyntax) {
+    // For content with images, process it using our basic formatter
+    const processedContent = content
+      // Manually format superscript notation for math/citations
+      .replace(/\$\{\s*\}\^{([^}]+)}\$/g, '<sup>$1</sup>')
+      // Handle other LaTeX-style formatting that might appear
+      .replace(/\$\^{([^}]+)}\$/g, '<sup>$1</sup>')
+      .replace(/\$_{([^}]+)}\$/g, '<sub>$1</sub>');
+      
+    return (
+      <>
+        <style>{imageStyles}</style>
+        <div 
+          className="prose prose-sm max-w-none overflow-auto p-2"
+          dangerouslySetInnerHTML={{ 
+            __html: processedContent
+              // Convert markdown image syntax to HTML for reliable rendering
+              .replace(/!\[(.*?)\]\((data:image\/[^)]+)\)/g, '<img src="$2" alt="$1" />')
+              // Add line breaks for better readability
+              .replace(/\n/g, '<br />')
+          }} 
+        />
+      </>
+    );
+  }
+  
+  // For complex math content, use the full KaTeX renderer
+  if (hasMathContent) {
+    return (
+      <>
+        <style>{imageStyles}</style>
+        <style>{mathStyles}</style>
+        <ReactMarkdown
+          className="prose prose-sm max-w-none overflow-auto p-2"
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeRaw, rehypeSanitize, [rehypeKatex, { output: 'html' }]]}
+        >
+          {content}
+        </ReactMarkdown>
+      </>
+    );
+  }
+  
+  // For regular content without math or images, use normal markdown
+  // But still apply the simple formatting to handle basic superscripts
+  const processedContent = content
+    // Manually format superscript notation for math/citations in case KaTeX isn't working
+    .replace(/\$\{\s*\}\^{([^}]+)}\$/g, '<sup>$1</sup>')
+    .replace(/\$\^{([^}]+)}\$/g, '<sup>$1</sup>')
+    .replace(/\$_{([^}]+)}\$/g, '<sub>$1</sub>');
+    
   return (
     <>
       <style>{imageStyles}</style>
-      <div 
+      <ReactMarkdown
         className="prose prose-sm max-w-none overflow-auto p-2"
-        dangerouslySetInnerHTML={{ 
-          __html: content
-            // Convert markdown image syntax to HTML for reliable rendering
-            .replace(/!\[(.*?)\]\((data:image\/[^)]+)\)/g, '<img src="$2" alt="$1" />')
-            // Add line breaks for better readability
-            .replace(/\n/g, '<br />')
-        }} 
-      />
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw, rehypeSanitize]}
+      >
+        {processedContent}
+      </ReactMarkdown>
     </>
   );
 };
