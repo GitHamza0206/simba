@@ -108,7 +108,9 @@ async def delete_document(uids: List[str]):
                     store.delete_documents([doc.id for doc in simbadoc.documents])
                 except Exception as e:
                     # Log the error but continue with deletion
-                    logger.warning(f"Error deleting document {uid} from vector store: {str(e)}. Continuing with database deletion.")
+                    logger.warning(
+                        f"Error deleting document {uid} from vector store: {str(e)}. Continuing with database deletion."
+                    )
 
         # Delete documents from database
         db.delete_documents(uids)
