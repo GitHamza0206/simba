@@ -42,23 +42,21 @@
       "url": "https://github.com/GitHamza0206/simba"
     }
   ],
-  "navigation": {
-    "groups": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "overview"
-        ]
-      },
-      {
-        "group": "Quickstart",
-        "pages": [
-          "quickstart/cloud",
-          "quickstart/self-hosted"
-        ]
-      }
-    ]
-  },
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "overview",
+        {
+          "group": "Quickstart",
+          "pages": [
+            "quickstart/cloud",
+            "quickstart/self-hosted"
+          ]
+        }
+      ]
+    }
+  ],
   "footerSocials": {
     "github": "https://github.com/GitHamza0206/simba",
     "discord": "https://discord.gg/"
