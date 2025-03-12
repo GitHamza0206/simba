@@ -1,45 +1,40 @@
 {
   "name": "Simba",
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "dark": "/logo/logo-dark.png",
+    "light": "/logo/logo-light.png"
   },
   "favicon": "/favicon.png",
   "colors": {
-    "primary": "#0D9373",
-    "light": "#07C983",
-    "dark": "#0D9373",
-    "anchors": {
-      "from": "#0D9373",
-      "to": "#07C983"
-    }
+    "primary": "#0069ED",
+    "light": "#4D9CFF",
+    "dark": "#0050B4"
   },
   "topbarLinks": [
     {
-      "name": "Documentation",
-      "url": "https://mintlify.com/docs"
+      "name": "GitHub",
+      "url": "https://github.com/GitHamza0206/simba"
     }
   ],
   "topbarCtaButton": {
     "name": "Get Started",
-    "url": "https://github.com/GitHamza0206/simba"
+    "url": "/getting-started"
   },
-  "tabs": [
-    {
-      "name": "API Reference",
-      "url": "api-reference"
-    }
-  ],
   "anchors": [
     {
-      "name": "Community",
-      "icon": "discord",
-      "url": "https://discord.gg/"
+      "name": "API Reference",
+      "icon": "rectangle-terminal",
+      "url": "api-reference"
     },
     {
-      "name": "GitHub",
-      "icon": "github",
-      "url": "https://github.com/GitHamza0206/simba"
+      "name": "SDK",
+      "icon": "code",
+      "url": "sdk"
+    },
+    {
+      "name": "Examples",
+      "icon": "list-magnifying-glass",
+      "url": "examples"
     }
   ],
   "navigation": [
@@ -51,14 +46,37 @@
           "group": "Quickstart",
           "pages": [
             "quickstart/cloud",
-            "quickstart/self-hosted"
+            "quickstart/self-host"
           ]
-        }
+        },
+        "configuration"
+      ]
+    },
+    {
+      "group": "Core Concepts",
+      "pages": [
+        "core-concepts/rag-systems"
+      ]
+    },
+    {
+      "group": "API & SDK",
+      "pages": [
+        "api-reference/overview",
+        "sdk/overview"
+      ]
+    },
+    {
+      "group": "Examples",
+      "pages": [
+        "examples/notebook-example",
+        "examples/streamlit-app",
+        "examples/chainlit-app",
+        "examples/react-frontend"
       ]
     }
   ],
   "footerSocials": {
-    "github": "https://github.com/GitHamza0206/simba",
-    "discord": "https://discord.gg/"
+    "twitter": "https://twitter.com/zerou_hamza",
+    "github": "https://github.com/GitHamza0206/simba"
   }
 }
