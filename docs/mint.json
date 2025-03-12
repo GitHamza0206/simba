@@ -46,7 +46,7 @@
           "group": "Quickstart",
           "pages": [
             "quickstart/cloud",
-            "quickstart/self-host"
+            "quickstart/self-hosted"
           ]
         },
         "configuration"
