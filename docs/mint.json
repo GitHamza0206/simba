@@ -42,8 +42,8 @@
       "group": "Introduction",
       "pages": [
         "introduction",
-        "getting-started",
         "installation",
+        "getting-started",
         "configuration"
       ]
     },
