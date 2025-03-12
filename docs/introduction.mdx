@@ -7,32 +7,69 @@ icon: "👋"
 # Simba - Your Knowledge Management System
 
 <p align="center">
-<img src="/assets/logo.png" alt="Simba Logo" width="400" height="400"/>
+<img src="../assets/logo.png" alt="Simba Logo" width="400" height="400"/>
 </p>
 
 **Connect your knowledge to any RAG system**
 
-Simba is an open-source, portable Knowledge Management System (KMS) designed specifically for seamless integration with Retrieval-Augmented Generation (RAG) systems. With its intuitive UI, modular architecture, and powerful SDK, Simba simplifies knowledge management, allowing developers to focus on building advanced AI solutions.
+## What is Simba?
+
+Simba is an open-source, portable Knowledge Management System (KMS) specifically designed to integrate seamlessly with Retrieval-Augmented Generation (RAG) systems. It provides a comprehensive solution for managing, processing, and retrieving knowledge from various document sources to enhance AI applications with contextual information.
+
+## Deployment Options
+
+Simba offers two primary deployment models to suit different organizational needs:
+
+### Cloud-Hosted Solution
+
+The Simba Cloud offering provides a fully-managed service where you can:
+- Start using Simba immediately without infrastructure setup
+- Access your knowledge base from anywhere
+- Scale resources automatically based on your needs
+- Benefit from automatic updates and maintenance
+
+### Self-Hosted Solution
+
+For organizations requiring complete control over their infrastructure and data:
+- Deploy Simba in your own environment (on-premises or cloud VPC)
+- Maintain full control over your sensitive data
+- Customize and extend functionality as needed
+- Integrate with existing internal systems
+
+Both deployment options provide access to the same powerful Simba SDK, allowing you to programmatically interact with your knowledge base.
 
 ## Key Features
 
-* **🔌 Powerful SDK:** Comprehensive Python SDK (`simba-sdk`) for easy integration.
-* **🧩 Modular Architecture:** Flexible integration of vector stores, embedding models, chunkers, and parsers.
-* **🖥️ Modern UI:** User-friendly interface (`frontend/`) for managing document chunks.
-* **🔗 Seamless Integration:** Effortlessly connects with any RAG-based system.
-* **👨‍💻 Developer-Centric:** Simplifies complex knowledge management tasks.
-* **📦 Open Source & Extensible:** Community-driven with extensive customization options.
+* **🔌 Powerful SDK:** Comprehensive Python SDK (`simba-sdk`) for easy integration
+* **🧩 Modular Architecture:** Flexible integration of vector stores, embedding models, chunkers, and parsers
+* **🖥️ Modern UI:** User-friendly interface for managing document chunks and monitoring system performance
+* **🔗 Seamless Integration:** Effortlessly connects with any RAG-based system
+* **👨‍💻 Developer-Centric:** Simplifies complex knowledge management tasks
+* **📦 Open Source & Extensible:** Community-driven with extensive customization options
+
+## System Architecture Overview
+
+Simba employs a modular architecture with these key components:
+
+- **Document Processors:** Parse and extract content from various document formats
+- **Chunkers:** Divide documents into semantically meaningful segments
+- **Embedding Models:** Convert text into vector representations
+- **Vector Stores:** Index and store embeddings for efficient retrieval
+- **Retrieval Engine:** Find relevant information using various retrieval strategies
+- **API Layer:** Expose functionality through a RESTful interface
+- **SDK:** Provide programmatic access to all functionality
 
 ## Demo
 
-![Watch the demo](/assets/demo.gif)
+![Watch the demo](../assets/demo.gif)
 
 ## Who is Simba for?
 
-Simba is designed for:
+Simba is ideal for:
 
-* **Developers:** Building RAG applications and needing a robust KMS.
-* **Organizations:**  Wanting to manage and connect their internal knowledge to AI systems.
-* **Researchers:**  Experimenting with RAG and knowledge retrieval techniques.
+* **AI Engineers:** Building RAG applications that require contextual knowledge
+* **Knowledge Management Teams:** Organizing and making accessible large document repositories
+* **Developers:** Creating context-aware applications with minimal boilerplate
+* **Organizations:** Seeking to leverage their internal knowledge for AI applications
 
 Let's get started and explore how Simba can empower your RAG projects!
