@@ -39,11 +39,10 @@
   ],
   "navigation": [
     {
-      "group": "Introduction",
+      "group": "Getting Started",
       "pages": [
-        "introduction",
-        "installation",
-        "getting-started",
+        "overview",
+        "Quickstart",
         "configuration"
       ]
     },
