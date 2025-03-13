@@ -4,6 +4,7 @@ from typing import Dict, Type
 from simba.core.config import settings
 from simba.storage.base import StorageProvider
 from simba.storage.local import LocalStorageProvider
+from simba.storage.minio import MinIOStorageProvider
 
 
 class StorageFactory:
@@ -11,7 +12,7 @@ class StorageFactory:
     
     _providers: Dict[str, Type[StorageProvider]] = {
         "local": LocalStorageProvider,
-        # Add MinIO provider here when implemented
+        "minio": MinIOStorageProvider,
     }
     
     @classmethod
