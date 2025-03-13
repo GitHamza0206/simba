@@ -39,16 +39,9 @@ async def ingest_document(
 ):
     """Ingest a document into the vector store"""
     try:
-        store_path = Path(settings.paths.upload_dir)
-        if folder_path != "/":
-            store_path = store_path / folder_path.strip("/")
-
         # Process files concurrently using asyncio.gather
         async def process_file(file):
-            await file.seek(0)
-            await save_file_locally(file, store_path)
-            await file.seek(0)
-            simba_doc = await ingestion_service.ingest_document(file)
+            simba_doc = await ingestion_service.ingest_document(file, folder_path)
             return simba_doc
 
         # Process all files concurrently

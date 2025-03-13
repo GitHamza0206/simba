@@ -141,7 +141,24 @@ class CelerySettings(BaseModel):
     result_backend: str = "redis://localhost:6379/1"
 
 
+class StorageSettings(BaseSettings):
+    """Storage configuration settings"""
+    provider: str = "local"  # Options: "local", "minio"
+    minio_endpoint: Optional[str] = None
+    minio_access_key: Optional[str] = None
+    minio_secret_key: Optional[str] = None
+    minio_bucket: Optional[str] = None
+    minio_secure: bool = False
+
+
+class PathsSettings(BaseSettings):
+    """Path configuration settings"""
+    upload_dir: Path = Path("uploads")
+    temp_dir: Path = Path("temp")
+
+
 class Settings(BaseSettings):
+    """Application settings"""
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     project: ProjectConfig = Field(default_factory=ProjectConfig)
@@ -153,6 +170,7 @@ class Settings(BaseSettings):
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     celery: CelerySettings = Field(default_factory=CelerySettings)
+    storage: StorageSettings = StorageSettings()
 
     @field_validator("celery")
     @classmethod
