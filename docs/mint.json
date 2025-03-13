@@ -33,17 +33,22 @@
     },
     {
       "name": "Examples",
-      "icon": "list-magnifying-glass",
+      "icon": "web-awesome",
       "url": "examples"
     }
   ],
   "navigation": [
     {
-      "group": "Introduction",
+      "group": "Getting Started",
       "pages": [
-        "introduction",
-        "getting-started",
-        "installation",
+        "overview",
+        {
+          "group": "Quickstart",
+          "pages": [
+            "quickstart/cloud",
+            "quickstart/self-hosted"
+          ]
+        },
         "configuration"
       ]
     },
@@ -74,4 +79,4 @@
     "twitter": "https://twitter.com/zerou_hamza",
     "github": "https://github.com/GitHamza0206/simba"
   }
-} 
+}

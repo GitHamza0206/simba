@@ -4,6 +4,8 @@
 
 .pytest_cache
 
+.DS_Store
+
 __pycache__
 
 /vector_stores

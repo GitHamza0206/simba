@@ -1,136 +1,97 @@
 ---
-title: 'Getting Started with Simba'
-description: 'Learn how to set up and start using Simba in your project'
+title: Overview
 ---
 
-## Prerequisites
+Simba is an open-source, portable Knowledge Management System (KMS) specifically designed to integrate seamlessly with Retrieval-Augmented Generation (RAG) systems. It provides a comprehensive solution for managing, processing, and retrieving knowledge from various document sources to enhance AI applications with contextual information.
 
-Before you begin, make sure you have the following installed:
+## Key Features
 
-- **Python 3.11+**
-- **Redis 7.0+**
-- **Node.js 20+** (for the frontend)
-- **Git**
-- **Poetry** (for Python dependency management)
+* **🔌 Powerful SDK:** Comprehensive Python SDK (`simba-sdk`) for easy integration
 
-## Quick Installation
+* **🧩 Modular Architecture:** Flexible integration of vector stores, embedding models, chunkers, and parsers
 
-### Option 1: Install with pip
+* **🖥️ Modern UI:** User-friendly interface for managing document chunks and monitoring system performance
 
-The simplest way to get started with Simba is to install the client SDK:
+* **🔗 Seamless Integration:** Effortlessly connects with any RAG-based system
 
-```bash
-pip install simba-core
-```
+* **👨‍💻 Developer-Centric:** Simplifies complex knowledge management tasks
 
-### Option 2: Clone the Repository
+* **📦 Open Source & Extensible:** Community-driven with extensive customization options
 
-For a complete installation, including the backend and frontend:
+## System Architecture Overview
 
-```bash
-git clone https://github.com/GitHamza0206/simba.git
-cd simba
-poetry install
-```
+Simba employs a modular architecture with these key components:
 
-## Running Simba
+* **Document Processors:** Parse and extract content from various document formats
 
-### Backend Service
+* **Chunkers:** Divide documents into semantically meaningful segments
 
-To start the Simba backend service:
+* **Embedding Models:** Convert text into vector representations
 
-```bash
-# In a new terminal, start Simba
-simba server 
-```
+* **Vector Stores:** Index and store embeddings for efficient retrieval
 
-By default, the backend will be available at http://localhost:8000.
+* **Retrieval Engine:** Find relevant information using various retrieval strategies
 
-### Frontend (Optional)
+* **API Layer:** Expose functionality through a RESTful interface
 
-If you want to use the UI:
+* **SDK:** Provide programmatic access to all functionality
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-The frontend will be available at http://localhost:5173.
+## Demo
 
-### Running Parsing Algorithms
+![Watch the demo](/assets/demo.gif)
 
-Simba leverages advanced parsing algorithms, such as Docling, to transform unstructured documents into structured formats suitable for efficient retrieval and analysis. To run the parsing process, execute:
+## Who is Simba for?
 
-```bash
-simba parse
-```
+Simba is ideal for:
 
+* **AI Engineers:** Building RAG applications that require contextual knowledge
 
-## Basic Usage
+* **Developers:** Creating context-aware applications with minimal boilerplate
 
-### Connecting to Simba
+* **Organizations:** Seeking to leverage their internal knowledge for AI applications
 
-Here's a simple example of connecting to Simba using the SDK:
+## Deployment Options
 
-```python
-from simba_sdk import SimbaClient
+Simba offers two primary deployment models to suit different organizational needs:
 
-# Initialize the client
-client = SimbaClient(api_url="http://localhost:8000")
+<CardGroup cols={2}>
+  <Card title="Cloud" icon="cloud" href="/getting-started/cloud">
+    Get started using Simba through our Cloud&#x20;
 
-# Check connection
-status = client.health()
-print(f"Simba status: {status}")
-```
+    offering, free of charge.
+    Perfect for fast serverless deployment.
+  </Card>
 
-### Adding a Document
+  <Card title="Self Hosted" icon="server" href="/getting-started/self-hosted">
+    Host your own full-featured Simba system. Ideal for on premise use cases.
+    Complete control over your data & infra.
+  </Card>
+</CardGroup>
 
-To add a document to your knowledge base:
+### Cloud-Hosted Solution
 
-```python
-# Upload a file
-document = client.documents.create(file_path="path/to/your/document.pdf")
-document_id = document[0]["id"]
-print(f"Document uploaded with ID: {document_id}")
+The Simba Cloud offering provides a fully-managed service where you can:
 
-# List all documents
-all_docs = client.documents.list()
-print(f"Total documents: {len(all_docs)}")
-```
+* Start using Simba immediately without infrastructure setup
 
-### Retrieving Knowledge
+* Access your knowledge base from anywhere
 
-To retrieve information from your knowledge base:
+* Scale resources automatically based on your needs
 
-```python
-# Basic retrieval
-results = client.retrieval.retrieve(
-    query="What is Simba?",
-    top_k=3  # Number of chunks to retrieve
-)
+* Benefit from automatic updates and maintenance
 
-# Display results
-for chunk in results:
-    print(f"Score: {chunk['score']}")
-    print(f"Content: {chunk['content']}")
-    print("---")
-```
+### Self-Hosted Solution
 
-## Next Steps
+For organizations requiring complete control over their infrastructure and data:
 
-Now that you have Simba up and running, here are some next steps:
+* Deploy Simba in your own environment (on-premises or cloud VPC)
 
-- Learn more about [configuring Simba](/configuration)
-- Explore [vector stores](/core-concepts/vector-stores) for optimized retrieval
-- Understand [embeddings](/core-concepts/embeddings) and how they work
-- Customize the [chunking process](/core-concepts/chunking) for your specific needs
-- Check out our [examples](/examples/document-ingestion) for more advanced usage
+* Maintain full control over your sensitive data
 
-## Troubleshooting
+* Customize and extend functionality as needed
 
-If you encounter any issues during setup:
+* Integrate with existing internal systems
 
-- Ensure Redis is running and accessible
-- Check that all prerequisites are installed
-- Verify port availability for both backend (8000) and frontend (5173)
-- See our [community support](/community/support) for more help 
+Both deployment options provide access to the same powerful Simba SDK, allowing you to programmatically interact with your knowledge base.
+
+Let's get started and explore how Simba can empower your RAG projects!

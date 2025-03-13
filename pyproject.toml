@@ -58,6 +58,7 @@ torchvision = "^0.21.0"
 torchaudio = "^2.6.0"
 celery = "^5.4.0"
 mistralai = "^1.5.1"
+minio = "^7.2.15"
 
 
 [tool.poetry.group.dev.dependencies]

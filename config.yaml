@@ -12,7 +12,7 @@ paths:
 
 llm:
   provider: "openai"
-  model_name: "gpt-4o-mini"
+  model_name: "gpt-4o"
   temperature: 0.0
   max_tokens: null
   streaming: true
@@ -52,6 +52,11 @@ retrieval:
     # Reranking parameters
     reranker_model: colbert
     reranker_threshold: 0.7
+
+storage:
+  provider: minio
+
+
 
 # Database configuration
 database:

@@ -39,16 +39,9 @@ async def ingest_document(
 ):
     """Ingest a document into the vector store"""
     try:
-        store_path = Path(settings.paths.upload_dir)
-        if folder_path != "/":
-            store_path = store_path / folder_path.strip("/")
-
         # Process files concurrently using asyncio.gather
         async def process_file(file):
-            await file.seek(0)
-            await save_file_locally(file, store_path)
-            await file.seek(0)
-            simba_doc = await ingestion_service.ingest_document(file)
+            simba_doc = await ingestion_service.ingest_document(file, folder_path)
             return simba_doc
 
         # Process all files concurrently
@@ -103,8 +96,14 @@ async def delete_document(uids: List[str]):
         # Delete documents from vector store
         for uid in uids:
             simbadoc = db.get_document(uid)
-            if simbadoc.metadata.enabled:
-                store.delete_documents([doc.id for doc in simbadoc.documents])
+            if simbadoc and simbadoc.metadata.enabled:
+                try:
+                    store.delete_documents([doc.id for doc in simbadoc.documents])
+                except Exception as e:
+                    # Log the error but continue with deletion
+                    logger.warning(
+                        f"Error deleting document {uid} from vector store: {str(e)}. Continuing with database deletion."
+                    )
 
         # Delete documents from database
         db.delete_documents(uids)
