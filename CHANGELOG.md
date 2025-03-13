@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.5.0](https://github.com/GitHamza0206/simba/compare/v0.4.0...v0.5.0) (2025-03-13)
+
+
+### ✨ Features
+
+* Add MinIO storage provider ([c1aaed3](https://github.com/GitHamza0206/simba/commit/c1aaed320244a2c336b67a3467bc3a0d78134ba0))
+* implement storage provider architecture (Local Only) ([b76f1c7](https://github.com/GitHamza0206/simba/commit/b76f1c78ec59e0cb2bd9539d131cf29d45c3fbcf))
+* MinIO storage ([77a63b7](https://github.com/GitHamza0206/simba/commit/77a63b7cd82cb65d3478423b34047b9a6c84dbf2))
+
+
+### 🐛 Bug Fixes
+
+* deleted temp file minio ([a868f37](https://github.com/GitHamza0206/simba/commit/a868f373363da35e1024cbbc6ddfce94fa32f724))
+* force deleting & markdown preview ([d9e5b69](https://github.com/GitHamza0206/simba/commit/d9e5b69be2c932bd352a033390852987dfc2f69d))
+
+
+### 📚 Documentation
+
+* changed doc structure ([44238b0](https://github.com/GitHamza0206/simba/commit/44238b071c8e8287039610b60bc305a5ade82a53))
+* chore ([531e60b](https://github.com/GitHamza0206/simba/commit/531e60bb6b9540fa0aeeea9b20e200280c7955eb))
+* chore ([014cb0a](https://github.com/GitHamza0206/simba/commit/014cb0a10b4fe44d7ed0b6d57cd89eadb814dd7a))
+* cleaned installation ([111392e](https://github.com/GitHamza0206/simba/commit/111392e4e09641d14b2321829523189f2e2736a7))
+* fix mint.json structure ([df3f1de](https://github.com/GitHamza0206/simba/commit/df3f1de326d48668ebfff1e1173a7450a31eaa5a))
+* fix mint.json structure ([756d657](https://github.com/GitHamza0206/simba/commit/756d65761b23992266cb396e52273ce33846d25a))
+* fix mint.json structure ([ce2aea9](https://github.com/GitHamza0206/simba/commit/ce2aea92e552386bf455a3507727768a4974f228))
+* fix mint.json structure ([d77cefd](https://github.com/GitHamza0206/simba/commit/d77cefd948ba32534081dad98a239c608efea7f9))
+* fixed icons rendering ([5e8424e](https://github.com/GitHamza0206/simba/commit/5e8424ecfa01aa22a8f0cada33cb37f4118f00d2))
+* introduction & installation setup ([1ab8049](https://github.com/GitHamza0206/simba/commit/1ab8049555faae7bb7486b9c94baa2d93a01b049))
+* remove config ([c0700a0](https://github.com/GitHamza0206/simba/commit/c0700a0c9a859b743c4aea974756e777025495fa))
+* removed useless doc ([815dcec](https://github.com/GitHamza0206/simba/commit/815dcec83ce41a4a110cc33ef666e17288fc09dc))
+* update introduction ([2fb67cc](https://github.com/GitHamza0206/simba/commit/2fb67cc661d8b1efd7d5e0f24704fd8e361eb012))
+* update introduction & assets ([187c1a5](https://github.com/GitHamza0206/simba/commit/187c1a53c52a7f68608e8fc36be9b67bf770f817))
+* update structure and added getting started ([7e60063](https://github.com/GitHamza0206/simba/commit/7e600632c796f2f3fdcf75d272571b9bae262f73))
+
 ## [0.4.0](https://github.com/GitHamza0206/simba/compare/v0.3.0...v0.4.0) (2025-03-11)
 
 
