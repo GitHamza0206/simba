@@ -53,6 +53,11 @@ retrieval:
     reranker_model: colbert
     reranker_threshold: 0.7
 
+storage:
+  provider: minio
+
+
+
 # Database configuration
 database:
   provider: litedb # Options: litedb, sqlite

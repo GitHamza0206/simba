@@ -31,6 +31,15 @@ critical_env_vars = {
     "CELERY_RESULT_BACKEND": os.getenv("CELERY_RESULT_BACKEND"),
 }
 
+# Add MinIO settings if storage provider is minio
+if os.getenv("STORAGE_PROVIDER", "local").lower() == "minio":
+    critical_env_vars.update({
+        "MINIO_ENDPOINT": os.getenv("MINIO_ENDPOINT"),
+        "MINIO_ACCESS_KEY": os.getenv("MINIO_ACCESS_KEY"),
+        "MINIO_SECRET_KEY": os.getenv("MINIO_SECRET_KEY"),
+        "MINIO_BUCKET": os.getenv("MINIO_BUCKET"),
+    })
+
 for var_name, var_value in critical_env_vars.items():
     if var_value:
         logger.info(f"✅ Environment variable loaded: {var_name}")
@@ -49,6 +58,7 @@ class PathConfig(BaseModel):
     faiss_index_dir: Path = Field(default="vector_stores/faiss_index")
     vector_store_dir: Path = Field(default="vector_stores")
     upload_dir: Path = Field(default="uploads")
+    temp_dir: Path = Field(default="temp")
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -56,12 +66,14 @@ class PathConfig(BaseModel):
         self.faiss_index_dir = self.base_dir / self.faiss_index_dir
         self.vector_store_dir = self.base_dir / self.vector_store_dir
         self.upload_dir = self.base_dir / self.upload_dir
+        self.temp_dir = self.base_dir / self.temp_dir
 
         # Create directories if they don't exist
         for path in [
             self.faiss_index_dir,
             self.vector_store_dir,
             self.upload_dir,
+            self.temp_dir,
         ]:
             path.mkdir(parents=True, exist_ok=True)
             logger.info(f"Ensured directory exists: {path}")
@@ -143,18 +155,35 @@ class CelerySettings(BaseModel):
 
 class StorageSettings(BaseSettings):
     """Storage configuration settings"""
-    provider: str = "local"  # Options: "local", "minio"
-    minio_endpoint: Optional[str] = None
-    minio_access_key: Optional[str] = None
-    minio_secret_key: Optional[str] = None
-    minio_bucket: Optional[str] = None
-    minio_secure: bool = False
-
-
-class PathsSettings(BaseSettings):
-    """Path configuration settings"""
-    upload_dir: Path = Path("uploads")
-    temp_dir: Path = Path("temp")
+    provider: str = Field(
+        default="local",
+        description="Storage provider type: 'local' or 'minio'"
+    )
+    minio_endpoint: Optional[str] = Field(
+        default=None,
+        description="MinIO server endpoint",
+        env="MINIO_ENDPOINT"
+    )
+    minio_access_key: Optional[str] = Field(
+        default=None,
+        description="MinIO access key",
+        env="MINIO_ACCESS_KEY"
+    )
+    minio_secret_key: Optional[str] = Field(
+        default=None,
+        description="MinIO secret key",
+        env="MINIO_SECRET_KEY"
+    )
+    minio_bucket: Optional[str] = Field(
+        default=None,
+        description="MinIO bucket name",
+        env="MINIO_BUCKET"
+    )
+    minio_secure: bool = Field(
+        default=False,
+        description="Whether to use HTTPS for MinIO",
+        env="MINIO_SECURE"
+    )
 
 
 class Settings(BaseSettings):
