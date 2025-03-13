@@ -33,3 +33,4 @@ dump.rdb
 
 .ruff_cache
 
+*.csv
