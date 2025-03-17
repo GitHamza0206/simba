@@ -1,13 +1,13 @@
+import logging
+import multiprocessing
+import os
+
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 def create_app():
     """Create and configure the FastAPI application."""
-    import logging
-    import multiprocessing
-    import os
-
-    from dotenv import load_dotenv
-    from fastapi import FastAPI
-    from fastapi.middleware.cors import CORSMiddleware
-
     # Set environment variables early
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
@@ -20,12 +20,15 @@ def create_app():
     load_dotenv()
 
     # Import application components
+    from simba.api.auth_routes import auth_router
     from simba.api.chat_routes import chat
     from simba.api.database_routes import database_route
     from simba.api.embedding_routes import embedding_route
     from simba.api.ingestion_routes import ingestion
     from simba.api.parsing_routes import parsing
     from simba.api.retriever_routes import retriever_route
+    from simba.api.role_routes import role_router
+    from simba.api.organization_routes import organization_router  # Import our new organization router
     from simba.core.config import settings
     from simba.core.utils.logger import setup_logging
 
@@ -64,6 +67,12 @@ def create_app():
         logger.info(f"Vector Store Provider: {settings.vector_store.provider}")
         logger.info(f"Database Provider: {settings.database.provider}")
 
+        # Log Supabase settings if configured
+        if settings.supabase.url:
+            logger.info("Supabase Auth: Configured ✅")
+        else:
+            logger.info("Supabase Auth: Not configured ❌")
+
         # Add retrieval strategy information
         if hasattr(settings, "retrieval") and hasattr(settings.retrieval, "method"):
             logger.info(f"Retrieval Method: {settings.retrieval.method}")
@@ -91,12 +100,15 @@ def create_app():
         logger.info("SIMBA Application shutdown complete.")
 
     # Include API routers
+    app.include_router(auth_router)
     app.include_router(chat)
     app.include_router(ingestion)
     app.include_router(parsing)
     app.include_router(database_route)
     app.include_router(embedding_route)
     app.include_router(retriever_route)
+    app.include_router(role_router)
+    app.include_router(organization_router)  # Include our new organization router
 
     return app
 

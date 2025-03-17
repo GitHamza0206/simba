@@ -181,8 +181,27 @@ class StorageSettings(BaseSettings):
     )
     minio_secure: bool = Field(
         default=False,
-        description="Whether to use HTTPS for MinIO",
+        description="Use secure connection to MinIO",
         env="MINIO_SECURE"
+    )
+
+
+class SupabaseSettings(BaseSettings):
+    """Supabase configuration settings"""
+    url: str = Field(
+        default="",
+        description="Supabase project URL",
+        env="SUPABASE_URL"
+    )
+    key: str = Field(
+        default="",
+        description="Supabase API key",
+        env="SUPABASE_KEY,SUPABASE_PUBLIC_KEY"  # Try both keys
+    )
+    jwt_secret: str = Field(
+        default="",
+        description="Supabase JWT secret for token verification",
+        env="SUPABASE_JWT_SECRET"
     )
 
 
@@ -200,6 +219,7 @@ class Settings(BaseSettings):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     celery: CelerySettings = Field(default_factory=CelerySettings)
     storage: StorageSettings = StorageSettings()
+    supabase: SupabaseSettings = SupabaseSettings()
 
     @field_validator("celery")
     @classmethod

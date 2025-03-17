@@ -8,12 +8,16 @@ import {
   Settings,
   HardDrive,
   HelpCircle,
+  Users,
+  Building2,
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
 const sidebarItems = [
   { name: "Home", icon: Home, path: "/" },
+  { name: "Organizations", icon: Building2, path: "/organizations" },
   { name: "Documents", icon: Terminal, path: "/documents" },
+  { name: "Roles", icon: Users, path: "/roles" },
   { name: "Plugins", icon: PlugZap, path: "/plugins" },
   { name: "API Keys", icon: Key, path: "/api-keys" },
   { name: "Settings", icon: Settings, path: "/settings" },
