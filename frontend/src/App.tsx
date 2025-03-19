@@ -1,6 +1,6 @@
 import ChatApp from '@/pages/ChatApp';
 import DocumentManagementApp from "@/pages/DocumentManagementApp";
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '@/MainLayout';
 import { pdfjs } from 'react-pdf';
 import Login from '@/pages/auth/Login';
@@ -9,6 +9,9 @@ import ResetPassword from '@/pages/auth/ResetPassword';
 import { AuthProvider, ProtectedRoute } from '@/context/AuthContext';
 import RolesPage from './pages/RolesPage';
 import OrganizationPage from './pages/OrganizationPage';
+import SettingsPage from './pages/SettingsPage';
+import GeneralSettings from './pages/settings/GeneralSettings';
+import MembersSettings from './pages/settings/MembersSettings';
 import { Toaster } from '@/components/ui/toaster';
 
 // Use a direct path to the worker from node_modules
@@ -33,16 +36,33 @@ function App() {
               <DocumentManagementApp />
             </ProtectedRoute>
           } />
-          <Route path="roles" element={
+          
+          {/* Settings Routes */}
+          <Route path="/settings" element={
             <ProtectedRoute>
-              <RolesPage />
+              <SettingsPage />
+            </ProtectedRoute>
+          }>
+            <Route index element={<GeneralSettings />} />
+            <Route path="members" element={<MembersSettings />} />
+            <Route path="billing" element={<div className="p-8">Billing settings coming soon</div>} />
+            <Route path="sso" element={<div className="p-8">SSO settings coming soon</div>} />
+            <Route path="projects" element={<div className="p-8">Projects settings coming soon</div>} />
+            <Route path="roles" element={<RolesPage />} />
+          </Route>
+          
+          {/* Legacy routes - redirect to the new settings structure */}
+          <Route path="/roles" element={
+            <ProtectedRoute>
+              <Navigate to="/settings/roles" replace />
             </ProtectedRoute>
           } />
-          <Route path="organizations" element={
+          <Route path="/organizations" element={
             <ProtectedRoute>
-              <OrganizationPage />
+              <Navigate to="/settings" replace />
             </ProtectedRoute>
           } />
+          
           <Route path="*" element={<div className="p-8 text-center">Page Not Found</div>} />
         </Route>
       </Routes>
