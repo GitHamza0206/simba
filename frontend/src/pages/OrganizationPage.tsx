@@ -15,7 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusIcon, TrashIcon } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PlusIcon, TrashIcon, ExternalLink } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 // Define organization and member interfaces
 interface Organization {
@@ -76,6 +78,7 @@ const testMembers: OrganizationMember[] = [
 const OrganizationPage: React.FC = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [selectedOrgName, setSelectedOrgName] = useState<string | null>(null);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +88,7 @@ const OrganizationPage: React.FC = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<MemberRole>('member');
   const [useTestData, setUseTestData] = useState(false);
+  const [activeTab, setActiveTab] = useState('general');
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -96,6 +100,7 @@ const OrganizationPage: React.FC = () => {
         setOrganizations(testOrganizations);
         if (!selectedOrgId && testOrganizations.length > 0) {
           setSelectedOrgId(testOrganizations[0].id);
+          setSelectedOrgName(testOrganizations[0].name);
         }
         return;
       }
@@ -106,6 +111,7 @@ const OrganizationPage: React.FC = () => {
       
       if (response.data.length > 0 && !selectedOrgId) {
         setSelectedOrgId(response.data[0].id);
+        setSelectedOrgName(response.data[0].name);
       }
       
     } catch (err: any) {
@@ -169,6 +175,7 @@ const OrganizationPage: React.FC = () => {
         
         setOrganizations([...organizations, newOrg]);
         setSelectedOrgId(newOrg.id);
+        setSelectedOrgName(newOrg.name);
         setShowCreateForm(false);
         setNewOrgName('');
         
@@ -185,6 +192,7 @@ const OrganizationPage: React.FC = () => {
       
       await fetchOrganizations();
       setSelectedOrgId(response.data.id);
+      setSelectedOrgName(response.data.name);
       setShowCreateForm(false);
       setNewOrgName('');
       
@@ -341,256 +349,308 @@ const OrganizationPage: React.FC = () => {
     }
   }, [user]);
 
-  // Load members when selected organization changes
+  // Load members when organization is selected
   useEffect(() => {
     if (selectedOrgId) {
       fetchMembers();
     }
   }, [selectedOrgId]);
 
-  // Get selected organization
-  const selectedOrg = selectedOrgId 
-    ? organizations.find(org => org.id === selectedOrgId) 
-    : null;
+  // Update organization name when selected org changes
+  useEffect(() => {
+    if (selectedOrgId) {
+      const org = organizations.find(o => o.id === selectedOrgId);
+      if (org) {
+        setSelectedOrgName(org.name);
+      }
+    }
+  }, [selectedOrgId, organizations]);
 
-  // Check if current user is owner
-  const isOwner = members.some(
-    member => member.userId === (user?.id || 'current-user') && member.role === 'owner'
-  );
-
-  // Render organization selection
-  const renderOrganizationSelector = () => (
-    <div className="mb-6">
-      <div className="flex justify-between items-center mb-2">
-        <Label htmlFor="organization-select">Your Organizations</Label>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setShowCreateForm(!showCreateForm)}
-        >
-          {showCreateForm ? 'Cancel' : 'Create New'}
-        </Button>
-      </div>
-      
-      {showCreateForm ? (
-        <div className="flex gap-2 my-4">
-          <Input
-            placeholder="Organization Name"
-            value={newOrgName}
-            onChange={(e) => setNewOrgName(e.target.value)}
-          />
-          <Button onClick={createOrganization}>Create</Button>
-        </div>
-      ) : organizations.length > 0 ? (
-        <Select 
-          value={selectedOrgId || ''} 
-          onValueChange={(value) => setSelectedOrgId(value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select an organization" />
-          </SelectTrigger>
-          <SelectContent>
-            {organizations.map(org => (
-              <SelectItem key={org.id} value={org.id}>
-                {org.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ) : (
-        <Alert>
-          <AlertDescription>
-            You don't have any organizations yet. Create one to get started.
-          </AlertDescription>
-        </Alert>
-      )}
-    </div>
-  );
-
-  // Render member invite form
-  const renderInviteForm = () => (
-    <div className="mb-6">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-medium">Invite Members</h3>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setShowInviteForm(!showInviteForm)}
-        >
-          {showInviteForm ? 'Cancel' : 'Add Member'}
-        </Button>
-      </div>
-      
-      {showInviteForm && (
-        <div className="space-y-4 my-4 p-4 border rounded-md">
-          <div>
-            <Label htmlFor="invite-email">Email Address</Label>
-            <Input
-              id="invite-email"
-              placeholder="user@example.com"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="invite-role">Role</Label>
-            <Select 
-              value={inviteRole} 
-              onValueChange={(value) => setInviteRole(value as MemberRole)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="member">Member</SelectItem>
-                <SelectItem value="viewer">Viewer</SelectItem>
-                <SelectItem value="none">None</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <Button onClick={inviteMember}>Send Invitation</Button>
-        </div>
-      )}
-    </div>
-  );
-
-  // Render members table
-  const renderMembersTable = () => (
-    <div>
-      <h3 className="text-lg font-medium mb-4">Organization Members</h3>
-      
-      {members.length > 0 ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name/Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Joined</TableHead>
-              {isOwner && <TableHead>Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {members.map(member => (
-              <TableRow key={member.id}>
-                <TableCell>
-                  <div>
-                    {member.name}
-                    <div className="text-sm text-gray-500">{member.email}</div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {member.role === 'owner' ? (
-                    <span className="font-medium">{member.role}</span>
-                  ) : isOwner ? (
-                    <Select 
-                      value={member.role} 
-                      onValueChange={(value) => updateMemberRole(member.id, value as MemberRole)}
-                      disabled={member.role === 'owner'}
-                    >
-                      <SelectTrigger className="w-[110px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="member">Member</SelectItem>
-                        <SelectItem value="viewer">Viewer</SelectItem>
-                        <SelectItem value="none">None</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <span>{member.role}</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {new Date(member.joinedAt).toLocaleDateString()}
-                </TableCell>
-                {isOwner && (
-                  <TableCell>
-                    {member.role !== 'owner' && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => removeMember(member.id)}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      ) : (
-        <Alert>
-          <AlertDescription>
-            No members in this organization yet.
-          </AlertDescription>
-        </Alert>
-      )}
-    </div>
-  );
-
-  if (!user) {
+  if (organizations.length === 0 && !loading) {
     return (
-      <div className="container mx-auto p-4">
-        <Alert>
-          <AlertDescription>
-            Please login to manage your organizations
-          </AlertDescription>
-        </Alert>
+      <div className="container mx-auto p-6 max-w-screen-xl">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold">Organization Management</h1>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="text-lg font-medium mb-4">Your Organizations</h2>
+          
+          {error ? (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : (
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <p className="mb-4 text-gray-500">You don't have any organizations yet. Create one to get started.</p>
+                  <Button onClick={() => setShowCreateForm(true)}>
+                    <PlusIcon className="h-4 w-4 mr-2" /> Create New Organization
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {showCreateForm && (
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle>Create New Organization</CardTitle>
+                <CardDescription>Enter a name for your new organization</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="name">Organization Name</Label>
+                    <Input 
+                      id="name" 
+                      value={newOrgName} 
+                      onChange={(e) => setNewOrgName(e.target.value)} 
+                      placeholder="Enter organization name"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancel</Button>
+                <Button onClick={createOrganization}>Create Organization</Button>
+              </CardFooter>
+            </Card>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-6">Organization Management</h1>
-      
-      {renderOrganizationSelector()}
-      
-      {selectedOrg && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{selectedOrg.name}</CardTitle>
-            <CardDescription>
-              Manage your organization members and their roles
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p>Loading...</p>
-            ) : error ? (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : (
-              <>
-                {renderInviteForm()}
-                {renderMembersTable()}
-              </>
-            )}
-            
-            <div className="mt-6">
-              <div className="flex items-center mb-2">
-                <input 
-                  type="checkbox" 
-                  id="useTestData" 
-                  checked={useTestData} 
-                  onChange={() => setUseTestData(!useTestData)}
-                  className="mr-2"
-                />
-                <label htmlFor="useTestData" className="text-sm text-gray-600">
-                  Use test data (for development)
-                </label>
+    <div className="container mx-auto p-6 max-w-screen-xl">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold">Organization Settings</h1>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <div className="border-b">
+          <TabsList className="bg-transparent h-12">
+            <TabsTrigger value="general" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12">
+              General
+            </TabsTrigger>
+            <TabsTrigger value="members" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12">
+              Members
+            </TabsTrigger>
+            <TabsTrigger value="billing" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12">
+              Billing
+            </TabsTrigger>
+            <TabsTrigger value="sso" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12">
+              SSO
+            </TabsTrigger>
+            <TabsTrigger value="projects" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12">
+              Projects
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="general" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Organization Details</CardTitle>
+              <CardDescription>Manage your organization information</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="org-name">Organization Name</Label>
+                  <Input id="org-name" value={selectedOrgName || ''} readOnly />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="org-id">Organization ID</Label>
+                  <Input id="org-id" value={selectedOrgId || ''} readOnly />
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Danger Zone</CardTitle>
+              <CardDescription>Permanent actions that cannot be undone</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                <Button variant="destructive">Delete Organization</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="members" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>Members</CardTitle>
+                <CardDescription>Manage your organization members</CardDescription>
+              </div>
+              <Button onClick={() => setShowInviteForm(true)} className="ml-auto">
+                <PlusIcon className="h-4 w-4 mr-2" /> Invite Member
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="py-10 text-center">Loading members...</div>
+              ) : error ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {members.map((member) => (
+                      <TableRow key={member.id}>
+                        <TableCell className="font-medium">{member.name}</TableCell>
+                        <TableCell>{member.email}</TableCell>
+                        <TableCell>
+                          <Select defaultValue={member.role}>
+                            <SelectTrigger className="w-24">
+                              <SelectValue placeholder={member.role} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="owner">Owner</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="member">Member</SelectItem>
+                              <SelectItem value="viewer">Viewer</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>{new Date(member.joinedAt).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" className="text-red-500">
+                            <TrashIcon className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {showInviteForm && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Invite New Member</CardTitle>
+                <CardDescription>Send an invitation email to join this organization</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      value={inviteEmail} 
+                      onChange={(e) => setInviteEmail(e.target.value)} 
+                      placeholder="Enter email address"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select value={inviteRole} onValueChange={(value: MemberRole) => setInviteRole(value)}>
+                      <SelectTrigger id="role">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="viewer">Viewer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button variant="outline" onClick={() => setShowInviteForm(false)}>Cancel</Button>
+                <Button onClick={inviteMember}>Send Invitation</Button>
+              </CardFooter>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="billing" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Usage & Billing</CardTitle>
+              <CardDescription>Manage your subscription and billing details</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <div className="flex justify-between items-baseline mb-1">
+                  <h3 className="text-sm font-medium text-gray-500">Events / last 30d</h3>
+                  <span className="text-sm font-medium">Plan limit: 50K</span>
+                </div>
+                <h2 className="text-3xl font-bold mb-1">0</h2>
+                <div className="flex justify-between items-baseline mb-2">
+                  <span className="text-sm">0.00%</span>
+                </div>
+                <Progress value={0} className="h-2" />
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium mb-2">Current plan: Hobby</h3>
+                <div className="flex gap-2">
+                  <Button>Change plan</Button>
+                  <Button variant="outline">Compare plans</Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sso" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Single Sign-On</CardTitle>
+              <CardDescription>Configure SSO for your organization</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="py-8 text-center text-gray-500">
+                <p>SSO is only available on Enterprise plans.</p>
+                <Button className="mt-4" variant="outline">Upgrade to Enterprise</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="projects" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Projects</CardTitle>
+              <CardDescription>Manage the projects in your organization</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center py-4 border-b">
+                <Button variant="outline" className="flex items-center">
+                  View Projects <ExternalLink className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="py-4">
+                <h3 className="font-medium mb-2">Recent Projects</h3>
+                <p className="text-gray-500">No projects created yet.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

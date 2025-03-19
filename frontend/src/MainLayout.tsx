@@ -4,11 +4,11 @@ import { Outlet } from "react-router-dom";
 
 export function MainLayout() {
   return (
-    <div className="h-screen">
-      <Navbar />
-      <div className="flex h-[calc(100vh-4rem)]">
-        <Sidebar />
-        <main className="flex-1 overflow-auto relative">
+    <div className="flex h-screen overflow-hidden bg-zinc-50">
+      <Sidebar />
+      <div className="flex flex-col flex-1">
+        <Navbar />
+        <main className="flex-1 overflow-auto p-0">
           <Outlet />
         </main>
       </div>
