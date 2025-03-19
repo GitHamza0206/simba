@@ -1,12 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { authAxios } from '@/lib/supabase';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Role {
+  id: number;
+  name: string;
+  description: string;
+}
+
+interface Permission {
   id: number;
   name: string;
   description: string;
@@ -17,44 +23,53 @@ const testRoles = [
   { id: 2, name: 'user', description: 'Standard user access' },
 ];
 
+const testPermissions = [
+  { id: 1, name: 'roles:read', description: 'Can view roles' },
+  { id: 2, name: 'roles:write', description: 'Can create and update roles' },
+  { id: 3, name: 'roles:delete', description: 'Can delete roles' },
+];
+
 const RolesPage: React.FC = () => {
   const [roles, setRoles] = useState<Role[]>([]);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [userPermissions, setUserPermissions] = useState<Permission[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [bootstrapLoading, setBootstrapLoading] = useState(false);
-  const [bootstrapSuccess, setBootstrapSuccess] = useState<string | null>(null);
-  const [useTestData, setUseTestData] = useState(false);
-  const [authInfo, setAuthInfo] = useState<any>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchRoles = async () => {
     try {
-      // Log the auth token for debugging
-      const token = localStorage.getItem('accessToken');
-      console.log('Auth token:', token ? `${token.substring(0, 15)}...` : 'No token');
-      
-      if (useTestData) {
-        console.log('Using test data instead of API call');
+      // Check if we're in development mode without backend
+      if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_API_URL) {
+        console.log('Using test data in development mode');
         setRoles(testRoles);
+        setPermissions(testPermissions);
         setError(null);
         return;
       }
       
       console.log('Fetching roles...');
       // Use /api prefix for consistent proxy routing
-      const response = await authAxios.get('/api/roles');
-      console.log('Roles response:', response.data);
-      setRoles(response.data);
+      const rolesResponse = await authAxios.get('/api/roles');
+      console.log('Roles response:', rolesResponse.data);
+      setRoles(rolesResponse.data);
+      
+      console.log('Fetching permissions...');
+      const permissionsResponse = await authAxios.get('/api/roles/permissions');
+      console.log('Permissions response:', permissionsResponse.data);
+      setPermissions(permissionsResponse.data);
+
+      if (user?.id) {
+        console.log('Fetching user permissions...');
+        const userPermissionsResponse = await authAxios.get(`/api/roles/user/${user.id}/permissions`);
+        console.log('User permissions response:', userPermissionsResponse.data);
+        setUserPermissions(userPermissionsResponse.data);
+      }
+      
       setError(null);
     } catch (err: any) {
-      console.error('Error fetching roles:', err.response || err);
-      console.error('Full error details:', {
-        status: err.response?.status,
-        statusText: err.response?.statusText,
-        data: err.response?.data,
-        message: err.message
-      });
+      console.error('Error fetching roles or permissions:', err.response || err);
       
       if (err.response?.status === 401) {
         toast({
@@ -64,7 +79,7 @@ const RolesPage: React.FC = () => {
         });
       }
       
-      setError(err.response?.data?.detail || err.message || 'Failed to fetch roles');
+      setError(err.response?.data?.detail || err.message || 'Failed to fetch roles and permissions');
     } finally {
       setLoading(false);
     }
@@ -78,76 +93,6 @@ const RolesPage: React.FC = () => {
       setError('Please login to view roles');
     }
   }, [user]);
-
-  const handleBootstrapAdmin = async () => {
-    if (!user) return;
-    
-    setBootstrapLoading(true);
-    setBootstrapSuccess(null);
-    setError(null);
-    
-    if (useTestData) {
-      // Simulate success for testing
-      setTimeout(() => {
-        console.log('Simulating bootstrap success with test data');
-        setBootstrapSuccess(`User ${user.id} has been assigned the admin role`);
-        setBootstrapLoading(false);
-      }, 1000);
-      return;
-    }
-    
-    try {
-      console.log(`Bootstrapping admin for user ID: ${user.id}`);
-      // Use /api prefix for consistent proxy routing
-      const response = await authAxios.post(`/api/roles/bootstrap/${user.id}`);
-      console.log('Bootstrap response:', response.data);
-      setBootstrapSuccess(response.data.message);
-      
-      // Refresh roles to see the changes
-      await fetchRoles();
-    } catch (err: any) {
-      console.error('Error bootstrapping admin:', err.response || err);
-      console.error('Full bootstrap error details:', {
-        status: err.response?.status,
-        statusText: err.response?.statusText,
-        data: err.response?.data,
-        message: err.message
-      });
-      
-      if (err.response?.status === 404) {
-        toast({
-          title: "Endpoint Not Found",
-          description: "The bootstrap endpoint could not be found. The backend may not be properly configured.",
-          variant: "destructive"
-        });
-      }
-      
-      setError(err.response?.data?.detail || err.message || 'Failed to bootstrap admin');
-    } finally {
-      setBootstrapLoading(false);
-    }
-  };
-
-  // Function to check authentication status and details
-  const checkAuth = () => {
-    const token = localStorage.getItem('accessToken');
-    const userId = localStorage.getItem('userId');
-    const userEmail = localStorage.getItem('userEmail');
-    
-    setAuthInfo({
-      hasToken: !!token,
-      tokenPreview: token ? `${token.substring(0, 20)}...` : 'No token',
-      userId,
-      userEmail,
-      userObject: user
-    });
-    
-    toast({
-      title: "Auth Status",
-      description: token ? "Token found in localStorage" : "No token found",
-      variant: token ? "default" : "destructive"
-    });
-  };
 
   if (!user) {
     return (
@@ -163,79 +108,115 @@ const RolesPage: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Roles</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p>Loading roles...</p>
-          ) : error ? (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : bootstrapSuccess ? (
-            <Alert className="mb-4">
-              <AlertDescription>{bootstrapSuccess}</AlertDescription>
-            </Alert>
-          ) : null}
-          
-          {!loading && !error && (
-            <>
-              {roles.length === 0 ? (
-                <p>No roles found</p>
-              ) : (
-                <ul className="space-y-2">
-                  {roles.map(role => (
-                    <li key={role.id} className="border p-3 rounded-md">
-                      <strong>{role.name}</strong>: {role.description}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
-          )}
-          
-          <div className="mt-6 space-y-4">
-            <div className="flex items-center">
-              <input 
-                type="checkbox" 
-                id="useTestData" 
-                checked={useTestData} 
-                onChange={() => setUseTestData(!useTestData)}
-                className="mr-2"
-              />
-              <label htmlFor="useTestData">Use test data (bypass API calls)</label>
-            </div>
-            
-            <div className="border p-4 rounded-md">
-              <h3 className="text-lg font-medium mb-2">Authentication Debugging</h3>
-              <Button onClick={checkAuth} variant="outline" className="mb-2">Check Auth Status</Button>
+      <Tabs defaultValue="roles">
+        <TabsList className="mb-4">
+          <TabsTrigger value="roles">Roles</TabsTrigger>
+          <TabsTrigger value="permissions">All Permissions</TabsTrigger>
+          <TabsTrigger value="user-permissions">My Permissions</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="roles">
+          <Card>
+            <CardHeader>
+              <CardTitle>System Roles</CardTitle>
+              <CardDescription>All roles defined in the system</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <p>Loading roles...</p>
+              ) : error ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              ) : null}
               
-              {authInfo && (
-                <div className="bg-gray-100 p-3 rounded-md text-sm overflow-auto">
-                  <pre>{JSON.stringify(authInfo, null, 2)}</pre>
-                </div>
+              {!loading && !error && (
+                <>
+                  {roles.length === 0 ? (
+                    <p>No roles found</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {roles.map(role => (
+                        <li key={role.id} className="border p-3 rounded-md">
+                          <strong>{role.name}</strong>: {role.description}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
               )}
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex gap-2">
-          <Button 
-            onClick={handleBootstrapAdmin} 
-            disabled={bootstrapLoading}
-          >
-            {bootstrapLoading ? 'Processing...' : 'Make Me Admin'}
-          </Button>
-          
-          <Button 
-            onClick={fetchRoles} 
-            variant="outline"
-          >
-            Refresh Roles
-          </Button>
-        </CardFooter>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="permissions">
+          <Card>
+            <CardHeader>
+              <CardTitle>System Permissions</CardTitle>
+              <CardDescription>All permissions available in the system</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <p>Loading permissions...</p>
+              ) : error ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              ) : null}
+              
+              {!loading && !error && (
+                <>
+                  {permissions.length === 0 ? (
+                    <p>No permissions found</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {permissions.map(permission => (
+                        <li key={permission.id} className="border p-3 rounded-md">
+                          <strong>{permission.name}</strong>: {permission.description}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="user-permissions">
+          <Card>
+            <CardHeader>
+              <CardTitle>My Permissions</CardTitle>
+              <CardDescription>Permissions assigned to your user account</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <p>Loading your permissions...</p>
+              ) : error ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              ) : null}
+              
+              {!loading && !error && (
+                <>
+                  {userPermissions.length === 0 ? (
+                    <p>You don't have any permissions assigned</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {userPermissions.map(permission => (
+                        <li key={permission.id} className="border p-3 rounded-md">
+                          <strong>{permission.name}</strong>: {permission.description}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
