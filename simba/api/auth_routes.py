@@ -1,11 +1,14 @@
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Cookie
 from pydantic import BaseModel, EmailStr, Field
 
 from simba.auth.auth_service import AuthService
+from simba.auth.role_service import RoleService
 from simba.core.config import settings
+from simba.models.role import Role, Permission
+from simba.api.middleware.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +40,14 @@ class SwaggerAuthRequest(BaseModel):
 
 class TokenDebugRequest(BaseModel):
     token: str = Field(..., description="JWT token to debug")
+
+class UserMeResponse(BaseModel):
+    id: str
+    email: str
+    created_at: str
+    metadata: Optional[Dict]
+    roles: List[Role]
+    permissions: List[Permission]
 
 @auth_router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def signup(request: SignUpRequest):
@@ -149,82 +160,29 @@ async def refresh_token(request: RefreshTokenRequest):
             detail="An unexpected error occurred"
         )
 
-@auth_router.post("/swagger-token", status_code=status.HTTP_200_OK)
-async def get_swagger_token(request: SwaggerAuthRequest):
+@auth_router.get("/me", response_model=UserMeResponse)
+async def get_current_user_info(current_user: dict = Depends(get_current_user)):
     """
-    Get an access token for Swagger UI testing.
-    This endpoint is specifically for testing the API through Swagger UI.
+    Get complete information about the currently authenticated user,
+    including their roles and permissions.
     """
     try:
-        auth_result = await AuthService.sign_in(request.email, request.password)
-        return {"access_token": auth_result["session"]["access_token"]}
-    except Exception as e:
-        logger.error(f"Login failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
+        # Get user's roles and permissions
+        role_service = RoleService()
+        roles = role_service.get_user_roles(current_user["id"])
+        permissions = role_service.get_user_permissions(current_user["id"])
+        
+        return UserMeResponse(
+            id=current_user["id"],
+            email=current_user["email"],
+            created_at=current_user.get("created_at", ""),
+            metadata=current_user.get("metadata", {}),
+            roles=roles,
+            permissions=permissions
         )
-
-@auth_router.post("/debug-token", status_code=status.HTTP_200_OK)
-async def debug_token(request: TokenDebugRequest):
-    """
-    Debug a JWT token to help troubleshoot authentication issues.
-    This endpoint helps validate that a token can be processed correctly.
-    """
-    try:
-        # Try to get user with the token
-        user = await AuthService.get_user(request.token)
-        
-        # Return success with user info if token is valid
-        return {
-            "valid": True,
-            "user_id": user["id"],
-            "email": user["email"]
-        }
     except Exception as e:
-        # Return error details if token validation fails
-        logger.error(f"Token debug error: {str(e)}")
-        return {
-            "valid": False,
-            "error": str(e)
-        }
-
-@auth_router.get("/diagnostic", response_model=dict)
-async def supabase_diagnostic():
-    """
-    Diagnostic endpoint to check Supabase client version and capabilities.
-    """
-    import inspect
-    import supabase
-    from simba.auth.supabase_client import get_supabase_client
-    
-    try:
-        client = get_supabase_client()
-        
-        # Check version and available methods
-        auth_methods = inspect.getmembers(client.auth, predicate=inspect.ismethod)
-        auth_method_names = [name for name, _ in auth_methods]
-        
-        # Check if admin methods exist
-        admin_methods = []
-        if hasattr(client.auth, 'admin'):
-            admin_methods = inspect.getmembers(client.auth.admin, predicate=inspect.ismethod)
-            admin_method_names = [name for name, _ in admin_methods]
-        else:
-            admin_method_names = []
-        
-        return {
-            "status": "success",
-            "supabase_version": supabase.__version__,
-            "auth_methods": auth_method_names,
-            "admin_methods": admin_method_names,
-            "has_admin_api": hasattr(client.auth, 'admin'),
-            "has_set_session": "set_session" in auth_method_names,
-            "has_get_user_by_jwt": "get_user_by_jwt" in admin_method_names if admin_method_names else False
-        }
-    except Exception as e:
-        logging.error(f"Diagnostic error: {str(e)}")
-        return {
-            "status": "error",
-            "error": str(e)
-        } 
+        logger.error(f"Failed to get user info: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get user information"
+        ) 

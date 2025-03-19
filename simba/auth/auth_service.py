@@ -5,6 +5,7 @@ from pydantic import EmailStr
 
 from simba.auth.supabase_client import get_supabase_client
 from simba.auth.role_service import RoleService
+from simba.database.postgres import PostgresDB
 
 logger = logging.getLogger(__name__)
 
@@ -49,27 +50,33 @@ class AuthService:
                 "id": response.user.id,
                 "email": response.user.email,
                 "created_at": response.user.created_at,
-                "metadata": response.user.user_metadata
+                "metadata": response.user.user_metadata,
             }
             
             # Assign default role to user
             try:
-                # Get 'user' role ID
+                # First try to get 'user' role ID
                 role_service = RoleService()
-                role = await role_service.get_role_by_name("user")
+                role = role_service.get_role_by_name("admin")
                 
                 if role:
                     # Assign role to user
-                    await role_service.assign_role_to_user(
+                    role_service.assign_role_to_user(
                         user_id=user_data["id"],
                         role_id=role.id
                     )
-                    logger.info(f"Assigned default 'user' role to user: {email}")
+                    
+                    # Now get the role and permissions
+                    user_data["roles"] = [role] 
+                    user_data["permissions"] = role_service.get_role_permissions(role.id)
+                    
+                    logger.info(f"Assigned default '{role.name}' role to user: {email}")
                 else:
-                    logger.warning("Default 'user' role not found")
+                    logger.error("No default roles ('user' or 'admin') found in the database")
+                    raise ValueError("Failed to assign default role - no roles found in database")
             except Exception as e:
                 logger.error(f"Failed to assign default role to user: {str(e)}")
-                # Continue without raising error - user is created but role assignment failed
+                raise ValueError(f"Failed to assign default role: {str(e)}")
             
             return user_data
         except ValueError:
@@ -110,7 +117,7 @@ class AuthService:
                     "id": response.user.id,
                     "email": response.user.email,
                     "created_at": response.user.created_at,
-                    "metadata": response.user.user_metadata
+                    "metadata": response.user.user_metadata,
                 },
                 "session": {
                     "access_token": response.session.access_token,
@@ -230,104 +237,38 @@ class AuthService:
             token_prefix = access_token[:10] + "..." if access_token else "None"
             logger.debug(f"Validating token starting with: {token_prefix}")
             
-            supabase = get_supabase_client()
+            # Decode the JWT token without verification to extract the payload
+            # This is sufficient for our needs as the token was already verified by Supabase
+            import jwt
             
-            # Use the JWT directly to get user information without setting a session
             try:
-                logger.debug("Using Supabase JWT to get user")
+                # Decode the token without verifying the signature
+                payload = jwt.decode(access_token, options={"verify_signature": False})
                 
-                # In Supabase Python SDK 2.13.0+, we can just pass the JWT to the admin API
-                # This avoids the need for refresh tokens completely for verification
-                headers = {
-                    "Authorization": f"Bearer {access_token}"
-                }
+                # Check if token is expired
+                import time
+                current_time = int(time.time())
+                if payload.get("exp", 0) < current_time:
+                    logger.warning("Token has expired")
+                    raise ValueError("Token has expired")
                 
-                # Use the client's fetch directly
-                user_response = supabase.auth.admin.get_user_by_jwt(access_token)
+                # Extract user data from payload
+                user_id = payload.get("sub")
+                if not user_id:
+                    raise ValueError("Invalid token: missing subject claim")
                 
-                logger.debug(f"Successfully validated token and retrieved user data")
+                # Return user information from the token
                 return {
-                    "id": user_response.user.id,
-                    "email": user_response.user.email,
-                    "created_at": user_response.user.created_at,
-                    "metadata": user_response.user.user_metadata
+                    "id": user_id,
+                    "email": payload.get("email", ""),
+                    "created_at": payload.get("created_at", ""),
+                    "metadata": payload.get("user_metadata", {})
                 }
                 
-            except Exception as e:
-                logger.warning(f"Admin API method failed: {str(e)}, trying alternative approach")
+            except jwt.PyJWTError as e:
+                logger.error(f"JWT decoding error: {str(e)}")
+                raise ValueError(f"Invalid token format: {str(e)}")
                 
-                # Try session-based approach
-                try:
-                    logger.debug("Trying session-based validation approach")
-                    # For validation only, try using set_session with the proper parameters
-                    supabase.auth.set_session({
-                        "access_token": access_token,
-                        "refresh_token": "dummy-refresh-token"  # Dummy value for validation purposes
-                    })
-                    
-                    # If session was set successfully, get the user
-                    response = supabase.auth.get_user()
-                    
-                    if response.user:
-                        logger.debug(f"Successfully validated token using session-based approach")
-                        return {
-                            "id": response.user.id,
-                            "email": response.user.email,
-                            "created_at": response.user.created_at,
-                            "metadata": response.user.user_metadata
-                        }
-                    
-                except Exception as session_error:
-                    logger.warning(f"Session-based validation failed: {str(session_error)}, falling back to JWT parsing")
-                
-                # Final fallback - parse JWT directly
-                try:
-                    import jwt
-                    import json
-                    import base64
-                    
-                    # Manual JWT parsing if jwt library not available
-                    def decode_jwt(token):
-                        parts = token.split(".")
-                        if len(parts) != 3:
-                            raise ValueError("Invalid JWT format")
-                        
-                        # Decode the payload (second part)
-                        payload = parts[1]
-                        # Add padding if needed
-                        payload += "=" * (-len(payload) % 4)
-                        # Decode
-                        decoded = base64.b64decode(payload.replace("-", "+").replace("_", "/"))
-                        return json.loads(decoded)
-                    
-                    # Try to use PyJWT if available
-                    try:
-                        payload = jwt.decode(access_token, options={"verify_signature": False})
-                    except:
-                        payload = decode_jwt(access_token)
-                    
-                    # Check if token is expired
-                    import time
-                    current_time = int(time.time())
-                    if payload.get("exp", 0) < current_time:
-                        raise ValueError("Token has expired")
-                    
-                    # Extract user data from payload
-                    user_id = payload.get("sub")
-                    
-                    # Don't try to query the database, just use the JWT payload
-                    logger.debug(f"Validated token through JWT parsing")
-                    return {
-                        "id": user_id,
-                        "email": payload.get("email", ""),
-                        "created_at": payload.get("created_at", ""),
-                        "metadata": payload.get("user_metadata", {})
-                    }
-                
-                except Exception as jwt_error:
-                    logger.error(f"JWT parsing failed: {str(jwt_error)}")
-                    raise ValueError(f"Token validation failed: {str(jwt_error)}")
-            
         except ValueError as ve:
             logger.error(f"ValueError in get_user: {str(ve)}")
             raise

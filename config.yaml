@@ -19,8 +19,8 @@ llm:
   additional_params: {}
 
 embedding:
-  provider: "huggingface"
-  model_name: "BAAI/bge-base-en-v1.5"
+  provider: "openai"
+  model_name: "text-embedding-ada-002"
   #model_name: "openai/clip-vit-base-patch32"
   device: "mps"  # Changed from mps to cpu for container compatibility
   additional_params: {}
@@ -54,7 +54,7 @@ retrieval:
     reranker_threshold: 0.7
 
 storage:
-  provider: minio
+  provider: local
 
 
 
