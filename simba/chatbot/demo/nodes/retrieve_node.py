@@ -18,7 +18,7 @@ def retrieve(state):
         question = state["messages"][-1].content
         # Retrieval with error handling
 
-        documents = retriever.retrieve(question)
+        documents = retriever.retrieve(question, method="hybrid")
         print(f"Retrieved {len(documents)} documents")
 
         return {"documents": documents, "question": question}

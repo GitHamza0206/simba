@@ -53,7 +53,7 @@ def require_role(role: str):
         
         try:
             # Check if user has the required role
-            has_role = await RoleService.has_role(user_id, role)
+            has_role =  RoleService.has_role(user_id, role)
             
             if not has_role:
                 logger.warning(f"Access denied: User {user_id} does not have role {role}")
@@ -88,7 +88,7 @@ def require_permission(permission: str):
         
         try:
             # Check if user has the required permission
-            has_permission = await RoleService.has_permission(user_id, permission)
+            has_permission = RoleService.has_permission(user_id, permission)
             
             if not has_permission:
                 logger.warning(f"Access denied: User {user_id} does not have permission {permission}")

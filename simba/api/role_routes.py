@@ -28,13 +28,107 @@ async def get_roles(
         List[Role]: List of roles
     """
     try:
-        roles = await RoleService.get_roles()
+        roles =  RoleService.get_roles()
         return roles
     except Exception as e:
         logger.error(f"Failed to get roles: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch roles"
+        )
+
+@role_router.get("/permissions", response_model=List[Permission])
+async def get_permissions(
+    current_user: dict = Depends(require_permission("roles:read"))
+):
+    """Get all permissions.
+    
+    Args:
+        current_user: Current user with 'roles:read' permission
+        
+    Returns:
+        List[Permission]: List of permissions
+    """
+    try:
+        permissions = RoleService.get_permissions()
+        return permissions
+    except Exception as e:
+        logger.error(f"Failed to get permissions: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch permissions"
+        )
+
+@role_router.get("/user/{user_id}", response_model=List[Role])
+async def get_user_roles(
+    user_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get roles for a user.
+    
+    Args:
+        user_id: User ID
+        current_user: Current user (must be the same user or have 'roles:read' permission)
+        
+    Returns:
+        List[Role]: List of user roles
+    """
+    try:
+        # Allow users to see their own roles, or admins to see anyone's
+        if user_id != current_user.get("id"):
+            # Check if user has permission to read roles
+            has_permission = RoleService.has_permission(current_user.get("id"), "roles:read")
+            if not has_permission:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: You can only view your own roles"
+                )
+        
+        roles = RoleService.get_user_roles(user_id)
+        return roles
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get user roles: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch user roles"
+        )
+
+@role_router.get("/user/{user_id}/permissions", response_model=List[Permission])
+async def get_user_permissions(
+    user_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get permissions for a user.
+    
+    Args:
+        user_id: User ID
+        current_user: Current user (must be the same user or have 'roles:read' permission)
+        
+    Returns:
+        List[Permission]: List of user permissions
+    """
+    try:
+        # Allow users to see their own permissions, or admins to see anyone's
+        if user_id != current_user.get("id"):
+            # Check if user has permission to read roles
+            has_permission = RoleService.has_permission(current_user.get("id"), "roles:read")
+            if not has_permission:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: You can only view your own permissions"
+                )
+        
+        permissions = RoleService.get_user_permissions(user_id)
+        return permissions
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get user permissions: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch user permissions"
         )
 
 @role_router.get("/{role_id}", response_model=Role)
@@ -52,7 +146,7 @@ async def get_role(
         Role: Role details
     """
     try:
-        role = await RoleService.get_role_by_id(role_id)
+        role =  RoleService.get_role_by_id(role_id)
         if not role:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -170,28 +264,6 @@ async def delete_role(
             detail="Failed to delete role"
         )
 
-@role_router.get("/permissions", response_model=List[Permission])
-async def get_permissions(
-    current_user: dict = Depends(require_permission("roles:read"))
-):
-    """Get all permissions.
-    
-    Args:
-        current_user: Current user with 'roles:read' permission
-        
-    Returns:
-        List[Permission]: List of permissions
-    """
-    try:
-        permissions = await RoleService.get_permissions()
-        return permissions
-    except Exception as e:
-        logger.error(f"Failed to get permissions: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch permissions"
-        )
-
 @role_router.get("/{role_id}/permissions", response_model=List[Permission])
 async def get_role_permissions(
     role_id: int,
@@ -208,14 +280,14 @@ async def get_role_permissions(
     """
     try:
         # Check if role exists
-        role = await RoleService.get_role_by_id(role_id)
+        role = RoleService.get_role_by_id(role_id)
         if not role:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Role with ID {role_id} not found"
             )
         
-        permissions = await RoleService.get_role_permissions(role_id)
+        permissions = RoleService.get_role_permissions(role_id)
         return permissions
     except HTTPException:
         raise
@@ -224,42 +296,6 @@ async def get_role_permissions(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch role permissions"
-        )
-
-@role_router.get("/user/{user_id}", response_model=List[Role])
-async def get_user_roles(
-    user_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Get roles for a user.
-    
-    Args:
-        user_id: User ID
-        current_user: Current user (must be the same user or have 'roles:read' permission)
-        
-    Returns:
-        List[Role]: List of user roles
-    """
-    try:
-        # Allow users to see their own roles, or admins to see anyone's
-        if user_id != current_user.get("id"):
-            # Check if user has permission to read roles
-            has_permission = await RoleService.has_permission(current_user.get("id"), "roles:read")
-            if not has_permission:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied: Permission 'roles:read' required"
-                )
-        
-        roles = await RoleService.get_user_roles(user_id)
-        return roles
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get user roles: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch user roles"
         )
 
 @role_router.post("/user/{user_id}", response_model=UserRole)
@@ -279,7 +315,7 @@ async def assign_role_to_user(
         UserRole: Created user role
     """
     try:
-        user_role = await RoleService.assign_role_to_user(
+        user_role = RoleService.assign_role_to_user(
             user_id=user_id,
             role_id=role_data.role_id
         )
@@ -331,42 +367,6 @@ async def remove_role_from_user(
             detail="Failed to remove role from user"
         )
 
-@role_router.get("/user/{user_id}/permissions", response_model=List[Permission])
-async def get_user_permissions(
-    user_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Get permissions for a user.
-    
-    Args:
-        user_id: User ID
-        current_user: Current user (must be the same user or have 'roles:read' permission)
-        
-    Returns:
-        List[Permission]: List of user permissions
-    """
-    try:
-        # Allow users to see their own permissions, or admins to see anyone's
-        if user_id != current_user.get("id"):
-            # Check if user has permission to read roles
-            has_permission = await RoleService.has_permission(current_user.get("id"), "roles:read")
-            if not has_permission:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied: Permission 'roles:read' required"
-                )
-        
-        permissions = await RoleService.get_user_permissions(user_id)
-        return permissions
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get user permissions: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch user permissions"
-        )
-
 @role_router.post(
     "/bootstrap/{user_id}",
     status_code=status.HTTP_200_OK,
@@ -393,7 +393,7 @@ async def bootstrap_admin(
         # Security check: Only allow a user to bootstrap themselves or if they are already an admin
         if current_user.get("id") != user_id:
             # Check if the current user is an admin
-            is_admin = await RoleService.has_role(current_user.get("id"), "admin")
+            is_admin = RoleService.has_role(current_user.get("id"), "admin")
             if not is_admin:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -401,7 +401,7 @@ async def bootstrap_admin(
                 )
         
         # Get the admin role
-        admin_role = await RoleService.get_role_by_name("admin")
+        admin_role = RoleService.get_role_by_name("admin")
         if not admin_role:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -409,7 +409,7 @@ async def bootstrap_admin(
             )
         
         # Assign the admin role to the user
-        await RoleService.assign_role_to_user(user_id, admin_role.id)
+        RoleService.assign_role_to_user(user_id, admin_role.id)
         
         return {"message": f"User {user_id} has been assigned the admin role"}
     except HTTPException:
