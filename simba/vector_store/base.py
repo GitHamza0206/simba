@@ -25,7 +25,13 @@ class VectorStoreBase(ABC):
         """
         self.embeddings = get_embeddings()
     
-    
+    def add_texts(self, texts: List[str], **kwargs) -> List[str]:
+        """
+        Add texts to the vector store.
+        """
+        pass
+
+
     def as_retriever(self, **kwargs):
         """
         Return the vector store as a retriever.
