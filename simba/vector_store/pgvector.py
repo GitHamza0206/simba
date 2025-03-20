@@ -9,12 +9,13 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 from langchain.docstore.document import Document
-
+from langchain_core.embeddings import Embeddings
 from simba.core.config import settings
 from simba.models.simbadoc import SimbaDoc, MetadataType
 from simba.database.postgres import PostgresDB, Base, DateTimeEncoder, SQLDocument
 from simba.vector_store.base import VectorStoreBase
 from simba.core.factories.embeddings_factory import get_embeddings
+
 
 from uuid import uuid4
 
@@ -97,6 +98,7 @@ class PGVectorStore(VectorStoreBase):
         except Exception as e:
             logger.error(f"Failed to create schema: {e}")
             raise
+
     
     def add_documents(self, documents: List[Document], document_id: str) -> bool:
         """Add documents to the store using SQLAlchemy ORM."""
@@ -177,7 +179,7 @@ class PGVectorStore(VectorStoreBase):
             if session:
                 session.close()
     
-    def search(self, query: str, top_k: int = 10) -> List[Document]:
+    def similarity_search(self, query: str, top_k: int = 10) -> List[Document]:
         """
         Search for documents similar to a query.
         
@@ -200,6 +202,84 @@ class PGVectorStore(VectorStoreBase):
             ).limit(top_k).all()
             
             return [result.to_langchain_doc() for result in results]
+        finally:
+            if session:
+                session.close()
+
+    def from_texts(
+        self,
+        texts: List[str],
+        embedding: Optional[Embeddings] = None,
+        metadatas: Optional[List[dict]] = None,
+        ids: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> List[str]:
+        """Add texts to the vector store.
+        
+        Args:
+            texts: List of texts to add
+            embedding: Optional embedding function (will use self.embeddings if not provided)
+            metadatas: Optional list of metadatas associated with the texts
+            ids: Optional list of IDs to associate with the texts
+            **kwargs: Additional arguments (must include document_id)
+            
+        Returns:
+            List of IDs of the added texts
+        """
+        session = None
+        try:
+            session = self._Session()
+            
+            # Get document_id from kwargs
+            document_id = kwargs.get('document_id')
+            if not document_id:
+                raise ValueError("document_id is required in kwargs")
+            
+            # Check if document exists
+            existing_doc = session.query(SQLDocument).filter(SQLDocument.id == document_id).first()
+            if not existing_doc:
+                raise ValueError(f"Parent document {document_id} not found")
+
+            # Use provided embeddings or default to self.embeddings
+            embeddings_func = embedding or self.embeddings
+            
+            # Generate embeddings
+            embeddings = embeddings_func.embed_documents(texts)
+            
+            # Handle metadata
+            if not metadatas:
+                metadatas = [{} for _ in texts]
+            
+            # Handle IDs
+            if not ids:
+                ids = [str(uuid.uuid4()) for _ in texts]
+            
+            # Create chunk objects
+            chunk_objects = []
+            for text, metadata, embedding_vector, chunk_id in zip(texts, metadatas, embeddings, ids):
+                chunk = ChunkEmbedding(
+                    id=chunk_id,
+                    document_id=document_id,
+                    data={
+                        "page_content": text,
+                        "metadata": metadata
+                    },
+                    embedding=embedding_vector
+                )
+                chunk_objects.append(chunk)
+            
+            # Add all chunks to session
+            session.add_all(chunk_objects)
+            session.commit()
+            
+            logger.info(f"Successfully added {len(texts)} texts for document {document_id}")
+            return ids
+            
+        except Exception as e:
+            if session:
+                session.rollback()
+            logger.error(f"Failed to add texts: {e}")
+            raise
         finally:
             if session:
                 session.close()
@@ -328,10 +408,7 @@ if __name__ == "__main__":
         metadata=MetadataType(filename="test2.txt", type="text", enabled=True)
     )
     
-    # Clear any existing data for clean test
-    pgvector.clear_store()
-    PostgresDB.execute_query("DELETE FROM documents")
-    print("Cleared existing data")
+
     
     # Test adding multiple documents
     print(f"Adding multiple documents to vector store...")
