@@ -20,14 +20,14 @@ llm:
 
 embedding:
   provider: "openai"
-  model_name: "text-embedding-ada-002"
+  model_name: "text-embedding-3-small"
   #model_name: "openai/clip-vit-base-patch32"
   device: "mps"  # Changed from mps to cpu for container compatibility
   additional_params: {}
 
 vector_store:
-  provider: "faiss"
-  collection_name: "simba_collection"
+  provider: "pgvector"
+  collection_name: "chunk_embeddings"
 
   additional_params: {}
 
@@ -60,7 +60,7 @@ storage:
 
 # Database configuration
 database:
-  provider: litedb # Options: litedb, sqlite
+  provider: postgres # Options: litedb, sqlite
   additional_params: {}
 
 celery: 

@@ -4,27 +4,71 @@ from psycopg2.extras import RealDictCursor
 from psycopg2.pool import ThreadedConnectionPool
 from fastapi import HTTPException, status
 from contextlib import contextmanager
+from sqlalchemy import create_engine, Column, String, JSON
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy.engine import URL
+from sqlalchemy.pool import NullPool
+from datetime import datetime
+import json
 
 from simba.core.config import settings
+from simba.models.simbadoc import SimbaDoc, MetadataType
+from simba.database.base import DatabaseService
+from typing import List, Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-class PostgresDB:
-    """PostgreSQL database access with connection pooling."""
+Base = declarative_base()
+
+class DateTimeEncoder(json.JSONEncoder):
+    """JSON encoder that converts datetime objects to ISO format strings."""
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
+class SQLDocument(Base):
+    """SQLAlchemy model for documents table"""
+    __tablename__ = "documents"
+    
+    id = Column(String, primary_key=True)
+    data = Column(JSONB, nullable=False)
+    
+    # Add relationship to chunks
+    chunks = relationship("ChunkEmbedding", back_populates="document", cascade="all, delete-orphan")
+    
+    @classmethod
+    def from_simbadoc(cls, doc: SimbaDoc) -> "SQLDocument":
+        """Create Document from SimbaDoc with datetime handling"""
+        return cls(
+            id=doc.id,
+            data=json.loads(json.dumps(doc.dict(), cls=DateTimeEncoder))
+        )
+    
+    def to_simbadoc(self) -> SimbaDoc:
+        """Convert to SimbaDoc"""
+        return SimbaDoc(**self.data)
+
+class PostgresDB(DatabaseService):
+    """PostgreSQL database access with connection pooling and SQLAlchemy ORM."""
     
     # Connection pool singleton
     _pool = None
+    _engine = None
+    _Session = None
+    
+    def __init__(self):
+        """Initialize database connection and ensure schema exists."""
+        self._get_pool()
+        self._initialize_sqlalchemy()
+        self._ensure_schema()
     
     @classmethod
     def _get_pool(cls):
-        """Get or create the connection pool.
-        
-        Returns:
-            ThreadedConnectionPool: Database connection pool
-        """
+        """Get or create the connection pool."""
         if cls._pool is None:
             try:
-                # Create a connection pool with reasonable defaults
                 cls._pool = ThreadedConnectionPool(
                     minconn=3,
                     maxconn=10,
@@ -44,14 +88,31 @@ class PostgresDB:
                 )
         return cls._pool
     
+    def _initialize_sqlalchemy(self):
+        """Initialize SQLAlchemy engine and session factory."""
+        if self._engine is None:
+            url = URL.create(
+                "postgresql",
+                username=settings.postgres.user,
+                password=settings.postgres.password,
+                host=settings.postgres.host,
+                port=settings.postgres.port,
+                database=settings.postgres.db
+            )
+            # Use NullPool since we're managing our own connection pool
+            self._engine = create_engine(url, poolclass=NullPool)
+            self._Session = sessionmaker(bind=self._engine)
+            Base.metadata.create_all(self._engine)
+            logger.info("Initialized SQLAlchemy engine")
+    
+    def _ensure_schema(self):
+        """Ensure the required database schema exists."""
+        Base.metadata.create_all(self._engine)
+    
     @classmethod
     @contextmanager
     def get_connection(cls):
-        """Get a connection from the pool and return it when done.
-        
-        Yields:
-            Connection: Database connection
-        """
+        """Get a connection from the pool and return it when done."""
         pool = cls._get_pool()
         conn = None
         try:
@@ -67,17 +128,10 @@ class PostgresDB:
             if conn:
                 pool.putconn(conn)
     
+    # Raw SQL query methods
     @classmethod
     def execute_query(cls, query, params=None):
-        """Run an INSERT, UPDATE, or DELETE query.
-        
-        Args:
-            query: SQL query string
-            params: Query parameters (optional)
-            
-        Returns:
-            int: Number of rows affected
-        """
+        """Run an INSERT, UPDATE, or DELETE query."""
         with cls.get_connection() as conn:
             try:
                 with conn.cursor() as cursor:
@@ -95,15 +149,7 @@ class PostgresDB:
     
     @classmethod
     def fetch_all(cls, query, params=None):
-        """Run a SELECT query and return all results.
-        
-        Args:
-            query: SQL query string
-            params: Query parameters (optional)
-            
-        Returns:
-            list: Query results as dictionaries
-        """
+        """Run a SELECT query and return all results."""
         with cls.get_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(query, params or ())
@@ -112,28 +158,187 @@ class PostgresDB:
     
     @classmethod
     def fetch_one(cls, query, params=None):
-        """Run a SELECT query and return one result.
-        
-        Args:
-            query: SQL query string
-            params: Query parameters (optional)
-            
-        Returns:
-            dict: Query result as dictionary or None
-        """
+        """Run a SELECT query and return one result."""
         with cls.get_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(query, params or ())
                 row = cursor.fetchone()
                 return dict(row) if row else None
     
-    @classmethod
-    def test_connection(cls):
-        """Test if database connection works.
+    # ORM methods implementing DatabaseService interface
+    def insert_document(self, document: SimbaDoc) -> str:
+        """Insert a single document using SQLAlchemy ORM."""
+        try:
+            session = self._Session()
+            db_doc = SQLDocument.from_simbadoc(document)
+            session.add(db_doc)
+            session.commit()
+            return document.id
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to insert document: {e}")
+            raise
+        finally:
+            session.close()
+    
+    def insert_documents(self, documents: SimbaDoc | List[SimbaDoc]) -> List[str]:
+        """Insert one or multiple documents using SQLAlchemy ORM."""
+        if not isinstance(documents, list):
+            documents = [documents]
+            
+        try:
+            session = self._Session()
+            db_docs = [SQLDocument.from_simbadoc(doc) for doc in documents]
+            session.add_all(db_docs)
+            session.commit()
+            return [doc.id for doc in documents]
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to insert documents: {e}")
+            raise
+        finally:
+            session.close()
+    
+    def get_document(self, document_id: str) -> Optional[SimbaDoc]:
+        """Retrieve a document by ID using SQLAlchemy ORM."""
+        try:
+            session = self._Session()
+            doc = session.query(SQLDocument).filter(SQLDocument.id == document_id).first()
+            return doc.to_simbadoc() if doc else None
+        except Exception as e:
+            logger.error(f"Failed to get document {document_id}: {e}")
+            return None
+        finally:
+            session.close()
+
+
+    
+    
+    def get_all_documents(self) -> List[SimbaDoc]:
+        """Retrieve all documents using SQLAlchemy ORM."""
+        try:
+            session = self._Session()
+            docs = session.query(SQLDocument).all()
+            return [doc.to_simbadoc() for doc in docs]
+        except Exception as e:
+            logger.error(f"Failed to get all documents: {e}")
+            return []
+        finally:
+            session.close()
+    
+    def update_document(self, document_id: str, document: SimbaDoc) -> bool:
+        """Update a document using SQLAlchemy ORM with proper datetime handling."""
+        try:
+            session = self._Session()
+            # Convert to dict with datetime handling
+            doc_dict = json.loads(json.dumps(document.dict(), cls=DateTimeEncoder))
+            result = session.query(SQLDocument).filter(SQLDocument.id == document_id).update(
+                {"data": doc_dict}
+            )
+            session.commit()
+            return result > 0
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to update document {document_id}: {e}")
+            return False
+        finally:
+            session.close()
+    
+    def delete_document(self, document_id: str) -> bool:
+        """Delete a document using SQLAlchemy ORM."""
+        try:
+            session = self._Session()
+            result = session.query(SQLDocument).filter(SQLDocument.id == document_id).delete()
+            session.commit()
+            return result > 0
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to delete document {document_id}: {e}")
+            return False
+        finally:
+            session.close()
+            
+    def delete_documents(self, document_ids: List[str]) -> bool:
+        """Delete multiple documents using SQLAlchemy ORM."""
+        try:
+            session = self._Session()
+            result = session.query(SQLDocument).filter(SQLDocument.id.in_(document_ids)).delete(synchronize_session=False)
+            session.commit()
+            return result > 0
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to delete documents: {e}")
+            return False
+        finally:
+            session.close()
+    
+    def clear_database(self) -> bool:
+        """Clear all documents from the database using SQLAlchemy ORM."""
+        try:
+            session = self._Session()
+            session.query(SQLDocument).delete()
+            session.commit()
+            return True
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to clear database: {e}")
+            return False
+        finally:
+            session.close()
+    
+    def query_documents(self, filters: Dict[str, Any]) -> List[SimbaDoc]:
+        """Query documents using filters.
         
+        Supports filtering on both document ID and nested JSON data fields.
+        For JSON data, use dot notation in filter keys, e.g.:
+        {
+            'id': '123',
+            'metadata.source': 'web',
+            'content': 'search text'
+        }
+        
+        Args:
+            filters: Dictionary of field-value pairs to filter by
+            
         Returns:
-            bool: True if connection successful
+            List of matching documents
         """
+        try:
+            session = self._Session()
+            query = session.query(SQLDocument)
+            
+            for key, value in filters.items():
+                if key == 'id':
+                    query = query.filter(SQLDocument.id == value)
+                else:
+                    # Handle nested JSON filters using PostgreSQL JSON operators
+                    path_parts = key.split('.')
+                    # Build the JSON path operator
+                    json_path_str = '->'.join([f"'{part}'" for part in path_parts[:-1]])
+                    if json_path_str:
+                        json_path_str += '->>'
+                    else:
+                        json_path_str = '->>'
+                    json_path_str += f"'{path_parts[-1]}'"
+                    
+                    # Apply the filter using raw SQL for JSON operators
+                    query = query.filter(
+                        f"data {json_path_str} = :value",
+                        value=str(value)
+                    )
+            
+            results = query.all()
+            return [doc.to_simbadoc() for doc in results]
+            
+        except Exception as e:
+            logger.error(f"Failed to query documents: {e}")
+            return []
+        finally:
+            session.close()
+    
+    @classmethod
+    def health_check(cls):
+        """Test if database c   onnection works."""
         try:
             with cls.get_connection() as conn:
                 with conn.cursor() as cursor:
@@ -148,4 +353,11 @@ class PostgresDB:
         if cls._pool:
             cls._pool.closeall()
             cls._pool = None
-            logger.info("Closed PostgreSQL connection pool") 
+            logger.info("Closed PostgreSQL connection pool")
+
+if __name__ == "__main__":
+    from langchain.schema import Document as LangchainDocument
+    db = PostgresDB()
+    db.insert_documents(SimbaDoc(id="1", documents=[LangchainDocument(page_content="Hello, world!", metadata={"source": "test"})], metadata=MetadataType(filename="test")))
+    #print(db.delete_documents(["1"]))
+    db.close_pool()
