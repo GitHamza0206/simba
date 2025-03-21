@@ -37,3 +37,6 @@ dump.rdb
 
 /temp
 /temp/*
+
+.cursor/
+.cursor/*
