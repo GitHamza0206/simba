@@ -36,7 +36,7 @@ chunking:
   chunk_overlap: 200
 
 retrieval:
-  method: "hybrid" # Options: default, semantic, keyword, hybrid, ensemble, reranked
+  method: "default" # Options: default, semantic, keyword, hybrid, ensemble, reranked
   k: 5
   # Method-specific parameters
   params:

@@ -39,12 +39,12 @@ class DefaultRetriever(BaseRetriever):
         Returns:
             List of relevant documents
         """
-        k = kwargs.get("k", self.default_k)
+        k = kwargs.get("top_k", self.default_k)
         score_threshold = kwargs.get("score_threshold", None)
         filter_dict = kwargs.get("filter", None)
 
         # Create search kwargs dictionary with all parameters
-        search_kwargs = {"k": k}
+        search_kwargs = {"top_k": k}
 
         # Only add these if they are not None
         if score_threshold is not None:
