@@ -5,31 +5,43 @@ from abc import ABC, abstractmethod
 
 from langchain.docstore.document import Document
 from langchain.vectorstores import VectorStore
+from langchain.schema.embeddings import Embeddings
 from simba.core.factories.embeddings_factory import get_embeddings
 logger = logging.getLogger(__name__)
 
 
-class VectorStoreBase(ABC):
+class VectorStoreBase(VectorStore):
     """
     Abstract base class for vector store implementations.
     All vector store implementations should inherit from this class.
     """
     
-    def __init__(self):
-        """
-        Initialize the vector store service.
-        
-        Args:
-            store: The underlying vector store instance
-            embeddings: The embeddings model to use
-        """
-        self.embeddings = get_embeddings()
-    
-    def add_texts(self, texts: List[str], **kwargs) -> List[str]:
+
+    @property
+    def embeddings(self) -> Optional[Embeddings]:
+        """Access the query embedding object if available."""
+        logger.debug(
+            f"The embeddings property has not been "
+            f"implemented for {self.__class__.__name__}"
+        )
+        return get_embeddings()
+
+    @abstractmethod
+    def from_texts(self, texts: List[str], **kwargs) -> List[str]:
         """
         Add texts to the vector store.
         """
         pass
+
+
+    @abstractmethod
+    def similarity_search(self, query: str, **kwargs) -> List[Document]:
+        """
+        Search for similar documents.
+        """
+        pass
+
+
 
 
     def as_retriever(self, **kwargs):
@@ -122,18 +134,7 @@ class VectorStoreBase(ABC):
         pass
     
 
-    def search(self, query: str, **kwargs) -> List[Document]:
-        """
-        Search for similar documents.
-        
-        Args:
-            query: The search query
-            **kwargs: Additional arguments
-            
-        Returns:
-            List of similar documents
-        """
-        pass
+    
 
 
     

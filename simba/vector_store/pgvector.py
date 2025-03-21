@@ -9,14 +9,14 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 from langchain.docstore.document import Document
-from langchain_core.embeddings import Embeddings
+from langchain.schema.embeddings import Embeddings
 from simba.core.config import settings
 from simba.models.simbadoc import SimbaDoc, MetadataType
 from simba.database.postgres import PostgresDB, Base, DateTimeEncoder, SQLDocument
 from simba.vector_store.base import VectorStoreBase
 from simba.core.factories.embeddings_factory import get_embeddings
-
-
+from langchain_openai import OpenAIEmbeddings
+from langchain.vectorstores import VectorStore
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class ChunkEmbedding(Base):
             metadata=self.data["metadata"]
         )
 
-class PGVectorStore(VectorStoreBase):
+class PGVectorStore(VectorStore):
     """
     Custom PostgreSQL pgvector implementation using SQLAlchemy ORM.
     """
@@ -72,11 +72,19 @@ class PGVectorStore(VectorStoreBase):
             embedding_dim: Dimension of the embedding vectors
         """
         self.embedding_dim = embedding_dim
-        self.embeddings = get_embeddings()
         
         # Initialize PostgresDB if not already initialized
         self.db = PostgresDB()
         self._Session = self.db._Session
+    
+    @property
+    def embeddings(self) -> Optional[Embeddings]:
+        """Access the query embedding object if available."""
+        logger.debug(
+            f"The embeddings property has not been "
+            f"implemented for {self.__class__.__name__}"
+        )
+        return get_embeddings()
         
         # Ensure schema exists
         # self._ensure_schema()

@@ -45,7 +45,7 @@ class HybridRetriever(BaseRetriever):
         Returns:
             List of relevant documents
         """
-        k = kwargs.get("k", 5)
+        k = kwargs.get("top_k", 5)
         filter_dict = kwargs.get("filter", None)
         prioritize_semantic = kwargs.get("prioritize_semantic", self.prioritize_semantic)
 
@@ -57,8 +57,8 @@ class HybridRetriever(BaseRetriever):
         default_retriever = DefaultRetriever(self.store)
         semantic_retriever = SemanticRetriever(self.store)
 
-        default_docs = default_retriever.retrieve(query, k=k * 2, filter=filter_dict)
-        semantic_docs = semantic_retriever.retrieve(query, k=k * 2, filter=filter_dict)
+        default_docs = default_retriever.retrieve(query, top_k=k * 2, filter=filter_dict)
+        semantic_docs = semantic_retriever.retrieve(query, top_k=k * 2, filter=filter_dict)
 
         # Combine results (removing duplicates)
         combined_docs = []
