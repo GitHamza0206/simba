@@ -33,16 +33,18 @@ class SQLDocument(Base):
     __tablename__ = "documents"
     
     id = Column(String, primary_key=True)
+    user_id = Column(String, nullable=False)
     data = Column(JSONB, nullable=False)
     
     # Add relationship to chunks
     chunks = relationship("ChunkEmbedding", back_populates="document", cascade="all, delete-orphan")
     
     @classmethod
-    def from_simbadoc(cls, doc: SimbaDoc) -> "SQLDocument":
+    def from_simbadoc(cls, doc: SimbaDoc, user_id: str) -> "SQLDocument":
         """Create Document from SimbaDoc with datetime handling"""
         return cls(
             id=doc.id,
+            user_id=user_id,
             data=json.loads(json.dumps(doc.dict(), cls=DateTimeEncoder))
         )
     
@@ -166,11 +168,11 @@ class PostgresDB(DatabaseService):
                 return dict(row) if row else None
     
     # ORM methods implementing DatabaseService interface
-    def insert_document(self, document: SimbaDoc) -> str:
+    def insert_document(self, document: SimbaDoc, user_id: str) -> str:
         """Insert a single document using SQLAlchemy ORM."""
         try:
             session = self._Session()
-            db_doc = SQLDocument.from_simbadoc(document)
+            db_doc = SQLDocument.from_simbadoc(document, user_id)
             session.add(db_doc)
             session.commit()
             return document.id
@@ -181,14 +183,14 @@ class PostgresDB(DatabaseService):
         finally:
             session.close()
     
-    def insert_documents(self, documents: SimbaDoc | List[SimbaDoc]) -> List[str]:
+    def insert_documents(self, documents: SimbaDoc | List[SimbaDoc], user_id: str) -> List[str]:
         """Insert one or multiple documents using SQLAlchemy ORM."""
         if not isinstance(documents, list):
             documents = [documents]
             
         try:
             session = self._Session()
-            db_docs = [SQLDocument.from_simbadoc(doc) for doc in documents]
+            db_docs = [SQLDocument.from_simbadoc(doc, user_id) for doc in documents]
             session.add_all(db_docs)
             session.commit()
             return [doc.id for doc in documents]
@@ -199,26 +201,35 @@ class PostgresDB(DatabaseService):
         finally:
             session.close()
     
-    def get_document(self, document_id: str) -> Optional[SimbaDoc]:
+    def get_document(self, document_id: str, user_id: str = None) -> Optional[SimbaDoc]:
         """Retrieve a document by ID using SQLAlchemy ORM."""
         try:
             session = self._Session()
-            doc = session.query(SQLDocument).filter(SQLDocument.id == document_id).first()
+            query = session.query(SQLDocument).filter(SQLDocument.id == document_id)
+            
+            # Filter by user_id if provided
+            if user_id:
+                query = query.filter(SQLDocument.user_id == user_id)
+            
+            doc = query.first()
             return doc.to_simbadoc() if doc else None
         except Exception as e:
             logger.error(f"Failed to get document {document_id}: {e}")
             return None
         finally:
             session.close()
-
-
     
-    
-    def get_all_documents(self) -> List[SimbaDoc]:
+    def get_all_documents(self, user_id: str = None) -> List[SimbaDoc]:
         """Retrieve all documents using SQLAlchemy ORM."""
         try:
             session = self._Session()
-            docs = session.query(SQLDocument).all()
+            query = session.query(SQLDocument)
+            
+            # Filter by user_id if provided
+            if user_id:
+                query = query.filter(SQLDocument.user_id == user_id)
+            
+            docs = query.all()
             return [doc.to_simbadoc() for doc in docs]
         except Exception as e:
             logger.error(f"Failed to get all documents: {e}")
@@ -226,15 +237,21 @@ class PostgresDB(DatabaseService):
         finally:
             session.close()
     
-    def update_document(self, document_id: str, document: SimbaDoc) -> bool:
+    def update_document(self, document_id: str, document: SimbaDoc, user_id: str = None) -> bool:
         """Update a document using SQLAlchemy ORM with proper datetime handling."""
         try:
             session = self._Session()
             # Convert to dict with datetime handling
             doc_dict = json.loads(json.dumps(document.dict(), cls=DateTimeEncoder))
-            result = session.query(SQLDocument).filter(SQLDocument.id == document_id).update(
-                {"data": doc_dict}
-            )
+            
+            # Build query
+            query = session.query(SQLDocument).filter(SQLDocument.id == document_id)
+            
+            # Filter by user_id if provided
+            if user_id:
+                query = query.filter(SQLDocument.user_id == user_id)
+            
+            result = query.update({"data": doc_dict})
             session.commit()
             return result > 0
         except Exception as e:
@@ -244,11 +261,19 @@ class PostgresDB(DatabaseService):
         finally:
             session.close()
     
-    def delete_document(self, document_id: str) -> bool:
+    def delete_document(self, document_id: str, user_id: str = None) -> bool:
         """Delete a document using SQLAlchemy ORM."""
         try:
             session = self._Session()
-            result = session.query(SQLDocument).filter(SQLDocument.id == document_id).delete()
+            
+            # Build query
+            query = session.query(SQLDocument).filter(SQLDocument.id == document_id)
+            
+            # Filter by user_id if provided
+            if user_id:
+                query = query.filter(SQLDocument.user_id == user_id)
+            
+            result = query.delete()
             session.commit()
             return result > 0
         except Exception as e:
@@ -293,6 +318,7 @@ class PostgresDB(DatabaseService):
         For JSON data, use dot notation in filter keys, e.g.:
         {
             'id': '123',
+            'user_id': 'user-uuid',
             'metadata.source': 'web',
             'content': 'search text'
         }
@@ -310,6 +336,8 @@ class PostgresDB(DatabaseService):
             for key, value in filters.items():
                 if key == 'id':
                     query = query.filter(SQLDocument.id == value)
+                elif key == 'user_id':
+                    query = query.filter(SQLDocument.user_id == value)
                 else:
                     # Handle nested JSON filters using PostgreSQL JSON operators
                     path_parts = key.split('.')
@@ -358,6 +386,6 @@ class PostgresDB(DatabaseService):
 if __name__ == "__main__":
     from langchain.schema import Document as LangchainDocument
     db = PostgresDB()
-    db.insert_documents(SimbaDoc(id="1", documents=[LangchainDocument(page_content="Hello, world!", metadata={"source": "test"})], metadata=MetadataType(filename="test")))
+    db.insert_documents(SimbaDoc(id="1", documents=[LangchainDocument(page_content="Hello, world!", metadata={"source": "test"})], metadata=MetadataType(filename="test")), "user-uuid")
     #print(db.delete_documents(["1"]))
     db.close_pool()
