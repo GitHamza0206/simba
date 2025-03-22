@@ -14,6 +14,7 @@ from simba.embeddings import EmbeddingService
 from simba.models.simbadoc import SimbaDoc
 from simba.parsing.docling_parser import DoclingParser
 from simba.parsing.mistral_ocr import MistralOCR
+from simba.parsing.isolated_docling import IsolatedDoclingParser
 from simba.tasks.parsing_tasks import celery, parse_docling_task, parse_mistral_ocr_task
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ parsing = APIRouter()
 db = get_database()
 vector_store = VectorStoreFactory.get_vector_store()
 
-PARSERS = {"docling": DoclingParser, "mistral_ocr": MistralOCR}
+PARSERS = {"docling": DoclingParser, "mistral_ocr": MistralOCR, "isolated_docling": IsolatedDoclingParser}
 
 
 @parsing.get("/parsers")
@@ -60,6 +61,8 @@ async def parse_document(request: ParseDocumentRequest):
                 return await parse_document_sync(request.document_id, parser_type="docling")
             elif request.parser == "mistral_ocr":
                 return await parse_document_sync(request.document_id, parser_type="mistral_ocr")
+            elif request.parser == "isolated_docling":
+                return await parse_document_sync(request.document_id, parser_type="isolated_docling")
             else:
                 raise HTTPException(status_code=400, detail="Unsupported parser")
 
@@ -76,6 +79,7 @@ async def parse_document(request: ParseDocumentRequest):
             )
             task = parse_mistral_ocr_task.delay(request.document_id)
             return {"task_id": task.id, "status_url": f"parsing/tasks/{task.id}"}
+
         else:
             logger.error(f"Unsupported parser: {request.parser}")
             raise HTTPException(status_code=400, detail=f"Unsupported parser: {request.parser}")

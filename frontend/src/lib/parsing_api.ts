@@ -50,7 +50,7 @@ export const parsingApi = {
    */
   startParsing: async (documentId: string, parser: string): Promise<{ task_id?: string } | SimbaDoc> => {
     // For Mistral OCR, always use synchronous processing
-    const sync = parser === 'mistral_ocr' ? true : false;
+    const sync = parser === 'mistral_ocr' || parser === 'isolated_docling' ? true : false;
     
     console.log(`Starting parsing for ${documentId} using ${parser} (sync: ${sync})`);
     
