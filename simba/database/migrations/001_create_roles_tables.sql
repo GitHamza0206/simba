@@ -122,4 +122,14 @@ BEGIN
     AND p.name = permission_name
   );
 END;
-$$ LANGUAGE plpgsql; 
+$$ LANGUAGE plpgsql;
+
+-- Function to update the updated_at timestamp automatically
+-- Used by multiple tables throughout the schema
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql'; 

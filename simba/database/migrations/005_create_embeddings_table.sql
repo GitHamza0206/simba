@@ -21,15 +21,6 @@ CREATE INDEX IF NOT EXISTS idx_chunks_user_id ON chunks_embeddings(user_id);
 CREATE INDEX IF NOT EXISTS idx_chunks_data ON chunks_embeddings USING GIN (data);
 CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON chunks_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
--- Create a function to update the updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
 -- Create a trigger to automatically update the updated_at column
 CREATE TRIGGER update_chunks_embeddings_updated_at
     BEFORE UPDATE ON chunks_embeddings

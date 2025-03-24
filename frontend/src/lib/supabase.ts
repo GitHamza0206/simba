@@ -7,7 +7,7 @@ import {
 } from '@/types/auth';
 
 // Base API URL for auth operations
-const API_URL = '/api';
+const API_URL = import.meta.env.VITE_API_URL ;
 
 // Sign up with email and password
 export async function signUp(
@@ -152,7 +152,7 @@ export function isAuthenticated(): boolean {
 
 // Create axios instance with auth header
 export const authAxios = axios.create({
-  baseURL: '', // Removed API_URL to avoid double prefixing
+  baseURL: import.meta.env.VITE_API_URL, // Removed API_URL to avoid double prefixing
 });
 
 // Add a request interceptor to include the access token

@@ -191,21 +191,10 @@ class StorageSettings(BaseSettings):
 
 class SupabaseSettings(BaseSettings):
     """Supabase configuration settings"""
-    url: str = Field(
-        default="",
-        description="Supabase project URL",
-        env="SUPABASE_URL"
-    )
-    key: str = Field(
-        default="",
-        description="Supabase API key",
-        env="SUPABASE_KEY,SUPABASE_PUBLIC_KEY"  # Try both keys
-    )
-    jwt_secret: str = Field(
-        default="",
-        description="Supabase JWT secret for token verification",
-        env="SUPABASE_JWT_SECRET"
-    )
+    
+    url: str =  os.getenv("SUPABASE_URL")
+    key: str =  os.getenv("SUPABASE_KEY")
+    jwt_secret: str =  os.getenv("SUPABASE_JWT_SECRET")
 
 
 class PostgresSettings(BaseSettings):
@@ -382,5 +371,14 @@ if __name__ == "__main__":
     print(f"Base Directory: {settings.paths.base_dir}")
     print(f"Upload Directory: {settings.paths.upload_dir}")
     print(f"Vector Store Directory: {settings.paths.vector_store_dir}")
+
+    print("\nSupabase Settings:")
+    print(f"URL: {settings.supabase.url}")
+    print(f"Key: {settings.supabase.key}")
+    print(f"JWT Secret: {settings.supabase.jwt_secret}")
+
+    print("\nPostgreSQL Settings:")
+    print(f"Connection String: {settings.postgres.get_connection_string}")  
+
 
     print("=" * 50)

@@ -66,6 +66,11 @@ def create_app():
         logger.info(f"Embedding Device: {settings.embedding.device}")
         logger.info(f"Vector Store Provider: {settings.vector_store.provider}")
         logger.info(f"Database Provider: {settings.database.provider}")
+        logger.info(f"Supabase URL: {settings.supabase.url}")
+        logger.info(f"Supabase Key: {settings.supabase.key}")
+        logger.info(f"Supabase JWT Secret: {settings.supabase.jwt_secret}")
+        logger.info(f"PostgreSQL Connection String: {settings.postgres.get_connection_string}")
+        
 
         # Log Supabase settings if configured
         if settings.supabase.url:
@@ -116,4 +121,4 @@ def create_app():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(create_app(), host="0.0.0.0", port=8000)
+    uvicorn.run(create_app(), host="0.0.0.0", port=8001)
