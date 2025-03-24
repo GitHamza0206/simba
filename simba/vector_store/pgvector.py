@@ -28,6 +28,7 @@ class ChunkEmbedding(Base):
     # Since LangChain Document uses string UUID, we'll use String type
     id = Column(String, primary_key=True, index=True)
     document_id = Column(String, ForeignKey('documents.id', ondelete='CASCADE'), nullable=False)
+    user_id = Column(String, nullable=False)
     data = Column(JSONB, nullable=False, default={})
     embedding = Column(Vector(1536))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -37,7 +38,7 @@ class ChunkEmbedding(Base):
     document = relationship("SQLDocument", back_populates="chunks")
     
     @classmethod
-    def from_langchain_doc(cls, doc: Document, document_id: str, embedding: List[float]) -> "ChunkEmbedding":
+    def from_langchain_doc(cls, doc: Document, document_id: str, user_id: str, embedding: List[float]) -> "ChunkEmbedding":
         """Create ChunkEmbedding from LangChain Document"""
         # Convert Document to dict format
         doc_dict = {
@@ -48,6 +49,7 @@ class ChunkEmbedding(Base):
         return cls(
             id=doc.id,  # Use the LangChain document's ID directly as string
             document_id=document_id,
+            user_id=user_id,
             data=json.loads(json.dumps(doc_dict, cls=DateTimeEncoder)),
             embedding=embedding
         )
@@ -119,6 +121,9 @@ class PGVectorStore(VectorStore):
             if not existing_doc:
                 raise ValueError(f"Parent document {document_id} not found")
             
+            # Get user_id from the document
+            user_id = existing_doc.user_id
+            
             # Generate embeddings for all documents
             texts = [doc.page_content for doc in documents]
             embeddings = self.embeddings.embed_documents(texts)
@@ -129,6 +134,7 @@ class PGVectorStore(VectorStore):
                 chunk = ChunkEmbedding(
                     id=doc.id,  # Use the LangChain document's ID directly
                     document_id=document_id,
+                    user_id=user_id,
                     data={
                         "page_content": doc.page_content,
                         "metadata": doc.metadata
@@ -187,12 +193,13 @@ class PGVectorStore(VectorStore):
             if session:
                 session.close()
     
-    def similarity_search(self, query: str, top_k: int = 10) -> List[Document]:
+    def similarity_search(self, query: str, user_id: str, top_k: int = 10) -> List[Document]:
         """
-        Search for documents similar to a query.
+        Search for documents similar to a query, filtered by user_id.
         
         Args:
             query: The search query
+            user_id: The user ID to filter results by
             top_k: The number of top results to return
             
         Returns:
@@ -204,8 +211,10 @@ class PGVectorStore(VectorStore):
             # Generate query embedding
             query_embedding = self.embeddings.embed_query(query)
             
-            # Perform vector similarity search using cosine distance
-            results = session.query(ChunkEmbedding).order_by(
+            # Perform vector similarity search using cosine distance, filtered by user_id
+            results = session.query(ChunkEmbedding).filter(
+                ChunkEmbedding.user_id == user_id
+            ).order_by(
                 ChunkEmbedding.embedding.cosine_distance(query_embedding)
             ).limit(top_k).all()
             
@@ -247,6 +256,9 @@ class PGVectorStore(VectorStore):
             existing_doc = session.query(SQLDocument).filter(SQLDocument.id == document_id).first()
             if not existing_doc:
                 raise ValueError(f"Parent document {document_id} not found")
+            
+            # Get user_id from the document
+            user_id = existing_doc.user_id
 
             # Use provided embeddings or default to self.embeddings
             embeddings_func = embedding or self.embeddings
@@ -268,6 +280,7 @@ class PGVectorStore(VectorStore):
                 chunk = ChunkEmbedding(
                     id=chunk_id,
                     document_id=document_id,
+                    user_id=user_id,
                     data={
                         "page_content": text,
                         "metadata": metadata
@@ -292,20 +305,87 @@ class PGVectorStore(VectorStore):
             if session:
                 session.close()
 
-    def get_documents(self, document_ids: List[str]) -> List[Document]:
-        """Get documents by their IDs."""
+    def get_documents(self, document_ids: List[str], user_id: str) -> List[Document]:
+        """Get documents by their IDs, filtered by user_id."""
         session = None
         try:
             session = self._Session()
             chunks = session.query(ChunkEmbedding).filter(
-                ChunkEmbedding.document_id.in_(document_ids)
+                ChunkEmbedding.document_id.in_(document_ids),
+                ChunkEmbedding.user_id == user_id
             ).all()
             return [chunk.to_langchain_doc() for chunk in chunks]
         finally:
             if session:
                 session.close()
 
-    def update_document(self, document_id: str, new_document: Document) -> bool:
+    def get_all_documents(self, user_id: str = None) -> List[Document]:
+        """Get all documents from the store, optionally filtered by user_id."""
+        session = None
+        try:
+            session = self._Session()
+            query = session.query(ChunkEmbedding)
+            
+            # Filter by user_id if provided
+            if user_id:
+                query = query.filter(ChunkEmbedding.user_id == user_id)
+                
+            chunks = query.all()
+            return [chunk.to_langchain_doc() for chunk in chunks]
+        finally:
+            if session:
+                session.close()
+
+    def delete_documents(self, uids: List[str], user_id: str = None) -> bool:
+        """Delete documents from the store using raw SQL, optionally filtered by user_id."""
+        session = None
+        try:
+            session = self._Session()
+            # Build the base query
+            query = "DELETE FROM chunks_embeddings WHERE id = ANY(:uids)"
+            params = {"uids": uids}
+            
+            # Add user_id filter if provided
+            if user_id:
+                query += " AND user_id = :user_id"
+                params["user_id"] = user_id
+                
+            session.execute(text(query), params)
+            session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete documents: {e}")
+            if session:
+                session.rollback()
+            return False
+        finally:
+            if session:
+                session.close()
+
+    def clear_store(self, user_id: str = None) -> bool:
+        """Clear all documents from the store, optionally filtered by user_id."""
+        session = None
+        try:
+            session = self._Session()
+            
+            # Build query based on whether user_id is provided
+            query = session.query(ChunkEmbedding)
+            if user_id:
+                query = query.filter(ChunkEmbedding.user_id == user_id)
+                
+            query.delete(synchronize_session=False)
+            session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to clear store: {e}")
+            if session:
+                session.rollback()
+            return False
+        finally:
+            if session:
+                session.close()
+
+    def update_document(self, document_id: str, new_document: Document, user_id: str = None) -> bool:
         """Update a document in the store."""
         session = None
         try:
@@ -313,13 +393,22 @@ class PGVectorStore(VectorStore):
             # Generate new embedding
             embedding = self.embeddings.embed_documents([new_document.page_content])[0]
             
-            # Find and update the existing chunk
-            chunk = session.query(ChunkEmbedding).filter(
+            # Build query to find the existing chunk
+            query = session.query(ChunkEmbedding).filter(
                 ChunkEmbedding.document_id == document_id
-            ).first()
+            )
+            
+            # Filter by user_id if provided
+            if user_id:
+                query = query.filter(ChunkEmbedding.user_id == user_id)
+                
+            chunk = query.first()
             
             if not chunk:
                 return False
+            
+            # Get user_id from the existing document record (no need to change user_id)
+            # user_id remains the same as in the original chunk
                 
             # Update the chunk with new data
             doc_dict = {
@@ -340,56 +429,6 @@ class PGVectorStore(VectorStore):
             if session:
                 session.close()
 
-    def get_all_documents(self) -> List[Document]:
-        """Get all documents from the store."""
-        session = None
-        try:
-            session = self._Session()
-            chunks = session.query(ChunkEmbedding).all()
-            return [chunk.to_langchain_doc() for chunk in chunks]
-        finally:
-            if session:
-                session.close()
-
-    def delete_documents(self, uids: List[str]) -> bool:
-        """Delete documents from the store using raw SQL."""
-        session = None
-        try:
-            session = self._Session()
-            # Use parameterized query to safely handle the list of UIDs
-            sql = """
-            DELETE FROM chunks_embeddings 
-            WHERE id = ANY(:uids)
-            """
-            session.execute(text(sql), {"uids": uids})
-            session.commit()
-            return True
-        except Exception as e:
-            logger.error(f"Failed to delete documents: {e}")
-            if session:
-                session.rollback()
-            return False
-        finally:
-            if session:
-                session.close()
-
-    def clear_store(self) -> bool:
-        """Clear all documents from the store."""
-        session = None
-        try:
-            session = self._Session()
-            session.query(ChunkEmbedding).delete(synchronize_session=False)
-            session.commit()
-            return True
-        except Exception as e:
-            logger.error(f"Failed to clear store: {e}")
-            if session:
-                session.rollback()
-            return False
-        finally:
-            if session:
-                session.close()
-
 if __name__ == "__main__":
     pgvector = PGVectorStore()
     health = pgvector.health_check()
@@ -398,6 +437,9 @@ if __name__ == "__main__":
     # Create test documents
     from langchain.schema import Document as LangchainDocument
     from simba.models.simbadoc import SimbaDoc, MetadataType
+    
+    # Test user ID
+    test_user_id = "test_user_123"
     
     # Create multiple test documents
     doc1 = SimbaDoc(
@@ -416,32 +458,40 @@ if __name__ == "__main__":
         metadata=MetadataType(filename="test2.txt", type="text", enabled=True)
     )
     
-
+    # Insert into database first to associate with user
+    db = PostgresDB()
+    db.insert_document(doc1, test_user_id)
+    db.insert_document(doc2, test_user_id)
     
     # Test adding multiple documents
     print(f"Adding multiple documents to vector store...")
-    doc_ids = pgvector.add_documents([doc1, doc2])
-    print(f"Added documents with IDs: {doc_ids}")
+    # Add documents to vector store
+    pgvector.add_documents(doc1.documents, doc1.id)
+    pgvector.add_documents(doc2.documents, doc2.id)
     
     # Count chunks
     chunk_count = pgvector.count_chunks()
     print(f"Total chunks in store: {chunk_count}")
     
     # Test retrieving each document
-    for doc_id in doc_ids:
-        retrieved_doc = pgvector.get_document(doc_id)
-        print(f"Retrieved document: {retrieved_doc.id}, with {len(retrieved_doc.documents)} chunks")
-        print(f"Document content: {retrieved_doc.documents[0].page_content}")
+    retrieved_doc1 = pgvector.get_document(doc1.id)
+    retrieved_doc2 = pgvector.get_document(doc2.id)
+    
+    print(f"Retrieved document: {retrieved_doc1.id}, with {len(retrieved_doc1.documents)} chunks")
+    print(f"Document content: {retrieved_doc1.documents[0].page_content}")
+    
+    print(f"Retrieved document: {retrieved_doc2.id}, with {len(retrieved_doc2.documents)} chunks")
+    print(f"Document content: {retrieved_doc2.documents[0].page_content}")
     
     # Search for similar documents
     print(f"\nSearching for 'test document'...")
-    results = pgvector.search("test document")
+    results = pgvector.similarity_search("test document", test_user_id)
     print(f"Found {len(results)} results")
     for doc in results:
         print(f"- {doc.page_content} (score: {doc.metadata.get('score', 'N/A')})")
     
     print(f"\nSearching for 'another document'...")
-    results = pgvector.search("another document")
+    results = pgvector.similarity_search("another document", test_user_id)
     print(f"Found {len(results)} results")
     for doc in results:
         print(f"- {doc.page_content} (score: {doc.metadata.get('score', 'N/A')})")
