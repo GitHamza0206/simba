@@ -8,6 +8,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS chunks_embeddings (
     id TEXT PRIMARY KEY,  -- Changed from UUID to TEXT to match LangChain's string UUIDs
     document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     data JSONB NOT NULL DEFAULT '{}'::jsonb, -- Stores LangChain Document object (content + metadata)
     embedding vector(1536), -- OpenAI's default embedding size
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS chunks_embeddings (
 );
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON chunks_embeddings(document_id);
+CREATE INDEX IF NOT EXISTS idx_chunks_user_id ON chunks_embeddings(user_id);
 CREATE INDEX IF NOT EXISTS idx_chunks_data ON chunks_embeddings USING GIN (data);
 CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON chunks_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
@@ -37,24 +39,27 @@ CREATE TRIGGER update_chunks_embeddings_updated_at
 -- Add RLS policies
 ALTER TABLE chunks_embeddings ENABLE ROW LEVEL SECURITY;
 
--- Create policies
-CREATE POLICY "Enable read access for all users" ON chunks_embeddings
-    FOR SELECT USING (true);
+-- Create user-specific policies
+CREATE POLICY "Enable read access for chunk owner only" ON chunks_embeddings
+    FOR SELECT USING (auth.role() = 'authenticated' AND user_id = auth.uid());
 
-CREATE POLICY "Enable insert for authenticated users only" ON chunks_embeddings
-    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Enable insert for chunk owner only" ON chunks_embeddings
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated'
+        AND user_id = auth.uid());
 
-CREATE POLICY "Enable update for authenticated users only" ON chunks_embeddings
-    FOR UPDATE USING (auth.role() = 'authenticated');
+CREATE POLICY "Enable update for chunk owner only" ON chunks_embeddings
+    FOR UPDATE USING (auth.role() = 'authenticated' AND user_id = auth.uid());
 
-CREATE POLICY "Enable delete for authenticated users only" ON chunks_embeddings
-    FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "Enable delete for chunk owner only" ON chunks_embeddings
+    FOR DELETE USING (auth.role() = 'authenticated' AND user_id = auth.uid());
 
 -- Create a view for easier querying of chunks with their documents
 CREATE OR REPLACE VIEW document_chunks AS
 SELECT 
     c.id as chunk_id,
     c.document_id,
+    c.user_id,
     c.data->>'page_content' as content,
     c.data->'metadata' as metadata,
     d.data as document_data,
