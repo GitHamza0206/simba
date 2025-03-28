@@ -3,11 +3,12 @@ import logging
 import os
 import uuid
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
+from simba.api.middleware.auth import get_current_user
 from simba.core.config import settings
 from simba.core.factories.database_factory import get_database
 from simba.core.factories.vector_store_factory import VectorStoreFactory
@@ -15,7 +16,6 @@ from simba.ingestion import Loader
 from simba.ingestion.document_ingestion import DocumentIngestionService
 from simba.ingestion.file_handling import save_file_locally
 from simba.models.simbadoc import SimbaDoc
-from simba.api.middleware.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ store = VectorStoreFactory.get_vector_store()
 async def ingest_document(
     files: List[UploadFile] = File(...),
     folder_path: str = Query(default="/", description="Folder path to store the document"),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """Ingest a document into the vector store"""
     try:
@@ -59,16 +59,17 @@ async def ingest_document(
 
 @ingestion.put("/ingestion/update_document")
 async def update_document(
-    doc_id: str, 
-    new_simbadoc: SimbaDoc, 
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    doc_id: str, new_simbadoc: SimbaDoc, current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Update a document"""
     try:
         # Update the document in the database for the current user only
         success = db.update_document(doc_id, new_simbadoc, user_id=current_user["id"])
         if not success:
-            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found or you don't have access to it")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Document {doc_id} not found or you don't have access to it",
+            )
 
         return new_simbadoc
     except Exception as e:
@@ -77,9 +78,7 @@ async def update_document(
 
 
 @ingestion.get("/ingestion")
-async def get_ingestion_documents(
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
+async def get_ingestion_documents(current_user: Dict[str, Any] = Depends(get_current_user)):
     """Get all ingested documents for the current user"""
     # Get documents for the current user only
     documents = db.get_all_documents(user_id=current_user["id"])
@@ -87,22 +86,20 @@ async def get_ingestion_documents(
 
 
 @ingestion.get("/ingestion/{uid}")
-async def get_document(
-    uid: str,
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
+async def get_document(uid: str, current_user: Dict[str, Any] = Depends(get_current_user)):
     """Get a document by ID"""
     # Get document for the current user only
     document = db.get_document(uid, user_id=current_user["id"])
     if not document:
-        raise HTTPException(status_code=404, detail=f"Document {uid} not found or you don't have access to it")
+        raise HTTPException(
+            status_code=404, detail=f"Document {uid} not found or you don't have access to it"
+        )
     return document
 
 
 @ingestion.delete("/ingestion")
 async def delete_document(
-    uids: List[str],
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    uids: List[str], current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Delete a document by ID"""
     try:
@@ -111,8 +108,11 @@ async def delete_document(
             # Get document for the current user only
             simbadoc = db.get_document(uid, user_id=current_user["id"])
             if not simbadoc:
-                raise HTTPException(status_code=404, detail=f"Document {uid} not found or you don't have access to it")
-                
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Document {uid} not found or you don't have access to it",
+                )
+
             if simbadoc and simbadoc.metadata.enabled:
                 try:
                     store.delete_documents([doc.id for doc in simbadoc.documents])
@@ -152,16 +152,16 @@ async def get_upload_directory():
 
 
 @ingestion.get("/preview/{doc_id}")
-async def preview_document(
-    doc_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
+async def preview_document(doc_id: str, current_user: Dict[str, Any] = Depends(get_current_user)):
     """Get a file for preview by document ID"""
     try:
         # Retrieve document from database for the current user only
         document = db.get_document(doc_id, user_id=current_user["id"])
         if not document:
-            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found or you don't have access to it")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Document {doc_id} not found or you don't have access to it",
+            )
 
         # Get file path from document metadata
         file_path = document.metadata.file_path

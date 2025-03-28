@@ -60,16 +60,10 @@ class HybridRetriever(BaseRetriever):
 
         # Pass user_id to both retrievers for multi-tenancy
         default_docs = default_retriever.retrieve(
-            query, 
-            user_id=user_id, 
-            top_k=k * 2, 
-            filter=filter_dict
+            query, user_id=user_id, top_k=k * 2, filter=filter_dict
         )
         semantic_docs = semantic_retriever.retrieve(
-            query, 
-            user_id=user_id, 
-            top_k=k * 2, 
-            filter=filter_dict
+            query, user_id=user_id, top_k=k * 2, filter=filter_dict
         )
 
         # Combine results (removing duplicates)

@@ -51,13 +51,13 @@ class SemanticRetriever(BaseRetriever):
         k = kwargs.get("k", self.default_k)
         score_threshold = kwargs.get("score_threshold", self.default_score_threshold)
         filter_dict = kwargs.get("filter", None)
-        
+
         search_kwargs = {"k": k, "score_threshold": score_threshold, "filter": filter_dict}
-        
+
         # Add user_id to search kwargs for multi-tenancy if provided
         if user_id:
             search_kwargs["user_id"] = user_id
-        
+
         return self.store.as_retriever(
             search_type="similarity_score_threshold",
             search_kwargs=search_kwargs,

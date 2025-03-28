@@ -36,12 +36,14 @@ critical_env_vars = {
 
 # Add MinIO settings if storage provider is minio
 if os.getenv("STORAGE_PROVIDER", "local").lower() == "minio":
-    critical_env_vars.update({
-        "MINIO_ENDPOINT": os.getenv("MINIO_ENDPOINT"),
-        "MINIO_ACCESS_KEY": os.getenv("MINIO_ACCESS_KEY"),
-        "MINIO_SECRET_KEY": os.getenv("MINIO_SECRET_KEY"),
-        "MINIO_BUCKET": os.getenv("MINIO_BUCKET"),
-    })
+    critical_env_vars.update(
+        {
+            "MINIO_ENDPOINT": os.getenv("MINIO_ENDPOINT"),
+            "MINIO_ACCESS_KEY": os.getenv("MINIO_ACCESS_KEY"),
+            "MINIO_SECRET_KEY": os.getenv("MINIO_SECRET_KEY"),
+            "MINIO_BUCKET": os.getenv("MINIO_BUCKET"),
+        }
+    )
 
 for var_name, var_value in critical_env_vars.items():
     if var_value:
@@ -158,98 +160,66 @@ class CelerySettings(BaseModel):
 
 class StorageSettings(BaseSettings):
     """Storage configuration settings"""
-    provider: str = Field(
-        default="local",
-        description="Storage provider type: 'local' or 'minio'"
-    )
+
+    provider: str = Field(default="local", description="Storage provider type: 'local' or 'minio'")
     minio_endpoint: Optional[str] = Field(
-        default=None,
-        description="MinIO server endpoint",
-        env="MINIO_ENDPOINT"
+        default=None, description="MinIO server endpoint", env="MINIO_ENDPOINT"
     )
     minio_access_key: Optional[str] = Field(
-        default=None,
-        description="MinIO access key",
-        env="MINIO_ACCESS_KEY"
+        default=None, description="MinIO access key", env="MINIO_ACCESS_KEY"
     )
     minio_secret_key: Optional[str] = Field(
-        default=None,
-        description="MinIO secret key",
-        env="MINIO_SECRET_KEY"
+        default=None, description="MinIO secret key", env="MINIO_SECRET_KEY"
     )
     minio_bucket: Optional[str] = Field(
-        default=None,
-        description="MinIO bucket name",
-        env="MINIO_BUCKET"
+        default=None, description="MinIO bucket name", env="MINIO_BUCKET"
     )
     minio_secure: bool = Field(
-        default=False,
-        description="Use secure connection to MinIO",
-        env="MINIO_SECURE"
+        default=False, description="Use secure connection to MinIO", env="MINIO_SECURE"
     )
 
 
 class SupabaseSettings(BaseSettings):
     """Supabase configuration settings"""
-    url: str = Field(
-        default="",
-        description="Supabase project URL",
-        env="SUPABASE_URL"
-    )
+
+    url: str = Field(default="", description="Supabase project URL", env="SUPABASE_URL")
     key: str = Field(
         default="",
         description="Supabase API key",
-        env="SUPABASE_KEY,SUPABASE_PUBLIC_KEY"  # Try both keys
+        env="SUPABASE_KEY,SUPABASE_PUBLIC_KEY",  # Try both keys
     )
     jwt_secret: str = Field(
         default="",
         description="Supabase JWT secret for token verification",
-        env="SUPABASE_JWT_SECRET"
+        env="SUPABASE_JWT_SECRET",
     )
 
 
 class PostgresSettings(BaseSettings):
     """PostgreSQL database settings"""
-    model_config = ConfigDict(env_prefix="", env_file=".env", env_file_encoding="utf-8", extra="ignore")
-    
-    user: str = Field(
-        default="postgres",
-        description="PostgreSQL username",
-        env="POSTGRES_USER"
+
+    model_config = ConfigDict(
+        env_prefix="", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
-    password: str = Field(
-        default="",
-        description="PostgreSQL password",
-        env="POSTGRES_PASSWORD"
-    )
-    host: str = Field(
-        default="localhost",
-        description="PostgreSQL host",
-        env="POSTGRES_HOST"
-    )
-    port: str = Field(
-        default="5432",
-        description="PostgreSQL port",
-        env="POSTGRES_PORT"
-    )
-    db: str = Field(
-        default="postgres",
-        description="PostgreSQL database name",
-        env="POSTGRES_DB"
-    )
+
+    user: str = Field(default="postgres", description="PostgreSQL username", env="POSTGRES_USER")
+    password: str = Field(default="", description="PostgreSQL password", env="POSTGRES_PASSWORD")
+    host: str = Field(default="localhost", description="PostgreSQL host", env="POSTGRES_HOST")
+    port: str = Field(default="5432", description="PostgreSQL port", env="POSTGRES_PORT")
+    db: str = Field(default="postgres", description="PostgreSQL database name", env="POSTGRES_DB")
     connection_string: str = Field(
         default="",
         description="Full PostgreSQL connection string (if set, overrides individual settings)",
-        env="POSTGRES_CONNECTION_STRING,SUPABASE_CONNECTION_STRING"
+        env="POSTGRES_CONNECTION_STRING,SUPABASE_CONNECTION_STRING",
     )
-    
+
     @property
     def get_connection_string(self) -> str:
         """Generate connection string if not explicitly provided"""
         if self.connection_string:
             return self.connection_string
         return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db}"
-        
+
     def __init__(self, **kwargs):
         """Initialize with priority to environment variables"""
         # Load from environment first
@@ -262,22 +232,23 @@ class PostgresSettings(BaseSettings):
                 env_vars = env_var
             else:
                 env_vars = []
-                
+
             for var in env_vars:
                 value = os.getenv(var)
                 if value is not None:
                     env_values[field_name] = value
                     break
-        
+
         # Override with kwargs if provided
         env_values.update(kwargs)
-        
+
         # Initialize with combined values
         super().__init__(**env_values)
 
 
 class Settings(BaseSettings):
     """Application settings"""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     project: ProjectConfig = Field(default_factory=ProjectConfig)

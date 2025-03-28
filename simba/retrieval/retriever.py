@@ -64,7 +64,9 @@ class Retriever:
 
         # Log warning if user_id is not provided (insecure)
         if user_id is None:
-            logger.warning("retrieve() called without user_id - this is not secure for multi-tenant systems")
+            logger.warning(
+                "retrieve() called without user_id - this is not secure for multi-tenant systems"
+            )
 
         # Add user_id to the kwargs for multi-tenancy
         if user_id:

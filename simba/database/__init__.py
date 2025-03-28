@@ -6,4 +6,4 @@ with direct PostgreSQL access through connection pooling.
 
 from simba.database.postgres import PostgresDB
 
-__all__ = ['PostgresDB'] 
+__all__ = ["PostgresDB"]

@@ -14,6 +14,7 @@ class DatabaseType(Enum):
     LITEDB = "litedb"  # Default option
     POSTGRES = "postgres"
 
+
 SUPPORTED_DATABASES = {
     DatabaseType.LITEDB: LiteDocumentDB,
     DatabaseType.POSTGRES: PostgresDB,

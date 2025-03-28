@@ -1,3 +1,4 @@
+from .document_ingestion import DocumentIngestionService
 from .file_handling import (
     delete_file_locally,
     load_file_from_path,
@@ -5,7 +6,6 @@ from .file_handling import (
 )
 from .loader import Loader
 from .utils import check_file_exists
-from .document_ingestion import DocumentIngestionService
 
 __all__ = [
     "DocumentIngestionService",

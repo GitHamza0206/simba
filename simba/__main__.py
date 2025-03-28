@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+
 def create_app():
     """Create and configure the FastAPI application."""
     # Set environment variables early
@@ -25,10 +26,12 @@ def create_app():
     from simba.api.database_routes import database_route
     from simba.api.embedding_routes import embedding_route
     from simba.api.ingestion_routes import ingestion
+    from simba.api.organization_routes import (  # Import our new organization router
+        organization_router,
+    )
     from simba.api.parsing_routes import parsing
     from simba.api.retriever_routes import retriever_route
     from simba.api.role_routes import role_router
-    from simba.api.organization_routes import organization_router  # Import our new organization router
     from simba.core.config import settings
     from simba.core.utils.logger import setup_logging
 

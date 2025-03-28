@@ -6,12 +6,13 @@ from typing import List, Optional
 
 from langchain.schema import Document
 
+from simba.auth.auth_service import AuthService, get_supabase_client
 from simba.retrieval.base import BaseRetriever
 from simba.vector_store import VectorStoreService
-from simba.auth.auth_service import AuthService
-from simba.auth.auth_service import get_supabase_client
 
 supabase = get_supabase_client()
+
+
 class DefaultRetriever(BaseRetriever):
     """Default vector similarity search retriever."""
 

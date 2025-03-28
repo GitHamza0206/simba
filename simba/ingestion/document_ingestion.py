@@ -11,20 +11,21 @@ from langchain.schema import Document
 
 from simba.core.config import settings
 from simba.core.factories.database_factory import get_database
+from simba.core.factories.storage_factory import StorageFactory
 from simba.core.factories.vector_store_factory import VectorStoreFactory
 from simba.models.simbadoc import MetadataType, SimbaDoc
 from simba.splitting import Splitter
-from simba.core.factories.storage_factory import StorageFactory
 from simba.storage.base import StorageProvider
-from .loader import Loader
+
 from .file_handling import delete_file_locally
+from .loader import Loader
 
 logger = logging.getLogger(__name__)
 
 
 class DocumentIngestionService:
     """Service for ingesting documents"""
-    
+
     def __init__(self):
         self.vector_store = VectorStoreFactory.get_vector_store()
         self.database = get_database()
@@ -34,11 +35,11 @@ class DocumentIngestionService:
 
     async def ingest_document(self, file: UploadFile, folder_path: str = "/") -> SimbaDoc:
         """Ingest a document
-        
+
         Args:
             file: The file to ingest
             folder_path: The folder path to store the document
-            
+
         Returns:
             SimbaDoc: The ingested document
         """
@@ -46,23 +47,23 @@ class DocumentIngestionService:
             # Generate file path
             file_path = Path(folder_path.strip("/")) / file.filename
             file_extension = f".{file.filename.split('.')[-1].lower()}"
-            
+
             # Save file using storage provider
             saved_path = await self.storage.save_file(file_path, file)
-            
+
             # Get file size
             file_size = saved_path.stat().st_size
             if file_size == 0:
                 raise ValueError(f"File {saved_path} is empty")
-            
+
             # Load and process document
             document = await self.loader.aload(file_path=str(saved_path))
             document = await asyncio.to_thread(self.splitter.split_document, document)
-            
+
             # Set unique IDs for chunks
             for doc in document:
                 doc.id = str(uuid.uuid4())
-            
+
             # Create metadata
             size_str = f"{file_size / (1024 * 1024):.2f} MB"
             metadata = MetadataType(
@@ -78,15 +79,15 @@ class DocumentIngestionService:
                 file_path=str(saved_path),
                 parser=None,
             )
-            
+
             return SimbaDoc.from_documents(
                 id=str(uuid.uuid4()), documents=document, metadata=metadata
             )
-            
+
         except Exception as e:
             logger.error(f"Error ingesting document: {str(e)}")
             # Clean up file if ingestion fails
-            if 'saved_path' in locals():
+            if "saved_path" in locals():
                 await self.storage.delete_file(saved_path)
             raise
 

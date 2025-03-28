@@ -9,7 +9,7 @@ from langchain_community.vectorstores.faiss import FAISS
 
 from simba.core.config import settings
 from simba.core.factories.embeddings_factory import get_embeddings
-from simba.vector_store import VectorStoreService, PGVectorStore
+from simba.vector_store import PGVectorStore, VectorStoreService
 
 logger = logging.getLogger(__name__)
 

@@ -134,12 +134,12 @@ class VectorStoreService:
     def search(self, query, user_id=None, **kwargs):
         """
         Search for similar documents, filtered by user_id if provided
-        
+
         Args:
             query: The search query string
             user_id: The user ID to filter results by (for multi-tenancy)
             **kwargs: Additional search parameters
-            
+
         Returns:
             List of similar documents
         """
@@ -148,18 +148,20 @@ class VectorStoreService:
             return self.store.similarity_search(query, user_id=user_id, **kwargs)
         else:
             # For backward compatibility, but this should be avoided in production
-            logger.warning("search() called without user_id - this is not secure for multi-tenant systems")
+            logger.warning(
+                "search() called without user_id - this is not secure for multi-tenant systems"
+            )
             return self.store.similarity_search(query, **kwargs)
 
     def search_with_filters(self, query, user_id=None, **kwargs):
         """
         Search for similar documents with filters, filtered by user_id if provided
-        
+
         Args:
             query: The search query string
             user_id: The user ID to filter results by (for multi-tenancy)
             **kwargs: Additional search parameters
-            
+
         Returns:
             List of similar documents with scores
         """
@@ -168,18 +170,20 @@ class VectorStoreService:
             return self.store.similarity_search_with_score(query, user_id=user_id, **kwargs)
         else:
             # For backward compatibility, but this should be avoided in production
-            logger.warning("search_with_filters() called without user_id - this is not secure for multi-tenant systems")
+            logger.warning(
+                "search_with_filters() called without user_id - this is not secure for multi-tenant systems"
+            )
             return self.store.similarity_search_with_score(query, **kwargs)
 
     async def asearch_with_filters(self, query, user_id=None, **kwargs):
         """
         Asynchronously search for similar documents with filters, filtered by user_id if provided
-        
+
         Args:
             query: The search query string
             user_id: The user ID to filter results by (for multi-tenancy)
             **kwargs: Additional search parameters
-            
+
         Returns:
             List of similar documents with scores
         """
@@ -188,7 +192,9 @@ class VectorStoreService:
             return await self.store.asearch_with_filters(query, user_id=user_id, **kwargs)
         else:
             # For backward compatibility, but this should be avoided in production
-            logger.warning("asearch_with_filters() called without user_id - this is not secure for multi-tenant systems")
+            logger.warning(
+                "asearch_with_filters() called without user_id - this is not secure for multi-tenant systems"
+            )
             return await self.store.asearch_with_filters(query, **kwargs)
 
     def verify_store_sync(self) -> bool:

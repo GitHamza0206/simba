@@ -14,7 +14,9 @@ from simba.vector_store import VectorStoreService
 class KeywordRetriever(BaseRetriever):
     """Keyword-based retriever using BM25."""
 
-    def __init__(self, vector_store: Optional[VectorStoreService] = None, user_id: str = None, **kwargs):
+    def __init__(
+        self, vector_store: Optional[VectorStoreService] = None, user_id: str = None, **kwargs
+    ):
         """
         Initialize the keyword retriever.
 
@@ -45,11 +47,11 @@ class KeywordRetriever(BaseRetriever):
             List of relevant documents
         """
         k = kwargs.get("k", 5)
-        
+
         # If user_id changed or is newly provided, update the documents
         if (user_id and self.user_id != user_id) or (user_id and not self.user_id):
             all_documents = self.store.get_documents(user_id=user_id)
             self.bm25_retriever = BM25Retriever.from_documents(all_documents, **kwargs)
             self.user_id = user_id
-            
+
         return self.bm25_retriever.get_relevant_documents(query)[:k]
