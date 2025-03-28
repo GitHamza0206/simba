@@ -80,7 +80,7 @@ class EmbeddingService:
 
             try:
                 # Add documents to vector store
-                self.vector_store.add_documents(langchain_documents)
+                self.vector_store.add_documents(document_id=doc_id, documents=langchain_documents)
 
                 # Update document status
                 simbadoc.metadata.enabled = True

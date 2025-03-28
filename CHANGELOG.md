@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.4.0](https://github.com/GitHamza0206/simba/compare/v0.3.0...v0.4.0) (2025-03-11)
+
+
+### ✨ Features
+
+* add Mistral OCR integration with image support ([dc1315f](https://github.com/GitHamza0206/simba/commit/dc1315f941d12be2a3839d56906a2f0ebdcc709b))
+* handle multiple documents edit / delete / parse ([310165e](https://github.com/GitHamza0206/simba/commit/310165ece7d40e1b0d35103a0a2cade0d03a3e3c))
+* Refactor embedding and parsing services with new EmbeddingService ([b6ef53c](https://github.com/GitHamza0206/simba/commit/b6ef53c1d9f1041e00671ffa369b4e1d5bc716e6))
+
+
+### 🐛 Bug Fixes
+
+* doc preview with latin-1 ([cf2292d](https://github.com/GitHamza0206/simba/commit/cf2292db54805bb9bbd2b45b732bd3217f546fc6))
+* mistral ocr result embedding are removable & images are kept in UI ([c4f10c5](https://github.com/GitHamza0206/simba/commit/c4f10c5ff0901602a46c2df36be91585e284758c))
+* Simplify embedding processing and remove multimodal embedding components & Mistral_ocr is removable ([aa2ffdb](https://github.com/GitHamza0206/simba/commit/aa2ffdb100f7def1d499b77ccd4c2ba660ce018e))
+
+
+### 📚 Documentation
+
+* added first draft of documentation with mintlify ([ee55cd4](https://github.com/GitHamza0206/simba/commit/ee55cd429d6ddee1d75dd206f56d6a1fc0bcca8f))
+
+
+### 💎 Style
+
+* adding parser badge inside document list ([8fd15b0](https://github.com/GitHamza0206/simba/commit/8fd15b063990af68b0594b665b616585a4f663dd))
+
+## [0.3.0](https://github.com/GitHamza0206/simba/compare/v0.2.0...v0.3.0) (2025-03-07)
+
+
+### ✨ Features
+
+* ingesting with celery & multiple delete ([0cb4315](https://github.com/GitHamza0206/simba/commit/0cb4315a2b338b4ac0e2c9618a524af6f7fc0743))
+* ingestion working with celery ([e9eea7d](https://github.com/GitHamza0206/simba/commit/e9eea7db8d5f4836668d22dc50a8fb3bcd15a7aa))
+* refacto retrieval, added abstract class and modulari ([684d51b](https://github.com/GitHamza0206/simba/commit/684d51b897d0d84e0cd66d22914eecaefed1caa0))
+* sdk ([c1cb8fe](https://github.com/GitHamza0206/simba/commit/c1cb8fe7fe4c0438815f06acb8fe50e5a808f2b6))
+
+
+### 🐛 Bug Fixes
+
+* fix multiple document delete ([b080786](https://github.com/GitHamza0206/simba/commit/b0807869bbddf48c883eced0320aa5df3cbc605e))
+* modify kwargs in as_retriver function ([bcec99d](https://github.com/GitHamza0206/simba/commit/bcec99daa01e9096817e5ec7602ee628919f92c4))
+
+
+### 📚 Documentation
+
+* add sdk quickstart in the readme ([b5478af](https://github.com/GitHamza0206/simba/commit/b5478af1331ffa7c8c8841c9b1eb63938b900904))
+
 ## [0.2.0](https://github.com/GitHamza0206/simba/compare/v0.1.1...v0.2.0) (2025-03-06)
 
 

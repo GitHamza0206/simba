@@ -4,6 +4,8 @@
 
 .pytest_cache
 
+.DS_Store
+
 __pycache__
 
 /vector_stores
@@ -33,3 +35,8 @@ dump.rdb
 
 .ruff_cache
 
+/temp
+/temp/*
+
+.cursor/
+.cursor/*

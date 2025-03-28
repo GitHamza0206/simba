@@ -18,17 +18,27 @@ class IngestionApi {
   private baseUrl = config.apiUrl;
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    // Get the access token from localStorage
+    const token = localStorage.getItem('accessToken');
+    
+    // Prepare headers with Authorization if token exists
+    const headers = {
+      'Accept': 'application/json',
+      ...options.headers,
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
-      headers: {
-        'Accept': 'application/json',
-        ...options.headers,
-      }
+      headers,
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'Request failed');
+      throw new Error(error.message || error.detail || `Request failed with status ${response.status}`);
     }
 
     return response.json();

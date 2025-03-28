@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "simba-core"
-version = "0.2.0"
+version = "0.4.0"
 description = "Knowledge Management System that connects to your RAG system"
 authors = ["GitHamza0206 <zeroualihamza0206@gmail.com>"]
 readme = "README.md"
@@ -58,6 +58,7 @@ torchvision = "^0.21.0"
 torchaudio = "^2.6.0"
 celery = "^5.4.0"
 mistralai = "^1.5.1"
+minio = "^7.2.15"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -39,7 +39,7 @@ class Retriever:
         )
 
     def retrieve(
-        self, query: str, method: Union[str, RetrievalMethod] = None, **kwargs
+        self, query: str, method: Union[str, RetrievalMethod] = None, user_id: str = None, **kwargs
     ) -> List[Document]:
         """
         Retrieve documents using the specified method.
@@ -47,6 +47,7 @@ class Retriever:
         Args:
             query: The query string
             method: Retrieval method to use. If None, uses the configured default.
+            user_id: User ID for multi-tenant filtering (required for security)
             **kwargs: Additional parameters for the retrieval method
 
         Returns:
@@ -60,6 +61,14 @@ class Retriever:
             # Use the default retriever
             retriever = self.default_retriever
             logger.debug(f"Using default retrieval strategy for query: {query[:50]}...")
+
+        # Log warning if user_id is not provided (insecure)
+        if user_id is None:
+            logger.warning("retrieve() called without user_id - this is not secure for multi-tenant systems")
+
+        # Add user_id to the kwargs for multi-tenancy
+        if user_id:
+            kwargs["user_id"] = user_id
 
         # Retrieve documents
         docs = retriever.retrieve(query, **kwargs)
