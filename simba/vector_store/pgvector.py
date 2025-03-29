@@ -18,6 +18,7 @@ from simba.core.factories.embeddings_factory import get_embeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain.vectorstores import VectorStore
 from uuid import uuid4
+from langchain_community.retrievers import BM25Retriever
 
 logger = logging.getLogger(__name__)
 
@@ -338,7 +339,9 @@ class PGVectorStore(VectorStore):
     def similarity_search(self, query: str, user_id: str, top_k: int = 20, 
                         hybrid_search: bool = True, alpha: float = 0.5,
                         rerank: bool = True, rerank_model: str = 'cross-encoder/ms-marco-MiniLM-L-6-v2',
-                        rerank_factor: int = 4) -> List[Document]:
+                        rerank_factor: int = 4, 
+                        use_bm25_first_pass: bool = True,
+                        first_pass_k: int = 5) -> List[Document]:
         """
         Search for documents similar to a query, filtered by user_id.
         
@@ -356,6 +359,8 @@ class PGVectorStore(VectorStore):
             rerank_model: Name of the cross-encoder model to use for reranking
             rerank_factor: Number of initial candidates to retrieve for reranking (as multiple of top_k)
                           Typically 3-4x the final top_k value
+            use_bm25_first_pass: Whether to use BM25 for first-pass document retrieval
+            first_pass_k: Number of documents to retrieve in the first pass
             
         Returns:
             A list of documents similar to the query
@@ -363,27 +368,53 @@ class PGVectorStore(VectorStore):
         session = None
         try:
             session = self._Session()
+
+            # First-Pass Document Retrieval using BM25 if enabled
+            if use_bm25_first_pass:
+                # Get all documents for this user
+                all_docs = self.get_all_documents(user_id=user_id)
+                
+                # Initialize BM25 retriever
+                bm25_retriever = BM25Retriever.from_documents(all_docs)
+                
+                # Get top documents using BM25
+                first_pass_docs = bm25_retriever.get_relevant_documents(query)[:first_pass_k]
+                
+                # Extract document IDs from first pass results
+                first_pass_doc_ids = set()
+                for doc in first_pass_docs:
+                    if 'document_id' in doc.metadata:
+                        first_pass_doc_ids.add(doc.metadata['document_id'])
+                
+                logger.info(f"First-pass BM25 retrieved {len(first_pass_doc_ids)} documents")
+            
             # Generate query embedding
             query_embedding = self.embeddings.embed_query(query)
             
             # For reranking, we retrieve more initial candidates
             initial_top_k = top_k * rerank_factor if rerank else top_k
             
+            # Base query
+            base_query = session.query(ChunkEmbedding).filter(
+                ChunkEmbedding.user_id == user_id
+            )
+            
+            # Filter by document IDs from first pass if BM25 was used
+            if use_bm25_first_pass and first_pass_doc_ids:
+                base_query = base_query.filter(
+                    ChunkEmbedding.document_id.in_(first_pass_doc_ids)
+                )
+            
             if not hybrid_search:
-                # Use vector search only (original implementation)
-                results = session.query(ChunkEmbedding).filter(
-                    ChunkEmbedding.user_id == user_id
-                ).order_by(
+                # Use vector search only
+                results = base_query.order_by(
                     ChunkEmbedding.embedding.cosine_distance(query_embedding)
                 ).limit(initial_top_k).all()
             else:
                 # Hybrid search: combine vector similarity with text similarity
-                # Using SQL expression language with SQLAlchemy
                 from sqlalchemy import func, text, cast, Float
-                from sqlalchemy.sql.expression import literal_column
                 
                 # Convert the JSON 'page_content' field to text for full-text search
-                # We'll use jsonb_extract_path_text to extract the page_content from the data JSONB field
                 content_extractor = func.jsonb_extract_path_text(ChunkEmbedding.data, 'page_content')
                 
                 # Create tsvector and tsquery for PostgreSQL full-text search
@@ -397,21 +428,16 @@ class PGVectorStore(VectorStore):
                 vector_distance = ChunkEmbedding.embedding.cosine_distance(query_embedding)
                 
                 # Convert vector distance to a similarity score (1 - distance)
-                # Since cosine distance is between 0-2, we'll normalize it to 0-1
                 vector_similarity = 1 - (vector_distance / 2.0)
                 
                 # Calculate the combined score with alpha as the weighting factor
-                # alpha controls the balance between vector and text search
-                # combined_score = alpha * vector_similarity + (1 - alpha) * text_rank
                 combined_score = (
                     alpha * vector_similarity.cast(Float) + 
                     (1 - alpha) * text_rank.cast(Float)
                 )
                 
                 # Hybrid query that filters for text match and sorts by combined score
-                # We filter documents that have at least some text match
-                results = session.query(ChunkEmbedding).filter(
-                    ChunkEmbedding.user_id == user_id,
+                results = base_query.filter(
                     ts_vector.op('@@')(ts_query)  # @@ is the text search match operator
                 ).order_by(
                     combined_score.desc()  # Higher score is better
@@ -425,8 +451,7 @@ class PGVectorStore(VectorStore):
                     existing_ids = [r.id for r in results]
                     
                     # Pure vector search for remaining results
-                    vector_results = session.query(ChunkEmbedding).filter(
-                        ChunkEmbedding.user_id == user_id,
+                    vector_results = base_query.filter(
                         ~ChunkEmbedding.id.in_(existing_ids)  # Exclude already retrieved docs
                     ).order_by(
                         ChunkEmbedding.embedding.cosine_distance(query_embedding)
@@ -694,7 +719,7 @@ if __name__ == "__main__":
     doc1 = SimbaDoc(
         id="test_doc_1",
         documents=[
-            LangchainDocument(page_content="This is a test document for pgvector", metadata={"source": "test"})
+            LangchainDocument(page_content="This is a test document for pgvector", metadata={"source": "test", "document_id": "test_doc_1"})
         ],
         metadata=MetadataType(filename="test1.txt", type="text", enabled=True)
     )
@@ -702,7 +727,7 @@ if __name__ == "__main__":
     doc2 = SimbaDoc(
         id="test_doc_2",
         documents=[
-            LangchainDocument(page_content="Another test document with different content", metadata={"source": "test"})
+            LangchainDocument(page_content="Another test document with different content", metadata={"source": "test", "document_id": "test_doc_2"})
         ],
         metadata=MetadataType(filename="test2.txt", type="text", enabled=True)
     )
@@ -763,13 +788,30 @@ if __name__ == "__main__":
             top_k=5,               # Return 5 final results
             hybrid_search=True,    # Use hybrid search
             rerank=True,           # Apply cross-encoder reranking
-            rerank_factor=4        # Get 4x more initial candidates (20 for reranking)
+            rerank_factor=4,       # Get 4x more initial candidates (20 for reranking)
+            use_bm25_first_pass=True,
+            first_pass_k=5
         )
         print(f"Found {len(results)} results after optimized retrieval pipeline")
         for doc in results:
             print(f"- {doc.page_content} (score: {doc.metadata.get('score', 'N/A')})")
     else:
         print("\nCross-encoder reranking not available. Install dependencies to enable this feature.")
+    
+    # Test with BM25 first-pass retrieval only (no hybrid search or reranking)
+    print(f"\nSearching for 'document test' using BM25 first-pass and then vector search...")
+    results = pgvector.similarity_search(
+        "document test", 
+        test_user_id, 
+        top_k=5,               
+        hybrid_search=False,   # Use vector search only for second pass
+        rerank=False,          # No reranking
+        use_bm25_first_pass=True,  # Enable BM25 first-pass
+        first_pass_k=5         # Get top 5 documents from BM25
+    )
+    print(f"Found {len(results)} results using BM25 + vector search pipeline")
+    for doc in results:
+        print(f"- {doc.page_content} (score: {doc.metadata.get('score', 'N/A')})")
     
     print("\nTest completed successfully!")
     
