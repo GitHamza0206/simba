@@ -12,9 +12,10 @@ from simba_sdk.simba_sdk.document import DocumentManager
 from simba_sdk.simba_sdk.parser import ParserManager
 from simba_sdk.simba_sdk.embed import EmbeddingManager
 from simba_sdk.simba_sdk.retrieve import RetrieveManager
+from simba_sdk.simba_sdk.chat import ChatManager
 
 # Make these classes available at the package level
-__all__ = ["SimbaClient", "DocumentManager", "ParserManager", "EmbeddingManager", "RetrieveManager"]
+__all__ = ["SimbaClient", "DocumentManager", "ParserManager", "EmbeddingManager", "RetrieveManager", "ChatManager"]
 
 # Alias for backward compatibility if someone imports from simba_client
 # This will help with transitioning to the new package name
@@ -23,3 +24,4 @@ DocumentManager = DocumentManager
 ParserManager = ParserManager
 EmbeddingManager = EmbeddingManager
 RetrieveManager = RetrieveManager
+ChatManager = ChatManager
