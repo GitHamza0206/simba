@@ -34,6 +34,12 @@ class ChunkEmbedding(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
+    # Define indexes using proper SQLAlchemy syntax
+    __table_args__ = (
+        # Index for faster user_id filtering
+        {'schema': None}  # We'll create indexes separately in the ensure_text_search_index method
+    )
+    
     # Relationship to parent document
     document = relationship("SQLDocument", back_populates="chunks")
     
@@ -66,18 +72,34 @@ class PGVectorStore(VectorStore):
     Custom PostgreSQL pgvector implementation using SQLAlchemy ORM.
     """
     
-    def __init__(self, embedding_dim: int = 1536):
+    def __init__(self, embedding_dim: int = 1536, create_indexes: bool = True):
         """
         Initialize the vector store.
         
         Args:
             embedding_dim: Dimension of the embedding vectors
+            create_indexes: Whether to automatically create optimized indexes
         """
         self.embedding_dim = embedding_dim
         
         # Initialize PostgresDB if not already initialized
         self.db = PostgresDB()
         self._Session = self.db._Session
+        
+        # Ensure schema and optimized indexes are properly set up
+        if create_indexes:
+            try:
+                # Create text search indexes
+                self.ensure_text_search_index()
+                
+                # Create vector similarity index
+                # Adjust lists parameter based on expected dataset size
+                self.create_vector_index(index_type='ivfflat', lists=100)
+                
+                logger.info("Vector store initialized with optimized indexes")
+            except Exception as e:
+                logger.warning(f"Failed to create optimized indexes on initialization: {e}")
+                logger.warning("Search performance may not be optimal. Call ensure_text_search_index() and create_vector_index() explicitly.")
     
     @property
     def embeddings(self) -> Optional[Embeddings]:
@@ -109,7 +131,84 @@ class PGVectorStore(VectorStore):
             logger.error(f"Failed to create schema: {e}")
             raise
 
-    
+    def create_vector_index(self, index_type: str = 'ivfflat', lists: int = 100) -> bool:
+        """
+        Create an optimized index for vector similarity search.
+        
+        Args:
+            index_type: Type of index ('ivfflat' or 'hnsw')
+            lists: Number of lists for IVFFlat index (adjust based on dataset size)
+                   For small datasets (< 10k): 10-50
+                   For medium datasets (10k-1M): 100-500
+                   For large datasets (> 1M): 500-1000
+                   
+        Returns:
+            True if index was created successfully, False otherwise
+        """
+        try:
+            if not self.db._engine:
+                raise ValueError("Database engine not initialized")
+                
+            with self.db._engine.connect() as conn:
+                # First ensure pgvector extension exists
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+                
+                # Drop existing index if it exists
+                conn.execute(text(
+                    "DROP INDEX IF EXISTS idx_chunks_embeddings_vector"
+                ))
+                
+                # Create the specified index type
+                if index_type.lower() == 'ivfflat':
+                    # IVFFlat index with cosine distance
+                    conn.execute(text(
+                        f"CREATE INDEX idx_chunks_embeddings_vector ON chunks_embeddings "
+                        f"USING ivfflat (embedding vector_cosine_ops) WITH (lists = {lists})"
+                    ))
+                    logger.info(f"Created IVFFlat index with {lists} lists")
+                elif index_type.lower() == 'hnsw':
+                    # HNSW index (available in pgvector 0.5.0+)
+                    conn.execute(text(
+                        "CREATE INDEX idx_chunks_embeddings_vector ON chunks_embeddings "
+                        "USING hnsw (embedding vector_cosine_ops)"
+                    ))
+                    logger.info("Created HNSW index")
+                else:
+                    raise ValueError(f"Unsupported index type: {index_type}. Use 'ivfflat' or 'hnsw'")
+                    
+                conn.commit()
+                
+            return True
+        except Exception as e:
+            logger.error(f"Failed to create vector index: {e}")
+            return False
+
+    def ensure_text_search_index(self):
+        """Ensure the text search index exists for hybrid search."""
+        try:
+            if not self.db._engine:
+                raise ValueError("Database engine not initialized")
+                
+            with self.db._engine.connect() as conn:
+                # Create GIN index for full-text search on the extracted page_content
+                conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS idx_chunks_embeddings_page_content_gin "
+                    "ON chunks_embeddings "
+                    "USING GIN (to_tsvector('english', jsonb_extract_path_text(data, 'page_content')))"
+                ))
+                # Index for faster user_id filtering if not already exists
+                conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS idx_chunks_embeddings_user_id "
+                    "ON chunks_embeddings (user_id)"
+                ))
+                conn.commit()
+                
+            logger.info("Text search indexes created successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to create text search index: {e}")
+            return False
+
     def add_documents(self, documents: List[Document], document_id: str) -> bool:
         """Add documents to the store using SQLAlchemy ORM."""
         session = None
@@ -193,14 +292,70 @@ class PGVectorStore(VectorStore):
             if session:
                 session.close()
     
-    def similarity_search(self, query: str, user_id: str, top_k: int = 10) -> List[Document]:
+    def _rerank_with_cross_encoder(self, query: str, initial_results: List[ChunkEmbedding], 
+                                top_k: int = 10, model_name: str = 'cross-encoder/ms-marco-MiniLM-L-6-v2') -> List[ChunkEmbedding]:
+        """
+        Rerank initial results using a cross-encoder model.
+        
+        Args:
+            query: The search query
+            initial_results: Initial retrieval results to rerank
+            top_k: Number of top results to return after reranking
+            model_name: Name of the cross-encoder model to use
+            
+        Returns:
+            Reranked list of ChunkEmbedding objects
+        """
+        try:
+            from sentence_transformers import CrossEncoder
+            
+            # Initialize cross-encoder model
+            cross_encoder = CrossEncoder(model_name)
+            
+            # Extract text content from results
+            pairs = []
+            for result in initial_results:
+                # Extract page_content from the data JSONB field
+                page_content = result.data.get('page_content', '')
+                pairs.append((query, page_content))
+            
+            # Get cross-encoder scores
+            scores = cross_encoder.predict(pairs)
+            
+            # Sort results by scores (highest first)
+            reranked_results = [x for _, x in sorted(zip(scores, initial_results), reverse=True)]
+            
+            # Return top k results
+            return reranked_results[:top_k]
+            
+        except ImportError:
+            logger.warning("Could not import sentence_transformers. Reranking skipped. Install with 'pip install sentence-transformers'")
+            return initial_results[:top_k]
+        except Exception as e:
+            logger.warning(f"Error during cross-encoder reranking: {e}. Using original ranking.")
+            return initial_results[:top_k]
+
+    def similarity_search(self, query: str, user_id: str, top_k: int = 20, 
+                        hybrid_search: bool = True, alpha: float = 0.5,
+                        rerank: bool = True, rerank_model: str = 'cross-encoder/ms-marco-MiniLM-L-6-v2',
+                        rerank_factor: int = 4) -> List[Document]:
         """
         Search for documents similar to a query, filtered by user_id.
+        
+        Combines dense vector search (semantic) with PostgreSQL full-text search (lexical)
+        for improved accuracy when hybrid_search=True.
         
         Args:
             query: The search query
             user_id: The user ID to filter results by
-            top_k: The number of top results to return
+            top_k: The number of top results to return (typically 3-5 for final results)
+            hybrid_search: Whether to use hybrid search (both vector and text search)
+            alpha: Weight factor for blending vector and text scores (0.0-1.0)
+                  Higher values favor vector search, lower values favor text search
+            rerank: Whether to apply cross-encoder reranking to improve result order
+            rerank_model: Name of the cross-encoder model to use for reranking
+            rerank_factor: Number of initial candidates to retrieve for reranking (as multiple of top_k)
+                          Typically 3-4x the final top_k value
             
         Returns:
             A list of documents similar to the query
@@ -211,13 +366,89 @@ class PGVectorStore(VectorStore):
             # Generate query embedding
             query_embedding = self.embeddings.embed_query(query)
             
-            # Perform vector similarity search using cosine distance, filtered by user_id
-            results = session.query(ChunkEmbedding).filter(
-                ChunkEmbedding.user_id == user_id
-            ).order_by(
-                ChunkEmbedding.embedding.cosine_distance(query_embedding)
-            ).limit(top_k).all()
+            # For reranking, we retrieve more initial candidates
+            initial_top_k = top_k * rerank_factor if rerank else top_k
             
+            if not hybrid_search:
+                # Use vector search only (original implementation)
+                results = session.query(ChunkEmbedding).filter(
+                    ChunkEmbedding.user_id == user_id
+                ).order_by(
+                    ChunkEmbedding.embedding.cosine_distance(query_embedding)
+                ).limit(initial_top_k).all()
+            else:
+                # Hybrid search: combine vector similarity with text similarity
+                # Using SQL expression language with SQLAlchemy
+                from sqlalchemy import func, text, cast, Float
+                from sqlalchemy.sql.expression import literal_column
+                
+                # Convert the JSON 'page_content' field to text for full-text search
+                # We'll use jsonb_extract_path_text to extract the page_content from the data JSONB field
+                content_extractor = func.jsonb_extract_path_text(ChunkEmbedding.data, 'page_content')
+                
+                # Create tsvector and tsquery for PostgreSQL full-text search
+                ts_vector = func.to_tsvector('english', content_extractor)
+                ts_query = func.plainto_tsquery('english', query)
+                
+                # Calculate text search rank using PostgreSQL ts_rank
+                text_rank = func.ts_rank(ts_vector, ts_query)
+                
+                # Calculate vector similarity (cosine distance)
+                vector_distance = ChunkEmbedding.embedding.cosine_distance(query_embedding)
+                
+                # Convert vector distance to a similarity score (1 - distance)
+                # Since cosine distance is between 0-2, we'll normalize it to 0-1
+                vector_similarity = 1 - (vector_distance / 2.0)
+                
+                # Calculate the combined score with alpha as the weighting factor
+                # alpha controls the balance between vector and text search
+                # combined_score = alpha * vector_similarity + (1 - alpha) * text_rank
+                combined_score = (
+                    alpha * vector_similarity.cast(Float) + 
+                    (1 - alpha) * text_rank.cast(Float)
+                )
+                
+                # Hybrid query that filters for text match and sorts by combined score
+                # We filter documents that have at least some text match
+                results = session.query(ChunkEmbedding).filter(
+                    ChunkEmbedding.user_id == user_id,
+                    ts_vector.op('@@')(ts_query)  # @@ is the text search match operator
+                ).order_by(
+                    combined_score.desc()  # Higher score is better
+                ).limit(initial_top_k).all()
+                
+                # If we didn't get enough results with text matching,
+                # fall back to pure vector search for the remaining slots
+                if len(results) < initial_top_k:
+                    remaining = initial_top_k - len(results)
+                    # Get IDs of already retrieved results to exclude them
+                    existing_ids = [r.id for r in results]
+                    
+                    # Pure vector search for remaining results
+                    vector_results = session.query(ChunkEmbedding).filter(
+                        ChunkEmbedding.user_id == user_id,
+                        ~ChunkEmbedding.id.in_(existing_ids)  # Exclude already retrieved docs
+                    ).order_by(
+                        ChunkEmbedding.embedding.cosine_distance(query_embedding)
+                    ).limit(remaining).all()
+                    
+                    # Combine results
+                    results.extend(vector_results)
+            
+            # Apply cross-encoder reranking if requested
+            if rerank and results:
+                results = self._rerank_with_cross_encoder(
+                    query=query,
+                    initial_results=results,
+                    top_k=top_k,
+                    model_name=rerank_model
+                )
+            elif len(results) > top_k:
+                # If we retrieved more results than needed (for reranking) but didn't rerank,
+                # trim to the requested top_k
+                results = results[:top_k]
+                
+            # Convert results to LangChain documents and return
             return [result.to_langchain_doc() for result in results]
         finally:
             if session:
@@ -429,8 +660,26 @@ class PGVectorStore(VectorStore):
             if session:
                 session.close()
 
+    def check_cross_encoder_dependencies(self) -> bool:
+        """
+        Check if necessary dependencies for cross-encoder reranking are installed.
+        Returns True if dependencies are available, False otherwise.
+        """
+        try:
+            import sentence_transformers
+            from sentence_transformers import CrossEncoder
+            logger.info("Cross-encoder dependencies are available.")
+            return True
+        except ImportError:
+            logger.warning(
+                "Cross-encoder dependencies not found. "
+                "Install with: pip install sentence-transformers"
+            )
+            return False
+
 if __name__ == "__main__":
-    pgvector = PGVectorStore()
+    # Initialize vector store with optimized indexes
+    pgvector = PGVectorStore(create_indexes=True)
     health = pgvector.health_check()
     print(f"Vector store health: {health}")
     
@@ -483,18 +732,44 @@ if __name__ == "__main__":
     print(f"Retrieved document: {retrieved_doc2.id}, with {len(retrieved_doc2.documents)} chunks")
     print(f"Document content: {retrieved_doc2.documents[0].page_content}")
     
-    # Search for similar documents
-    print(f"\nSearching for 'test document'...")
-    results = pgvector.similarity_search("test document", test_user_id)
+    # Optimize indexes (if not already created during initialization)
+    pgvector.ensure_text_search_index()
+    pgvector.create_vector_index(index_type='ivfflat', lists=10)  # Small list count for test data
+    
+    # Search for similar documents using vector search only
+    print(f"\nSearching for 'test document' using vector search...")
+    results = pgvector.similarity_search("test document", test_user_id, hybrid_search=False, rerank=False)
     print(f"Found {len(results)} results")
     for doc in results:
         print(f"- {doc.page_content} (score: {doc.metadata.get('score', 'N/A')})")
     
-    print(f"\nSearching for 'another document'...")
-    results = pgvector.similarity_search("another document", test_user_id)
+    # Search using hybrid search (vector + full-text)
+    print(f"\nSearching for 'another document' using hybrid search without reranking...")
+    results = pgvector.similarity_search("another document", test_user_id, hybrid_search=True, rerank=False)
     print(f"Found {len(results)} results")
     for doc in results:
         print(f"- {doc.page_content} (score: {doc.metadata.get('score', 'N/A')})")
+    
+    # Check if cross-encoder dependencies are available
+    has_cross_encoder = pgvector.check_cross_encoder_dependencies()
+    
+    if has_cross_encoder:
+        # Search using hybrid search with reranking (optimized retrieval pipeline)
+        print(f"\nSearching for 'document test' using the full optimized retrieval pipeline...")
+        print(f"(Hybrid search → 20 candidates → Cross-encoder reranking → Top 5 results)")
+        results = pgvector.similarity_search(
+            "document test", 
+            test_user_id, 
+            top_k=5,               # Return 5 final results
+            hybrid_search=True,    # Use hybrid search
+            rerank=True,           # Apply cross-encoder reranking
+            rerank_factor=4        # Get 4x more initial candidates (20 for reranking)
+        )
+        print(f"Found {len(results)} results after optimized retrieval pipeline")
+        for doc in results:
+            print(f"- {doc.page_content} (score: {doc.metadata.get('score', 'N/A')})")
+    else:
+        print("\nCross-encoder reranking not available. Install dependencies to enable this feature.")
     
     print("\nTest completed successfully!")
     

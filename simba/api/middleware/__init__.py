@@ -9,6 +9,7 @@ including authentication, logging, and error handling.
 from simba.api.middleware.auth import (
     get_current_user,
     http_bearer as security,
+    api_key_header,
     require_role,
     require_permission
 ) 

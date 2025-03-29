@@ -42,22 +42,9 @@ class DefaultRetriever(BaseRetriever):
         Returns:
             List of relevant documents
         """
-        k = kwargs.get("top_k", self.default_k)
-        score_threshold = kwargs.get("score_threshold", None)
-        filter_dict = kwargs.get("filter", None)
-
-        # Create search kwargs dictionary with all parameters
-        search_kwargs = {"top_k": k}
-
-        # Only add these if they are not None
-        if score_threshold is not None:
-            search_kwargs["score_threshold"] = score_threshold
-
-        if filter_dict is not None:
-            search_kwargs["filter"] = filter_dict
-
+        k = 20
         # Use the user_id passed as a parameter first, fallback to kwargs if not provided
         user = supabase.auth.get_user()
         current_user_id = user.user.id
 
-        return self.store.similarity_search(query, current_user_id, k)
+        return self.store.similarity_search(query, current_user_id)

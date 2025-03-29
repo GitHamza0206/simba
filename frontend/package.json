@@ -42,6 +42,7 @@
     "rehype-sanitize": "^6.0.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "shadcn-ui": "^0.9.4",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7"

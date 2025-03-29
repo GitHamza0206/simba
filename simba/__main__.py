@@ -29,6 +29,7 @@ def create_app():
     from simba.api.retriever_routes import retriever_route
     from simba.api.role_routes import role_router
     from simba.api.organization_routes import organization_router  # Import our new organization router
+    from simba.api.api_key_routes import api_key_router
     from simba.core.config import settings
     from simba.core.utils.logger import setup_logging
 
@@ -109,6 +110,7 @@ def create_app():
     app.include_router(retriever_route)
     app.include_router(role_router)
     app.include_router(organization_router)  # Include our new organization router
+    app.include_router(api_key_router)  # Include our new API key router
 
     return app
 
