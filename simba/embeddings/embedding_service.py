@@ -23,7 +23,7 @@ class EmbeddingService:
         """Initialize the EmbeddingService with necessary components."""
         self.vector_store = VectorStoreFactory.get_vector_store()
         self.database = get_database()
-        self.splitter = Splitter(chunk_size=800, chunk_overlap=150)  
+        self.splitter = Splitter(chunk_size=5000, chunk_overlap=300)  
 
     def embed_all_documents(self) -> List[Document]:
         """
