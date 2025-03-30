@@ -222,7 +222,7 @@ class PGVectorStore(VectorStore):
                 raise ValueError(f"Parent document {document_id} not found")
             
             # Get user_id from the document
-            user_id = existing_doc.user_id
+            user_id = str(existing_doc.user_id)
             
             # Generate embeddings for all documents
             texts = [doc.page_content for doc in documents]
@@ -336,7 +336,7 @@ class PGVectorStore(VectorStore):
             logger.warning(f"Error during cross-encoder reranking: {e}. Using original ranking.")
             return initial_results[:top_k]
 
-    def similarity_search(self, query: str, user_id: str, top_k: int = 20, 
+    def similarity_search(self, query: str, user_id: str, top_k: int = 10, 
                         hybrid_search: bool = True, alpha: float = 0.5,
                         rerank: bool = True, rerank_model: str = 'cross-encoder/ms-marco-MiniLM-L-6-v2',
                         rerank_factor: int = 4, 

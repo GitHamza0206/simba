@@ -3,7 +3,7 @@ from typing import List, Optional
 from langchain.schema import Document
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
+import uuid
 
 from simba.core.factories.embeddings_factory import get_embeddings
 
@@ -63,7 +63,12 @@ class Splitter:
             chunk_size=self.chunk_size, 
             chunk_overlap=self.chunk_overlap
         )
-        return text_splitter.split_documents(documents)
+        documents= text_splitter.split_documents(documents)
+        for doc in documents:
+            doc.id = str(uuid.uuid4())
+
+        return documents
+
 
     def semantic_chunking(self, documents: List[Document]) -> List[Document]:
         """Split based on semantic shifts in content"""
