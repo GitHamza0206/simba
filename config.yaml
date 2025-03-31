@@ -54,7 +54,7 @@ retrieval:
     reranker_threshold: 0.7
 
 storage:
-  provider: minio
+  provider: local
 
 
 

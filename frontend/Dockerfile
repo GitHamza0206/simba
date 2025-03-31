@@ -10,10 +10,11 @@ RUN apt-get update && \
 # Copy package files first for better caching
 COPY package*.json ./
 
-
-# Install dependencies and the Rollup binary
-RUN npm ci && \
-    npm install @rollup/rollup-linux-x64-gnu
+# Install all dependencies including remark-math and rehype-katex
+RUN npm install && \
+    npm install remark-math rehype-katex && \
+    npm install @rollup/rollup-linux-x64-gnu && \
+    npm install rehype-sanitize remark-gfm
 
 # Add node_modules/.bin to PATH
 ENV PATH="/app/node_modules/.bin:$PATH"
