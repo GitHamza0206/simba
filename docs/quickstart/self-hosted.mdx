@@ -34,7 +34,7 @@ you can choose the method that suits you best, if you want to use the SDK for fr
       <Step title="Create a config.yaml file ">
         The config.yaml file is one of the most important files of this setup, because it's what will parameter the Embedding model, vector store type, retreival strategy , database, worker celery for parsing and also the llm you're using
 
-        Go to your project root and create config.yaml, you can get inspired from this one below&#x20;
+        Go to your project root and modify config.yaml, you can get inspired from this one below&#x20;
 
         ```yaml
         project:
@@ -202,12 +202,22 @@ you can choose the method that suits you best, if you want to use the SDK for fr
           curl -sSL https://install.python-poetry.org | python3 -
           ```
 
-          ```
+          ```bash Windows
           pip install poetry 
           ```
         </CodeGroup>
 
+
+
         then install the virtual environement and activate it&#x20;
+
+        ```bash
+        poetry config virtualenvs.in-project true
+        poetry install
+        source .venv/bin/activate
+        ```
+
+        It should activate the python simba environement, also if you're using vscode IDE, make sure to update your python Interpreter&#x20;
       </Step>
 
       <Step title="Modify the config.yaml file ">
