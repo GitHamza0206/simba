@@ -31,18 +31,30 @@ const GeneralSettings: React.FC = () => {
         setOrganization({ id: 'cm8d8jb2u0ncad07rseshkov', name: 'atlanta' });
         setOrgName('atlanta');
         setMetadata(JSON.stringify({ id: 'cm8d8jb2u0ncad07rseshkov', name: 'atlanta' }, null, 2));
-        return;
+        return; // Return early in dev mode without API URL
       }
       
-      const response = await authAxios.get('/api/organizations/current');
-      setOrganization(response.data);
-      setOrgName(response.data.name);
-      setMetadata(JSON.stringify(response.data, null, 2));
+      // const response = await authAxios.get('/api/organizations/current');
+      // setOrganization(response.data);
+      // setOrgName(response.data.name);
+      // setMetadata(JSON.stringify(response.data, null, 2));
+      
+      // If API is commented out, provide some default or indicate error more clearly
+      // For now, we'll let the error state handle it if not in dev mode.
+      if (!(process.env.NODE_ENV === 'development' && !process.env.REACT_APP_API_URL)) {
+         setError('Backend API calls are currently disabled.'); 
+         // Optionally set some default state if needed
+         // setOrganization(null);
+         // setOrgName('');
+         // setMetadata('{}');
+      }
+
     } catch (err: any) {
       console.error('Error fetching organization:', err);
+      // Keep existing error handling
       setError('Failed to load organization details');
     } finally {
-      setLoading(false);
+      setLoading(false); // Ensure loading state is always turned off
     }
   };
 
@@ -62,21 +74,21 @@ const GeneralSettings: React.FC = () => {
         setOrganization(prev => prev ? { ...prev, name: orgName } : null);
         toast({
           title: "Success",
-          description: "Organization name updated successfully",
+          description: "Organization name updated successfully (Dev Mode)",
         });
-        return;
+        return; // Return early in dev mode without API URL
       }
       
-      await authAxios.put(`/api/organizations/${organization?.id}`, {
-        name: orgName
-      });
+      // await authAxios.put(`/api/organizations/${organization?.id}`, {
+      //   name: orgName
+      // });
       
       toast({
-        title: "Success",
-        description: "Organization name updated successfully",
+        title: "Info",
+        description: "Organization name update is currently disabled.",
       });
       
-      fetchOrganization();
+      // fetchOrganization(); // No need to refetch if the PUT is disabled
     } catch (err: any) {
       console.error('Error updating organization name:', err);
       toast({

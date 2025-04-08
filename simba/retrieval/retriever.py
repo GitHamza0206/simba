@@ -11,7 +11,7 @@ from simba.core.config import settings
 from simba.core.factories.vector_store_factory import VectorStoreFactory
 from simba.retrieval.base import BaseRetriever, RetrievalMethod
 from simba.retrieval.factory import RetrieverFactory
-
+from simba.auth.auth_service import get_supabase_client
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +39,7 @@ class Retriever:
         )
 
     def retrieve(
-        self, query: str, method: Union[str, RetrievalMethod] = None, user_id: str = None, **kwargs
+        self, query: str, method: Union[str, RetrievalMethod] = None, **kwargs
     ) -> List[Document]:
         """
         Retrieve documents using the specified method.
@@ -53,6 +53,10 @@ class Retriever:
         Returns:
             List of relevant documents
         """
+        supabase = get_supabase_client()    
+        user = supabase.auth.get_user()
+        user_id = user.user.id
+
         # If method is specified, create a retriever for it
         if method:
             retriever = self.factory.get_retriever(method, vector_store=self.store)

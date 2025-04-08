@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from uuid import uuid4
 from datetime import datetime
 
@@ -248,6 +248,44 @@ async def invite_member(
             detail="Failed to invite member"
         )
 
+# Helper function to check owner permissions and get target member
+async def _check_owner_and_get_target_member(
+    org_id: str, target_member_id: str, current_user_id: str
+) -> Tuple[OrganizationMember, List[OrganizationMember]]:
+    """
+    Checks if the current user is an owner of the organization,
+    fetches the target member, and returns the target member and all members.
+
+    Raises HTTPException for permission errors or if the member is not found.
+    """
+    user_role = await OrganizationService.get_user_role_in_org(
+        org_id=org_id, user_id=current_user_id
+    )
+
+    if not user_role:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not a member of this organization",
+        )
+
+    # Ensure the user performing the action is an owner
+    if user_role != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only owners can modify member roles or remove members",
+        )
+
+    # Fetch all members to find the target and check owner constraints later
+    members = await OrganizationService.get_organization_members(org_id=org_id)
+    target_member = next((m for m in members if m.id == target_member_id), None)
+
+    if not target_member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Target member not found"
+        )
+
+    return target_member, members
+
 @organization_router.put(
     "/{org_id}/members/{member_id}",
     response_model=OrganizationMember,
@@ -272,40 +310,11 @@ async def update_member_role(
         The updated member
     """
     try:
-        # Check if the user is an owner of the organization
-        user_role = await OrganizationService.get_user_role_in_org(
-            org_id=org_id,
-            user_id=current_user.id
+        # Check permissions and get the member to update + all members
+        member_to_update, members = await _check_owner_and_get_target_member(
+            org_id, member_id, current_user.id
         )
-        
-        if not user_role:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not a member of this organization"
-            )
-        
-        # Only owners can update roles
-        if user_role != "owner":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owners can update member roles"
-            )
-        
-        # Get the member being updated
-        members = await OrganizationService.get_organization_members(
-            org_id=org_id
-        )
-        
-        member_to_update = next(
-            (m for m in members if m.id == member_id), None
-        )
-        
-        if not member_to_update:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Member not found"
-            )
-        
+
         # If member is an owner, only allow role change if there's at least one other owner
         if member_to_update.role == "owner" and update.role != "owner":
             owners = [m for m in members if m.role == "owner"]
@@ -314,20 +323,22 @@ async def update_member_role(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Cannot change the role of the only owner"
                 )
-        
+
         # Update the member's role
         updated_member = await OrganizationService.update_member_role(
             org_id=org_id,
             member_id=member_id,
             new_role=update.role
         )
-        
+
         if not updated_member:
+            # This might occur if the member was deleted between checks, though unlikely.
+            # Or if OrganizationService.update_member_role returns None on failure.
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Member not found"
+                detail="Failed to update member role, member might no longer exist."
             )
-        
+
         return updated_member
     except HTTPException as e:
         raise e
@@ -360,40 +371,11 @@ async def remove_member(
         No content
     """
     try:
-        # Check if the user is an owner of the organization
-        user_role = await OrganizationService.get_user_role_in_org(
-            org_id=org_id,
-            user_id=current_user.id
+        # Check permissions and get the member to remove + all members
+        member_to_remove, members = await _check_owner_and_get_target_member(
+            org_id, member_id, current_user.id
         )
-        
-        if not user_role:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not a member of this organization"
-            )
-        
-        # Only owners can remove members
-        if user_role != "owner":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owners can remove members"
-            )
-        
-        # Get the member being removed
-        members = await OrganizationService.get_organization_members(
-            org_id=org_id
-        )
-        
-        member_to_remove = next(
-            (m for m in members if m.id == member_id), None
-        )
-        
-        if not member_to_remove:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Member not found"
-            )
-        
+
         # If member is an owner, only allow removal if there's at least one other owner
         if member_to_remove.role == "owner":
             owners = [m for m in members if m.role == "owner"]
@@ -402,18 +384,21 @@ async def remove_member(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Cannot remove the only owner"
                 )
-        
+
         # Remove the member
         success = await OrganizationService.remove_member(
             org_id=org_id,
             member_id=member_id
         )
-        
+
         if not success:
+             # This might occur if the member was deleted between checks, though unlikely.
+             # Or if OrganizationService.remove_member returns False on failure.
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Member not found"
+                detail="Failed to remove member, member might no longer exist."
             )
+        # Return No Content on success implicitly via status_code=204
     except HTTPException as e:
         raise e
     except Exception as e:
