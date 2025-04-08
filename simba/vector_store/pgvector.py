@@ -34,7 +34,7 @@ class ChunkEmbedding(Base):
     document_id = Column(String, ForeignKey('documents.id', ondelete='CASCADE'), nullable=False)
     user_id = Column(String, nullable=False)
     data = Column(JSONB, nullable=False, default={})
-    embedding = Column(Vector(1024))
+    embedding = Column(Vector(1536))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     

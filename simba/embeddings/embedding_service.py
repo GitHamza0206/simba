@@ -146,8 +146,8 @@ class EmbeddingService:
             if not simbadoc:
                 raise ValueError(f"Document {doc_id} not found")
 
-            docs_ids = [doc.id for doc in simbadoc.documents]
-            self.vector_store.delete_documents(docs_ids)
+            #docs_ids: List[str] = [doc.id for doc in simbadoc.documents]
+            self.vector_store.delete_documents(doc_id)
 
             # Update document status
             simbadoc.metadata.enabled = False
