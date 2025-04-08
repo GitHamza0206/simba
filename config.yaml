@@ -20,7 +20,7 @@ llm:
 
 embedding:
   provider: "openai"
-  model_name: "text-embedding-3-large"
+  model_name: "text-embedding-ada-002"
   #model_name: "openai/clip-vit-base-patch32"
   device: "mps"  # Changed from mps to cpu for container compatibility
   additional_params: {}
