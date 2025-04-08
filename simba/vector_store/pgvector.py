@@ -341,7 +341,7 @@ class PGVectorStore(VectorStore):
 
     def similarity_search(self, query: str, user_id: str, top_k: int = 10, 
                         hybrid_search: bool = True, alpha: float = 0.5,
-                        rerank: bool = True, rerank_model: str = 'cross-encoder/mmarco-mMiniLMv2-L12-H384-v1',
+                        rerank: bool = False, rerank_model: str = 'cross-encoder/mmarco-mMiniLMv2-L12-H384-v1',
                         rerank_factor: int = 4, 
                         use_bm25_first_pass: bool = True) -> List[Document]:
         """

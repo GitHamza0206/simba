@@ -18,6 +18,7 @@ class State(TypedDict):
 
     messages: Annotated[Sequence[BaseMessage], add_messages]
     documents: List[dict]
+    generation: str
 
     # New: Client-facing state representation
 
