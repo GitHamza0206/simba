@@ -19,6 +19,9 @@ from langchain_openai import OpenAIEmbeddings
 from langchain.vectorstores import VectorStore
 from uuid import uuid4
 from langchain_community.retrievers import BM25Retriever
+from simba.auth.auth_service import get_supabase_client
+
+supabase = get_supabase_client()
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +34,7 @@ class ChunkEmbedding(Base):
     document_id = Column(String, ForeignKey('documents.id', ondelete='CASCADE'), nullable=False)
     user_id = Column(String, nullable=False)
     data = Column(JSONB, nullable=False, default={})
-    embedding = Column(Vector(1536))
+    embedding = Column(Vector(1024))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -73,7 +76,7 @@ class PGVectorStore(VectorStore):
     Custom PostgreSQL pgvector implementation using SQLAlchemy ORM.
     """
     
-    def __init__(self, embedding_dim: int = 1536, create_indexes: bool = True):
+    def __init__(self, embedding_dim: int = 3072, create_indexes: bool = True):
         """
         Initialize the vector store.
         
@@ -195,7 +198,7 @@ class PGVectorStore(VectorStore):
                 conn.execute(text(
                     "CREATE INDEX IF NOT EXISTS idx_chunks_embeddings_page_content_gin "
                     "ON chunks_embeddings "
-                    "USING GIN (to_tsvector('english', jsonb_extract_path_text(data, 'page_content')))"
+                    "USING GIN (to_tsvector('french', jsonb_extract_path_text(data, 'page_content')))"
                 ))
                 # Index for faster user_id filtering if not already exists
                 conn.execute(text(
@@ -294,7 +297,7 @@ class PGVectorStore(VectorStore):
                 session.close()
     
     def _rerank_with_cross_encoder(self, query: str, initial_results: List[ChunkEmbedding], 
-                                top_k: int = 10, model_name: str = 'cross-encoder/ms-marco-MiniLM-L-6-v2') -> List[ChunkEmbedding]:
+                                top_k: int = 10, model_name: str = 'cross-encoder/mmarco-mMiniLMv2-L12-H384-v1') -> List[ChunkEmbedding]:
         """
         Rerank initial results using a cross-encoder model.
         
@@ -338,10 +341,9 @@ class PGVectorStore(VectorStore):
 
     def similarity_search(self, query: str, user_id: str, top_k: int = 10, 
                         hybrid_search: bool = True, alpha: float = 0.5,
-                        rerank: bool = True, rerank_model: str = 'cross-encoder/ms-marco-MiniLM-L-6-v2',
+                        rerank: bool = True, rerank_model: str = 'cross-encoder/mmarco-mMiniLMv2-L12-H384-v1',
                         rerank_factor: int = 4, 
-                        use_bm25_first_pass: bool = True,
-                        first_pass_k: int = 5) -> List[Document]:
+                        use_bm25_first_pass: bool = True) -> List[Document]:
         """
         Search for documents similar to a query, filtered by user_id.
         
@@ -360,7 +362,6 @@ class PGVectorStore(VectorStore):
             rerank_factor: Number of initial candidates to retrieve for reranking (as multiple of top_k)
                           Typically 3-4x the final top_k value
             use_bm25_first_pass: Whether to use BM25 for first-pass document retrieval
-            first_pass_k: Number of documents to retrieve in the first pass
             
         Returns:
             A list of documents similar to the query
@@ -369,24 +370,36 @@ class PGVectorStore(VectorStore):
         try:
             session = self._Session()
 
-            # First-Pass Document Retrieval using BM25 if enabled
             if use_bm25_first_pass:
                 # Get all documents for this user
                 all_docs = self.get_all_documents(user_id=user_id)
+                logger.debug(f"Retrieved {len(all_docs)} total documents for BM25")
                 
+                first_pass_k = top_k * 3
                 # Initialize BM25 retriever
-                bm25_retriever = BM25Retriever.from_documents(all_docs)
+                bm25_retriever = BM25Retriever.from_documents(
+                    all_docs,
+                    k=first_pass_k,
+                    bm25_params={
+                        "k1": 1.2,
+                        "b": 0.75,
+                    }
+                )
                 
                 # Get top documents using BM25
-                first_pass_docs = bm25_retriever.get_relevant_documents(query)[:first_pass_k]
+                first_pass_docs = bm25_retriever.get_relevant_documents(query)
+                logger.debug(f"BM25 returned {len(first_pass_docs)} documents")
                 
-                # Extract document IDs from first pass results
+                # Extract document IDs from first pass results with better logging
                 first_pass_doc_ids = set()
                 for doc in first_pass_docs:
+                    logger.debug(f"BM25 doc metadata: {doc.metadata}")
                     if 'document_id' in doc.metadata:
                         first_pass_doc_ids.add(doc.metadata['document_id'])
+                    else:
+                        logger.warning(f"Document missing document_id in metadata: {doc.metadata}")
                 
-                logger.info(f"First-pass BM25 retrieved {len(first_pass_doc_ids)} documents")
+                logger.info(f"First-pass BM25 retrieved {len(first_pass_doc_ids)} unique document IDs")
             
             # Generate query embedding
             query_embedding = self.embeddings.embed_query(query)
@@ -418,8 +431,8 @@ class PGVectorStore(VectorStore):
                 content_extractor = func.jsonb_extract_path_text(ChunkEmbedding.data, 'page_content')
                 
                 # Create tsvector and tsquery for PostgreSQL full-text search
-                ts_vector = func.to_tsvector('english', content_extractor)
-                ts_query = func.plainto_tsquery('english', query)
+                ts_vector = func.to_tsvector('french', content_extractor)
+                ts_query = func.plainto_tsquery('french', query)
                 
                 # Calculate text search rank using PostgreSQL ts_rank
                 text_rank = func.ts_rank(ts_vector, ts_query)
@@ -436,29 +449,10 @@ class PGVectorStore(VectorStore):
                     (1 - alpha) * text_rank.cast(Float)
                 )
                 
-                # Hybrid query that filters for text match and sorts by combined score
-                results = base_query.filter(
-                    ts_vector.op('@@')(ts_query)  # @@ is the text search match operator
-                ).order_by(
+                # Hybrid query that uses both vector and text similarity for ranking
+                results = base_query.order_by(
                     combined_score.desc()  # Higher score is better
                 ).limit(initial_top_k).all()
-                
-                # If we didn't get enough results with text matching,
-                # fall back to pure vector search for the remaining slots
-                if len(results) < initial_top_k:
-                    remaining = initial_top_k - len(results)
-                    # Get IDs of already retrieved results to exclude them
-                    existing_ids = [r.id for r in results]
-                    
-                    # Pure vector search for remaining results
-                    vector_results = base_query.filter(
-                        ~ChunkEmbedding.id.in_(existing_ids)  # Exclude already retrieved docs
-                    ).order_by(
-                        ChunkEmbedding.embedding.cosine_distance(query_embedding)
-                    ).limit(remaining).all()
-                    
-                    # Combine results
-                    results.extend(vector_results)
             
             # Apply cross-encoder reranking if requested
             if rerank and results:
@@ -575,39 +569,49 @@ class PGVectorStore(VectorStore):
             if session:
                 session.close()
 
-    def get_all_documents(self, user_id: str = None) -> List[Document]:
+    def get_all_documents(self, user_id: str) -> List[Document]:
         """Get all documents from the store, optionally filtered by user_id."""
         session = None
         try:
             session = self._Session()
-            query = session.query(ChunkEmbedding)
-            
-            # Filter by user_id if provided
-            if user_id:
-                query = query.filter(ChunkEmbedding.user_id == user_id)
+            query = session.query(ChunkEmbedding).filter(ChunkEmbedding.user_id == user_id)
                 
             chunks = query.all()
-            return [chunk.to_langchain_doc() for chunk in chunks]
+            # Modify this to ensure document_id is in metadata
+            return [
+                Document(
+                    page_content=chunk.data["page_content"],
+                    metadata={
+                        **chunk.data.get("metadata", {}),
+                        "document_id": chunk.document_id  # Explicitly add document_id
+                    }
+                ) 
+                for chunk in chunks
+            ]
         finally:
             if session:
                 session.close()
 
-    def delete_documents(self, uids: List[str], user_id: str = None) -> bool:
-        """Delete documents from the store using raw SQL, optionally filtered by user_id."""
+    def delete_documents(self, doc_id: str) -> bool:
+        """Delete documents from the store using SQLAlchemy ORM, optionally filtered by user_id."""
         session = None
         try:
             session = self._Session()
-            # Build the base query
-            query = "DELETE FROM chunks_embeddings WHERE id = ANY(:uids)"
-            params = {"uids": uids}
             
-            # Add user_id filter if provided
-            if user_id:
-                query += " AND user_id = :user_id"
-                params["user_id"] = user_id
-                
-            session.execute(text(query), params)
+            user_id = supabase.auth.get_user().user.id
+            #verify that user_id has access to the document
+            doc = session.query(SQLDocument).filter(SQLDocument.id == doc_id, SQLDocument.user_id == user_id).first()
+            if not doc:
+                raise ValueError(f"User {user_id} does not have access to document {doc_id}")
+
+            # Build the base query using SQLAlchemy
+            query = session.query(ChunkEmbedding).filter(ChunkEmbedding.document_id == doc_id)
+            
+            # Execute delete
+            deleted_count = query.delete(synchronize_session=False)
             session.commit()
+            
+            logger.info(f"Successfully deleted {deleted_count} chunks")
             return True
         except Exception as e:
             logger.error(f"Failed to delete documents: {e}")
