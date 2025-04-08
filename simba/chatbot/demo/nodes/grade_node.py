@@ -13,7 +13,7 @@ def grade(state):
     """
 
     print("---CHECK DOCUMENT RELEVANCE TO QUESTION---")
-    question = state["question"]
+    question = state["messages"][-1].content
     documents = state["documents"]
 
     # Score each doc

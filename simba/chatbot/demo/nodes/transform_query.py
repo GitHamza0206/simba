@@ -12,7 +12,7 @@ def transform_query(state):
     """ 
 
     print("---TRANSFORM QUERY---")
-    question = state["question"]
+    question = state["messages"][-1].content
     documents = state["documents"]
 
     # Re-write question

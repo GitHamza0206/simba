@@ -14,7 +14,7 @@ def grade_generation_v_documents_and_question(state):
     """
 
     print("---CHECK HALLUCINATIONS---")
-    question = state["question"]
+    question = state["messages"][-1].content
     documents = state["documents"]
     generation = state["generation"]
 
