@@ -1,6 +1,5 @@
 from simba.chatbot.demo.chains.hallucination_chain import hallucination_chain
-from simba.chatbot.demo.chains.grade_chain import grade_chain
-
+from simba.chatbot.demo.chains.correctness_chain import correctness_chain
 
 def grade_generation_v_documents_and_question(state):
     """
@@ -28,7 +27,7 @@ def grade_generation_v_documents_and_question(state):
         print("---DECISION: GENERATION IS GROUNDED IN DOCUMENTS---")
         # Check question-answering
         print("---GRADE GENERATION vs QUESTION---")
-        score = grade_chain.invoke({"question": question, "generation": generation})
+        score = correctness_chain.invoke({"question": question, "generation": generation})
         grade = score.binary_score
         if grade == "yes":
             print("---DECISION: GENERATION ADDRESSES QUESTION---")
