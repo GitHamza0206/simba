@@ -4,8 +4,8 @@ from psycopg2.extras import RealDictCursor, Json
 import uuid
 import json
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, func, Integer, text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, DateTime, ForeignKey, func, Integer, text, bindparam, Float
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 from langchain.docstore.document import Document
@@ -20,6 +20,7 @@ from langchain.vectorstores import VectorStore
 from uuid import uuid4
 from langchain_community.retrievers import BM25Retriever
 from simba.auth.auth_service import get_supabase_client
+import numpy as np
 
 supabase = get_supabase_client()
 
@@ -90,20 +91,12 @@ class PGVectorStore(VectorStore):
         self.db = PostgresDB()
         self._Session = self.db._Session
         
-        # Ensure schema and optimized indexes are properly set up
-        if create_indexes:
-            try:
-                # Create text search indexes
-                self.ensure_text_search_index()
-                
-                # Create vector similarity index
-                # Adjust lists parameter based on expected dataset size
-                self.create_vector_index(index_type='ivfflat', lists=100)
-                
-                logger.info("Vector store initialized with optimized indexes")
-            except Exception as e:
-                logger.warning(f"Failed to create optimized indexes on initialization: {e}")
-                logger.warning("Search performance may not be optimal. Call ensure_text_search_index() and create_vector_index() explicitly.")
+        # Initialize BM25 retriever as None, will be created on first use
+        self._bm25_retriever = None
+        self._bm25_docs = None
+        
+        # Log initialization
+        logger.info("Vector store initialized")
     
     @property
     def embeddings(self) -> Optional[Embeddings]:
@@ -114,105 +107,6 @@ class PGVectorStore(VectorStore):
         )
         return get_embeddings()
         
-        # Ensure schema exists
-        # self._ensure_schema()
-    
-    def _ensure_schema(self):
-        """Ensure the required database schema exists."""
-        try:
-            if not self.db._engine:
-                raise ValueError("Database engine not initialized")
-                
-            # First ensure vector extension exists
-            with self.db._engine.connect() as conn:
-                conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
-                conn.commit()
-            
-            # Create tables
-            Base.metadata.create_all(self.db._engine)
-            logger.info("Vector store schema initialized correctly")
-        except Exception as e:
-            logger.error(f"Failed to create schema: {e}")
-            raise
-
-    def create_vector_index(self, index_type: str = 'ivfflat', lists: int = 100) -> bool:
-        """
-        Create an optimized index for vector similarity search.
-        
-        Args:
-            index_type: Type of index ('ivfflat' or 'hnsw')
-            lists: Number of lists for IVFFlat index (adjust based on dataset size)
-                   For small datasets (< 10k): 10-50
-                   For medium datasets (10k-1M): 100-500
-                   For large datasets (> 1M): 500-1000
-                   
-        Returns:
-            True if index was created successfully, False otherwise
-        """
-        try:
-            if not self.db._engine:
-                raise ValueError("Database engine not initialized")
-                
-            with self.db._engine.connect() as conn:
-                # First ensure pgvector extension exists
-                conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-                
-                # Drop existing index if it exists
-                conn.execute(text(
-                    "DROP INDEX IF EXISTS idx_chunks_embeddings_vector"
-                ))
-                
-                # Create the specified index type
-                if index_type.lower() == 'ivfflat':
-                    # IVFFlat index with cosine distance
-                    conn.execute(text(
-                        f"CREATE INDEX idx_chunks_embeddings_vector ON chunks_embeddings "
-                        f"USING ivfflat (embedding vector_cosine_ops) WITH (lists = {lists})"
-                    ))
-                    logger.info(f"Created IVFFlat index with {lists} lists")
-                elif index_type.lower() == 'hnsw':
-                    # HNSW index (available in pgvector 0.5.0+)
-                    conn.execute(text(
-                        "CREATE INDEX idx_chunks_embeddings_vector ON chunks_embeddings "
-                        "USING hnsw (embedding vector_cosine_ops)"
-                    ))
-                    logger.info("Created HNSW index")
-                else:
-                    raise ValueError(f"Unsupported index type: {index_type}. Use 'ivfflat' or 'hnsw'")
-                    
-                conn.commit()
-                
-            return True
-        except Exception as e:
-            logger.error(f"Failed to create vector index: {e}")
-            return False
-
-    def ensure_text_search_index(self):
-        """Ensure the text search index exists for hybrid search."""
-        try:
-            if not self.db._engine:
-                raise ValueError("Database engine not initialized")
-                
-            with self.db._engine.connect() as conn:
-                # Create GIN index for full-text search on the extracted page_content
-                conn.execute(text(
-                    "CREATE INDEX IF NOT EXISTS idx_chunks_embeddings_page_content_gin "
-                    "ON chunks_embeddings "
-                    "USING GIN (to_tsvector('french', jsonb_extract_path_text(data, 'page_content')))"
-                ))
-                # Index for faster user_id filtering if not already exists
-                conn.execute(text(
-                    "CREATE INDEX IF NOT EXISTS idx_chunks_embeddings_user_id "
-                    "ON chunks_embeddings (user_id)"
-                ))
-                conn.commit()
-                
-            logger.info("Text search indexes created successfully")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to create text search index: {e}")
-            return False
-
     def add_documents(self, documents: List[Document], document_id: str) -> bool:
         """Add documents to the store using SQLAlchemy ORM."""
         session = None
@@ -339,136 +233,166 @@ class PGVectorStore(VectorStore):
             logger.warning(f"Error during cross-encoder reranking: {e}. Using original ranking.")
             return initial_results[:top_k]
 
+    def _get_bm25_retriever(self, user_id: str, k: int = 10) -> BM25Retriever:
+        """
+        Get or create BM25 retriever for a user.
+        Caches the retriever and documents to avoid rebuilding for each query.
+        """
+        if self._bm25_retriever is None or self._bm25_docs is None:
+            # Get all documents for this user
+            self._bm25_docs = self.get_all_documents(user_id=user_id)
+            logger.debug(f"Initialized BM25 with {len(self._bm25_docs)} documents")
+            
+            # Initialize BM25 retriever
+            self._bm25_retriever = BM25Retriever.from_documents(
+                self._bm25_docs,
+                k=k,
+                bm25_params={
+                    "k1": 1.2,
+                    "b": 0.75,
+                }
+            )
+        
+        return self._bm25_retriever
+
     def similarity_search(self, query: str, user_id: str, top_k: int = 10, 
                         hybrid_search: bool = True, alpha: float = 0.5,
-                        rerank: bool = False, rerank_model: str = 'cross-encoder/mmarco-mMiniLMv2-L12-H384-v1',
+                        rerank: bool = False, rerank_model: str = 'cross-encoder/ms-marco-MiniLM-L-12-v2',
                         rerank_factor: int = 4, 
-                        use_bm25_first_pass: bool = True) -> List[Document]:
+                        use_bm25_first_pass: bool = True,
+                        language: str = 'french') -> List[Document]:
         """
         Search for documents similar to a query, filtered by user_id.
-        
-        Combines dense vector search (semantic) with PostgreSQL full-text search (lexical)
-        for improved accuracy when hybrid_search=True.
         
         Args:
             query: The search query
             user_id: The user ID to filter results by
-            top_k: The number of top results to return (typically 3-5 for final results)
+            top_k: The number of top results to return
             hybrid_search: Whether to use hybrid search (both vector and text search)
             alpha: Weight factor for blending vector and text scores (0.0-1.0)
-                  Higher values favor vector search, lower values favor text search
             rerank: Whether to apply cross-encoder reranking to improve result order
             rerank_model: Name of the cross-encoder model to use for reranking
-            rerank_factor: Number of initial candidates to retrieve for reranking (as multiple of top_k)
-                          Typically 3-4x the final top_k value
+            rerank_factor: Number of initial candidates to retrieve for reranking
             use_bm25_first_pass: Whether to use BM25 for first-pass document retrieval
+            language: The language to use for text search (default: 'french')
             
         Returns:
             A list of documents similar to the query
         """
         session = None
         try:
+            # Get a session and its engine
             session = self._Session()
-
+            conn = session.connection()
+            cur = conn.connection.cursor(cursor_factory=RealDictCursor)
+            
             if use_bm25_first_pass:
-                # Get all documents for this user
-                all_docs = self.get_all_documents(user_id=user_id)
-                logger.debug(f"Retrieved {len(all_docs)} total documents for BM25")
-                
                 first_pass_k = top_k * 3
-                # Initialize BM25 retriever
-                bm25_retriever = BM25Retriever.from_documents(
-                    all_docs,
-                    k=first_pass_k,
-                    bm25_params={
-                        "k1": 1.2,
-                        "b": 0.75,
-                    }
-                )
+                # Get BM25 retriever (will be cached after first use)
+                bm25_retriever = self._get_bm25_retriever(user_id, first_pass_k)
                 
                 # Get top documents using BM25
                 first_pass_docs = bm25_retriever.get_relevant_documents(query)
                 logger.debug(f"BM25 returned {len(first_pass_docs)} documents")
                 
-                # Extract document IDs from first pass results with better logging
-                first_pass_doc_ids = set()
-                for doc in first_pass_docs:
-                    logger.debug(f"BM25 doc metadata: {doc.metadata}")
-                    if 'document_id' in doc.metadata:
-                        first_pass_doc_ids.add(doc.metadata['document_id'])
-                    else:
-                        logger.warning(f"Document missing document_id in metadata: {doc.metadata}")
-                
-                logger.info(f"First-pass BM25 retrieved {len(first_pass_doc_ids)} unique document IDs")
+                # Extract document IDs from first pass results
+                first_pass_doc_ids = list({doc.metadata['document_id'] for doc in first_pass_docs})
             
             # Generate query embedding
             query_embedding = self.embeddings.embed_query(query)
+            query_embedding_array = np.array(query_embedding)
+            # Convert numpy array to list for psycopg2
+            query_embedding_list = query_embedding_array.tolist()
             
             # For reranking, we retrieve more initial candidates
             initial_top_k = top_k * rerank_factor if rerank else top_k
             
-            # Base query
-            base_query = session.query(ChunkEmbedding).filter(
-                ChunkEmbedding.user_id == user_id
-            )
-            
-            # Filter by document IDs from first pass if BM25 was used
-            if use_bm25_first_pass and first_pass_doc_ids:
-                base_query = base_query.filter(
-                    ChunkEmbedding.document_id.in_(first_pass_doc_ids)
-                )
-            
-            if not hybrid_search:
-                # Use vector search only
-                results = base_query.order_by(
-                    ChunkEmbedding.embedding.cosine_distance(query_embedding)
-                ).limit(initial_top_k).all()
-            else:
+            # Prepare the SQL query
+            if hybrid_search:
                 # Hybrid search: combine vector similarity with text similarity
-                from sqlalchemy import func, text, cast, Float
+                sql = """
+                    SELECT * FROM chunks_embeddings 
+                    WHERE user_id = %s 
+                """
                 
-                # Convert the JSON 'page_content' field to text for full-text search
-                content_extractor = func.jsonb_extract_path_text(ChunkEmbedding.data, 'page_content')
+                params = [user_id]
                 
-                # Create tsvector and tsquery for PostgreSQL full-text search
-                ts_vector = func.to_tsvector('french', content_extractor)
-                ts_query = func.plainto_tsquery('french', query)
+                if use_bm25_first_pass and first_pass_doc_ids:
+                    sql += " AND document_id = ANY(%s) "
+                    params.append(first_pass_doc_ids)
                 
-                # Calculate text search rank using PostgreSQL ts_rank
-                text_rank = func.ts_rank(ts_vector, ts_query)
+                sql += f"""
+                    ORDER BY ({alpha} * (1 - (embedding <=> %s::vector)/2) + 
+                             (1 - {alpha}) * ts_rank(to_tsvector(%s, data->>'page_content'), 
+                                                  plainto_tsquery(%s, %s))) DESC
+                    LIMIT %s
+                """
+                params.extend([query_embedding_list, language, language, query, initial_top_k])
                 
-                # Calculate vector similarity (cosine distance)
-                vector_distance = ChunkEmbedding.embedding.cosine_distance(query_embedding)
+            else:
+                # Vector search only
+                sql = """
+                    SELECT * FROM chunks_embeddings 
+                    WHERE user_id = %s 
+                """
                 
-                # Convert vector distance to a similarity score (1 - distance)
-                vector_similarity = 1 - (vector_distance / 2.0)
+                params = [user_id]
                 
-                # Calculate the combined score with alpha as the weighting factor
-                combined_score = (
-                    alpha * vector_similarity.cast(Float) + 
-                    (1 - alpha) * text_rank.cast(Float)
+                if use_bm25_first_pass and first_pass_doc_ids:
+                    sql += " AND document_id = ANY(%s) "
+                    params.append(first_pass_doc_ids)
+                
+                sql += """
+                    ORDER BY embedding <=> %s::vector
+                    LIMIT %s
+                """
+                params.extend([query_embedding_list, initial_top_k])
+            
+            # Execute query
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            
+            # Convert rows to ChunkEmbedding objects
+            results = []
+            for row in rows:
+                # Create a document with the data from the row
+                doc = Document(
+                    page_content=row['data'].get('page_content', ''),
+                    metadata=row['data'].get('metadata', {})
                 )
-                
-                # Hybrid query that uses both vector and text similarity for ranking
-                results = base_query.order_by(
-                    combined_score.desc()  # Higher score is better
-                ).limit(initial_top_k).all()
+                results.append(doc)
             
             # Apply cross-encoder reranking if requested
             if rerank and results:
-                results = self._rerank_with_cross_encoder(
+                # Convert rows to ChunkEmbedding objects for reranking
+                chunk_objects = []
+                for row in rows:
+                    chunk = ChunkEmbedding(
+                        id=row['id'],
+                        document_id=row['document_id'],
+                        user_id=row['user_id'],
+                        data=row['data'],
+                        embedding=row['embedding']
+                    )
+                    chunk_objects.append(chunk)
+                
+                # Rerank using cross-encoder
+                reranked_chunks = self._rerank_with_cross_encoder(
                     query=query,
-                    initial_results=results,
+                    initial_results=chunk_objects,
                     top_k=top_k,
                     model_name=rerank_model
                 )
+                
+                # Convert reranked chunks to documents
+                results = [chunk.to_langchain_doc() for chunk in reranked_chunks]
             elif len(results) > top_k:
                 # If we retrieved more results than needed (for reranking) but didn't rerank,
                 # trim to the requested top_k
                 results = results[:top_k]
-                
-            # Convert results to LangChain documents and return
-            return [result.to_langchain_doc() for result in results]
+            
+            return results
+        
         finally:
             if session:
                 session.close()
@@ -760,10 +684,6 @@ if __name__ == "__main__":
     
     print(f"Retrieved document: {retrieved_doc2.id}, with {len(retrieved_doc2.documents)} chunks")
     print(f"Document content: {retrieved_doc2.documents[0].page_content}")
-    
-    # Optimize indexes (if not already created during initialization)
-    pgvector.ensure_text_search_index()
-    pgvector.create_vector_index(index_type='ivfflat', lists=10)  # Small list count for test data
     
     # Search for similar documents using vector search only
     print(f"\nSearching for 'test document' using vector search...")
