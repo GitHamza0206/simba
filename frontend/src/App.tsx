@@ -12,6 +12,7 @@ import OrganizationPage from './pages/OrganizationPage';
 import SettingsPage from './pages/SettingsPage';
 import GeneralSettings from './pages/settings/GeneralSettings';
 import MembersSettings from './pages/settings/MembersSettings';
+import KnowledgeConfigPage from '@/components/KnowledgeConfig/KnowledgeConfigPage';
 import { Toaster } from '@/components/ui/toaster';
 
 // Use a direct path to the worker from node_modules
@@ -34,6 +35,11 @@ function App() {
           <Route path="/documents" element={
             <ProtectedRoute>
               <DocumentManagementApp />
+            </ProtectedRoute>
+          } />
+          <Route path="/knowledge-config" element={
+            <ProtectedRoute>
+              <KnowledgeConfigPage />
             </ProtectedRoute>
           } />
           
