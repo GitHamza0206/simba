@@ -38,7 +38,7 @@ const APP_VERSION = "v1.0.0"
 const sidebarItems = [
   { name: "Home", icon: Home, path: "/" },
   { name: "Documents", icon: Terminal, path: "/documents" },
-  { name: "Knowledge Config", icon: Brain, path: "/knowledge-config" },
+  { name: "Knowledge", icon: Brain, path: "/knowledge" },
   { name: "Plugins", icon: PlugZap, path: "/plugins" },
   { name: "API Keys", icon: Key, path: "/api-keys" },
 ]
