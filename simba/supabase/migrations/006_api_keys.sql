@@ -1,26 +1,25 @@
--- Migration to create API keys table in Supabase
--- This table stores API keys for auth without username/password
+-- =============================================================
+-- Section 6: API Keys Table
+-- =============================================================
 
--- Create the api_keys table
 CREATE TABLE IF NOT EXISTS api_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    key TEXT NOT NULL UNIQUE,  -- Hashed API key value
-    key_prefix TEXT NOT NULL,  -- First few characters of key for display/identification
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,  -- Virtual user association
-    name TEXT NOT NULL,  -- User-friendly name for the API key
-    roles JSONB NOT NULL DEFAULT '[]'::jsonb,  -- Associated roles
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    last_used TIMESTAMP WITH TIME ZONE,
+    key TEXT NOT NULL UNIQUE,           -- Hashed API key value
+    key_prefix TEXT NOT NULL,           -- For display/identification
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,                 -- User-friendly name
+    roles JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    last_used TIMESTAMPTZ,
     is_active BOOLEAN DEFAULT true,
-    expires_at TIMESTAMP WITH TIME ZONE
+    expires_at TIMESTAMPTZ
 );
 
--- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_api_keys_key ON api_keys(key);
 CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_is_active ON api_keys(is_active);
 
--- Create a trigger to update the last_used column
+-- Function and trigger to update the last_used column
 CREATE OR REPLACE FUNCTION update_api_key_last_used()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -35,10 +34,8 @@ CREATE TRIGGER update_api_key_usage
     WHEN (OLD.last_used IS DISTINCT FROM NEW.last_used)
     EXECUTE FUNCTION update_api_key_last_used();
 
--- Add RLS policies
 ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
 
--- Create policies for API key access control
 CREATE POLICY "API keys are only visible to their creator" ON api_keys
     FOR SELECT USING (auth.uid() = user_id);
 
@@ -51,7 +48,6 @@ CREATE POLICY "Users can only update their own API keys" ON api_keys
 CREATE POLICY "Users can only delete their own API keys" ON api_keys
     FOR DELETE USING (auth.uid() = user_id);
 
--- Function to check if an API key exists and is valid
 CREATE OR REPLACE FUNCTION is_valid_api_key(api_key TEXT)
 RETURNS UUID AS $$
 DECLARE
@@ -60,9 +56,8 @@ BEGIN
     SELECT user_id INTO user_id_val
     FROM api_keys
     WHERE key = api_key
-    AND is_active = true
-    AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP);
-    
+      AND is_active = true
+      AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP);
     RETURN user_id_val;
 END;
 $$ LANGUAGE plpgsql; 
