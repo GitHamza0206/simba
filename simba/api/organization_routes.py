@@ -46,19 +46,35 @@ async def get_organizations(
         supabase = get_supabase_client()
         response = supabase.table('organizations').select('*').execute()
         
+        if not response:
+            logger.error("Empty response from Supabase")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to retrieve organizations: Empty response"
+            )
+            
         if hasattr(response, 'error') and response.error:
             logger.error(f"Supabase error: {response.error}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve organizations"
+                detail=f"Failed to retrieve organizations: {str(response.error)}"
+            )
+            
+        if not hasattr(response, 'data'):
+            logger.error("Response missing data attribute")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to retrieve organizations: Invalid response format"
             )
             
         return response.data
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to get organizations: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve organizations"
+            detail=f"Failed to retrieve organizations: {str(e)}"
         )
 
 @organization_router.post(
