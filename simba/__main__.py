@@ -22,13 +22,14 @@ def create_app():
     # Import application components
     from simba.api.auth_routes import auth_router
     from simba.api.chat_routes import chat
+    from simba.api.config_routes import config_router
     from simba.api.database_routes import database_route
     from simba.api.embedding_routes import embedding_route
     from simba.api.ingestion_routes import ingestion
     from simba.api.parsing_routes import parsing
     from simba.api.retriever_routes import retriever_route
     from simba.api.role_routes import role_router
-    from simba.api.organization_routes import organization_router  # Import our new organization router
+    from simba.api.organization_routes import organization_router
     from simba.api.api_key_routes import api_key_router
     from simba.core.config import settings
     from simba.core.utils.logger import setup_logging
@@ -43,10 +44,16 @@ def create_app():
     setup_logging(level=logging.DEBUG)
 
     # Initialize FastAPI app
-    app = FastAPI(title=settings.project.name)
+    app = FastAPI(
+        title="Simba API",
+        description="API for Simba - A Document Processing and Retrieval System",
+        version="1.0.0",
+    )
+
+    # Configure CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173"],
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -100,17 +107,18 @@ def create_app():
                 logger.error(f"Error while shutting down Celery: {e}")
         logger.info("SIMBA Application shutdown complete.")
 
-    # Include API routers
+    # Register routers
     app.include_router(auth_router)
     app.include_router(chat)
-    app.include_router(ingestion)
-    app.include_router(parsing)
+    app.include_router(config_router)
     app.include_router(database_route)
     app.include_router(embedding_route)
+    app.include_router(ingestion)
+    app.include_router(parsing)
     app.include_router(retriever_route)
     app.include_router(role_router)
-    app.include_router(organization_router)  # Include our new organization router
-    app.include_router(api_key_router)  # Include our new API key router
+    app.include_router(organization_router)
+    app.include_router(api_key_router)
 
     return app
 
