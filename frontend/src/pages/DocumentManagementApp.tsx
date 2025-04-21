@@ -15,6 +15,44 @@ interface DocumentManagementHeaderProps extends React.HTMLAttributes<HTMLDivElem
   stats: DocumentStatsType;
 }
 
+// Utility function to handle browser-side caching
+const useLocalCache = (key: string, ttl = 60000) => { // 60 seconds TTL by default
+  const getCache = () => {
+    try {
+      const cacheItem = localStorage.getItem(key);
+      if (!cacheItem) return null;
+      
+      const { value, expiry } = JSON.parse(cacheItem);
+      if (Date.now() > expiry) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      return value;
+    } catch (error) {
+      console.error('Cache retrieval error:', error);
+      return null;
+    }
+  };
+
+  const setCache = (value: any) => {
+    try {
+      const cacheItem = {
+        value,
+        expiry: Date.now() + ttl,
+      };
+      localStorage.setItem(key, JSON.stringify(cacheItem));
+    } catch (error) {
+      console.error('Cache storage error:', error);
+    }
+  };
+
+  const clearCache = () => {
+    localStorage.removeItem(key);
+  };
+
+  return { getCache, setCache, clearCache };
+};
+
 const DocumentManagementApp: React.FC = () => {
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,6 +60,7 @@ const DocumentManagementApp: React.FC = () => {
   const { toast } = useToast();
   const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
   const [loadingStatus, setLoadingStatus] = useState<string>("Loading...");
+  const { getCache, setCache, clearCache } = useLocalCache('documentCache', 300000); // 5-minute cache
 
   // New handlers for multi-select actions
   const handleParse = async (doc: DocumentType) => {
@@ -50,10 +89,21 @@ const DocumentManagementApp: React.FC = () => {
   };
 
   const fetchDocuments = async () => {
+    // Check cache first
+    const cachedDocs = getCache();
+    if (cachedDocs) {
+      console.log('Using cached documents');
+      setDocuments(cachedDocs);
+      return;
+    }
+    
     setIsLoading(true);
     try {
       const docs = await ingestionApi.getDocuments();
       setDocuments(docs);
+      
+      // Cache the documents
+      setCache(docs);
     } catch (error) {
       console.error('Error fetching documents:', error);
       toast({
@@ -74,6 +124,8 @@ const DocumentManagementApp: React.FC = () => {
     try {
       await ingestionApi.deleteDocument(id);
       setDocuments(docs => docs.filter(doc => doc.id !== id));
+      // Update cache after delete
+      clearCache();
       toast({
         title: "Success",
         description: "Document successfully deleted",
@@ -111,6 +163,8 @@ const DocumentManagementApp: React.FC = () => {
       setProgress(50);
       setLoadingStatus("Processing documents...");
       await new Promise(resolve => setTimeout(resolve, 1000));
+      // Clear cache to force fetching fresh data after upload
+      clearCache();
       await fetchDocuments();
       toast({
         title: "Success",
@@ -132,6 +186,8 @@ const DocumentManagementApp: React.FC = () => {
 
   const handleDocumentUpdate = (updatedDoc: DocumentType) => {
     setDocuments(prev => prev.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
+    // Update cache after document update
+    clearCache();
   };
 
   return (
@@ -167,6 +223,8 @@ const DocumentManagementApp: React.FC = () => {
         onUpdate={(updatedDoc) => {
           setDocuments(prev => prev.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
           setSelectedDocument(updatedDoc);
+          // Update cache after document update in modal
+          clearCache();
         }}
       />
       <Toaster />
