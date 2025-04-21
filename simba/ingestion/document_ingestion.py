@@ -16,6 +16,7 @@ from simba.models.simbadoc import MetadataType, SimbaDoc
 from simba.splitting import Splitter
 from simba.core.factories.storage_factory import StorageFactory
 from simba.storage.base import StorageProvider
+from simba.core.redis import RedisService
 from .loader import Loader
 from .file_handling import delete_file_locally
 
@@ -31,6 +32,7 @@ class DocumentIngestionService:
         self.loader = Loader()
         self.splitter = Splitter()
         self.storage: StorageProvider = StorageFactory.get_storage_provider()
+        self.redis = RedisService()
 
     async def ingest_document(self, file: UploadFile, folder_path: str = "/") -> SimbaDoc:
         """Ingest a document
@@ -79,9 +81,15 @@ class DocumentIngestionService:
                 parser=None,
             )
             
-            return SimbaDoc.from_documents(
+            # Create SimbaDoc
+            simbadoc = SimbaDoc.from_documents(
                 id=str(uuid.uuid4()), documents=document, metadata=metadata
             )
+            
+            # Cache the document in Redis
+            await self.redis.set(f"documents:{simbadoc.id}", simbadoc.dict())
+            
+            return simbadoc
             
         except Exception as e:
             logger.error(f"Error ingesting document: {str(e)}")
@@ -90,26 +98,34 @@ class DocumentIngestionService:
                 await self.storage.delete_file(saved_path)
             raise
 
-    def get_document(self, document_id: str) -> Optional[Document]:
+    async def get_document(self, document_id: str) -> Optional[Document]:
         """Get a document by its ID"""
         try:
+            # Try to get from Redis first
+            cached_doc = await self.redis.get(f"documents:{document_id}")
+            if cached_doc:
+                return Document(**cached_doc)
+                
+            # If not in Redis, get from vector store
             document = self.vector_store.get_document(document_id)
-            if not document:
-                logger.warning(f"Document {document_id} not found in vector store")
-                return None
+            if document:
+                # Cache in Redis
+                await self.redis.set(f"documents:{document_id}", document.dict())
             return document
         except Exception as e:
             logger.error(f"Error retrieving document {document_id}: {str(e)}")
             return None
 
-    def delete_ingested_document(self, uid: str, delete_locally: bool = False) -> int:
+    async def delete_ingested_document(self, uid: str, delete_locally: bool = False) -> int:
         try:
-
             if delete_locally:
                 doc = self.vector_store.get_document(uid)
                 delete_file_locally(Path(doc.metadata.get("file_path")))
 
             self.vector_store.delete_documents([uid])
+            
+            # Delete from Redis cache
+            await self.redis.delete(f"documents:{uid}")
 
             return {"message": f"Document {uid} deleted successfully"}
 
@@ -117,12 +133,16 @@ class DocumentIngestionService:
             logger.error(f"Error deleting document {uid}: {e}")
             raise e
 
-    def update_document(self, simbadoc: SimbaDoc, args: dict):
+    async def update_document(self, simbadoc: SimbaDoc, args: dict):
         try:
             for key, value in args.items():
                 setattr(simbadoc.metadata, key, value)
 
             self.vector_store.update_document(simbadoc.id, simbadoc)
+            
+            # Update Redis cache
+            await self.redis.set(f"documents:{simbadoc.id}", simbadoc.dict())
+            
             logger.info(f"Document {simbadoc.id} updated successfully")
         except Exception as e:
             logger.error(f"Error updating document {simbadoc.id}: {e}")
