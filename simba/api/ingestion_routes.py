@@ -69,10 +69,7 @@ async def update_document(
         success = db.update_document(doc_id, new_simbadoc, user_id=current_user["id"])
         if not success:
             raise HTTPException(status_code=404, detail=f"Document {doc_id} not found or you don't have access to it")
-        
-        # Update Redis cache
-        await ingestion_service.update_document(new_simbadoc, {})
-        
+
         return new_simbadoc
     except Exception as e:
         logger.error(f"Error in update_document: {str(e)}")
@@ -95,15 +92,10 @@ async def get_document(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Get a document by ID"""
-    # Use Redis-cached document service
-    document = await ingestion_service.get_document(uid)
+    # Get document for the current user only
+    document = db.get_document(uid, user_id=current_user["id"])
     if not document:
-        # If document not found in cache or vector store, try database
-        document = db.get_document(uid, user_id=current_user["id"])
-        if not document:
-            raise HTTPException(status_code=404, detail=f"Document {uid} not found or you don't have access to it")
-        # Cache the document for future requests
-        await ingestion_service.redis.set(f"documents:{uid}", document.dict())
+        raise HTTPException(status_code=404, detail=f"Document {uid} not found or you don't have access to it")
     return document
 
 
@@ -129,9 +121,6 @@ async def delete_document(
                     logger.warning(
                         f"Error deleting document {uid} from vector store: {str(e)}. Continuing with database deletion."
                     )
-            
-            # Delete from Redis cache
-            await ingestion_service.redis.delete(f"documents:{uid}")
 
         # Delete documents from database for the current user only
         for uid in uids:
@@ -169,13 +158,10 @@ async def preview_document(
 ):
     """Get a file for preview by document ID"""
     try:
-        # Use Redis-cached document service
-        document = await ingestion_service.get_document(doc_id)
+        # Retrieve document from database for the current user only
+        document = db.get_document(doc_id, user_id=current_user["id"])
         if not document:
-            # If document not found in cache or vector store, try database
-            document = db.get_document(doc_id, user_id=current_user["id"])
-            if not document:
-                raise HTTPException(status_code=404, detail=f"Document {doc_id} not found or you don't have access to it")
+            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found or you don't have access to it")
 
         # Get file path from document metadata
         file_path = document.metadata.file_path
