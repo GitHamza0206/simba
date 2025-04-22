@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from './http/client';
 import { 
   AuthResponse, 
   SignInCredentials, 
@@ -6,14 +6,27 @@ import {
   User 
 } from '@/types/auth';
 
-// Base API URL for auth operations
-const API_URL = '/api';
+// Function to handle authentication errors (e.g., redirect to login)
+function handleAuthError() {
+  // Clear potentially stale auth data
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('userId');
+  localStorage.removeItem('userEmail');
+  // Redirect to login page
+  if (typeof window !== 'undefined') { // Ensure this runs only in the browser
+     console.error("Authentication error, redirecting to login.");
+     window.location.href = '/auth/login'; 
+  } else {
+     console.error("Authentication error occurred in non-browser environment.");
+  }
+}
 
 // Sign up with email and password
 export async function signUp(
   email: string, 
   password: string, 
-  userData?: Record<string, any>
+  userData?: Record<string, unknown>
 ): Promise<User> {
   try {
     const payload: SignUpCredentials = {
@@ -22,7 +35,7 @@ export async function signUp(
       metadata: userData,
     };
     
-    const response = await axios.post(`${API_URL}/auth/signup`, payload);
+    const response = await httpClient.post(`/auth/signup`, payload);
     
     // If signup was successful, also store the user data
     if (response.data && response.data.user) {
@@ -31,9 +44,12 @@ export async function signUp(
     }
     
     return response.data.user;
-  } catch (error: any) {
-    console.error('Sign up error:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.message || 'Failed to sign up');
+  } catch (error: unknown) {
+    let errorMessage = 'Failed to sign up';
+    if (error instanceof Error) {
+        errorMessage = error.message;
+    }
+    throw new Error(errorMessage);
   }
 }
 
@@ -45,15 +61,11 @@ export async function signIn(email: string, password: string): Promise<AuthRespo
       password,
     };
     
-    console.log('Signing in with:', payload);
-    const response = await axios.post(`${API_URL}/auth/signin`, payload);
-    console.log('Sign in response:', response.data);
-    
+    const response = await httpClient.post(`/auth/signin`, payload);
     const data = response.data;
     
     // Make sure we have a valid session structure
     if (!data || !data.session || !data.user) {
-      console.error('Invalid auth response structure:', data);
       throw new Error('Invalid authentication response from server');
     }
     
@@ -65,78 +77,39 @@ export async function signIn(email: string, password: string): Promise<AuthRespo
     localStorage.setItem('userId', data.user.id);
     localStorage.setItem('userEmail', data.user.email);
     
-    // Debug: Verify token was stored
-    console.log('Stored access token:', data.session.access_token.substring(0, 10) + '...');
-    
     return data;
-  } catch (error: any) {
-    console.error('Sign in error:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.detail || error.response?.data?.message || 'Failed to sign in');
+  } catch (error: unknown) {
+    let errorMessage = 'Failed to sign in';
+    if (error instanceof Error) {
+        errorMessage = error.message;
+    }
+    throw new Error(errorMessage);
   }
 }
 
 // Sign out
 export async function signOut(): Promise<void> {
   try {
-    await axios.post(`${API_URL}/auth/signout`, {}, {
-      headers: {
-        Authorization: `Bearer ${getAccessToken()}`
-      }
-    });
-    
-    // Clear tokens and user data from localStorage
+    await httpClient.post(`/auth/signout`);
+  } finally {
+    // Always clear tokens and user data from localStorage
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
     localStorage.removeItem('userEmail');
-  } catch (error: any) {
-    console.error('Sign out error:', error.response?.data || error.message);
-    // Clear tokens and user data even if the API call fails
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userEmail');
-    throw new Error(error.response?.data?.message || 'Failed to sign out');
   }
 }
 
 // Reset password
 export async function resetPassword(email: string): Promise<void> {
   try {
-    await axios.post(`${API_URL}/auth/reset-password`, { email });
-  } catch (error: any) {
-    console.error('Reset password error:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.message || 'Failed to reset password');
-  }
-}
-
-// Refresh token
-export async function refreshToken(): Promise<string> {
-  try {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
+    await httpClient.post(`/auth/reset-password`, { email });
+  } catch (error: unknown) {
+    let errorMessage = 'Failed to reset password';
+    if (error instanceof Error) {
+        errorMessage = error.message;
     }
-    
-    console.log('Refreshing token with:', refreshToken.substring(0, 10) + '...');
-    const response = await axios.post(`${API_URL}/auth/refresh`, { 
-      refresh_token: refreshToken 
-    });
-    
-    console.log('Refresh token response:', response.data);
-    const { access_token, refresh_token } = response.data;
-    
-    // Update tokens in localStorage
-    localStorage.setItem('accessToken', access_token);
-    localStorage.setItem('refreshToken', refresh_token);
-    
-    return access_token;
-  } catch (error: any) {
-    console.error('Refresh token error:', error.response?.data || error.message);
-    // Clear tokens if refresh fails
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    throw new Error(error.response?.data?.message || 'Failed to refresh token');
+    throw new Error(errorMessage);
   }
 }
 
@@ -150,59 +123,85 @@ export function isAuthenticated(): boolean {
   return !!getAccessToken();
 }
 
-// Create axios instance with auth header
-export const authAxios = axios.create({
-  baseURL: '', // Removed API_URL to avoid double prefixing
-});
-
-// Add a request interceptor to include the access token
-authAxios.interceptors.request.use(
-  (config) => {
-    const token = getAccessToken();
-    if (token) {
-      console.log('Adding auth header with token:', token.substring(0, 10) + '...');
-      // Fix: Use the correct Authorization header format expected by FastAPI
-      config.headers['Authorization'] = `Bearer ${token}`;
-      
-      // Debug: Log the full request configuration
-      console.log('Request config:', {
-        url: config.url,
-        method: config.method,
-        headers: config.headers,
-      });
-    } else {
-      console.warn('No auth token available for request:', config.url);
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Response interceptor for token refresh
-authAxios.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    
-    // If error is 401 (Unauthorized) and we haven't tried to refresh the token yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      try {
-        console.log('Attempting to refresh token after 401 error');
-        // Try to refresh the token - this will update cookies server-side
-        await refreshToken();
-        
-        // Just retry the request - cookies will be sent automatically
-        return authAxios(originalRequest);
-      } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
-        // If refresh fails, redirect to login
-        window.location.href = '/auth/login';
-        return Promise.reject(refreshError);
-      }
-    }
-    
-    return Promise.reject(error);
+// Refresh token function
+export async function refreshToken(): Promise<string> {
+  const currentRefreshToken = localStorage.getItem('refreshToken');
+  if (!currentRefreshToken) {
+    throw new Error('No refresh token available');
   }
-); 
+
+  try {
+    const response = await httpClient.post(`/auth/refresh`, {
+      refresh_token: currentRefreshToken
+    });
+
+    const { access_token, refresh_token: new_refresh_token } = response.data;
+    
+    if (!access_token || !new_refresh_token) {
+      throw new Error("Invalid token refresh response");
+    }
+    
+    // Update tokens in localStorage
+    localStorage.setItem('accessToken', access_token);
+    localStorage.setItem('refreshToken', new_refresh_token);
+    
+    return access_token;
+  } catch (error: unknown) {
+    let errorMessage = 'Failed to refresh token';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    throw new Error(errorMessage);
+  }
+}
+
+// --- Axios Instance Setup ---
+// Create the authenticated Axios instance using the factory function
+// Pass the necessary functions from this module
+export const authAxios = {
+  getAccessToken,
+  refreshToken: async () => {
+    const currentRefreshToken = localStorage.getItem('refreshToken');
+    if (!currentRefreshToken) {
+      // If there's no refresh token, we can't refresh. 
+      // Throwing an error here will be caught by the interceptor's catch block,
+      // which will then call handleAuthError (our onAuthError callback).
+      console.error('Attempted to refresh token, but none was found.');
+      throw new Error('No refresh token available'); 
+    }
+
+    try {
+      console.log('Refreshing token with:', currentRefreshToken.substring(0, 10) + '...');
+      // Use standard axios for the refresh endpoint itself to avoid interceptor loops
+      const response = await httpClient.post(`/auth/refresh`, { 
+        refresh_token: currentRefreshToken 
+      });
+      
+      console.log('Refresh token response:', response.data);
+      const { access_token, refresh_token: new_refresh_token } = response.data;
+
+      if (!access_token || !new_refresh_token) {
+        console.error("Invalid token refresh response structure:", response.data);
+        throw new Error("Invalid token refresh response"); // Caught below
+      }
+      
+      // Update tokens in localStorage
+      localStorage.setItem('accessToken', access_token);
+      localStorage.setItem('refreshToken', new_refresh_token); // Store the potentially new refresh token
+      console.log('Tokens refreshed successfully.');
+      
+      return access_token; // Return the new access token
+    } catch (error: unknown) {
+      console.error('Refresh token API call failed.'); // Log specific error before throwing
+      let errorMessage = 'Failed to refresh token via API';
+      if (error instanceof Error) {
+          errorMessage = error.message;
+          console.error('Refresh token error:', error.message);
+      }
+      // Re-throw the error. This will be caught by the response interceptor's catch block,
+      // which will then call handleAuthError (our onAuthError callback) because the refresh failed.
+      throw new Error(errorMessage); 
+    }
+  },
+  onAuthError: handleAuthError
+}; 

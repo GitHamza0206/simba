@@ -137,35 +137,63 @@ class PostgresDB(DatabaseService):
         with cls.get_connection() as conn:
             try:
                 with conn.cursor() as cursor:
+                    logger.info(f"Executing query: {query}")
+                    logger.info(f"Parameters: {params}")
                     cursor.execute(query, params or ())
                     rowcount = cursor.rowcount
+                    logger.info(f"Query executed successfully. Affected rows: {rowcount}")
                 conn.commit()
+                logger.info("Transaction committed")
                 return rowcount
             except Exception as e:
                 conn.rollback()
                 logger.error(f"Query execution error: {str(e)}")
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Database query failed"
+                    detail=f"Database query failed: {str(e)}"
                 )
     
     @classmethod
     def fetch_all(cls, query, params=None):
         """Run a SELECT query and return all results."""
         with cls.get_connection() as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute(query, params or ())
-                results = cursor.fetchall()
-                return [dict(row) for row in results]
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    logger.info(f"Executing fetch_all query: {query}")
+                    logger.info(f"Parameters: {params}")
+                    cursor.execute(query, params or ())
+                    results = cursor.fetchall()
+                    logger.info(f"Query returned {len(results)} results")
+                    return [dict(row) for row in results]
+            except Exception as e:
+                logger.error(f"fetch_all error: {str(e)}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Database fetch failed: {str(e)}"
+                )
     
     @classmethod
     def fetch_one(cls, query, params=None):
         """Run a SELECT query and return one result."""
         with cls.get_connection() as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute(query, params or ())
-                row = cursor.fetchone()
-                return dict(row) if row else None
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    logger.info(f"Executing fetch_one query: {query}")
+                    logger.info(f"Parameters: {params}")
+                    cursor.execute(query, params or ())
+                    row = cursor.fetchone()
+                    if row:
+                        logger.info(f"Query returned a row with id: {row.get('id')}")
+                        return dict(row)
+                    else:
+                        logger.warning("Query returned no results")
+                        return None
+            except Exception as e:
+                logger.error(f"fetch_one error: {str(e)}", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Database fetch failed: {str(e)}"
+                )
     
     # ORM methods implementing DatabaseService interface
     def insert_document(self, document: SimbaDoc, user_id: str) -> str:

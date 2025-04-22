@@ -44,7 +44,7 @@ async def get_organizations(
     try:
         # RLS will automatically filter to only show organizations where user is a member
         supabase = get_supabase_client()
-        response = supabase.table('organizations').select('*').execute()
+        response = supabase.table('organizations').select('id, name, created_at, created_by').execute()
         
         if not response:
             logger.error("Empty response from Supabase")
@@ -125,7 +125,7 @@ async def create_organization(
             'user_id': current_user.get("id"),
             'email': current_user.get("email"),
             'role': 'owner'
-        }).execute()
+        }).select('id, organization_id, user_id, email, role').execute()
         
         if hasattr(member_response, 'error') and member_response.error:
             logger.error(f"Supabase error: {member_response.error}")
@@ -168,7 +168,7 @@ async def get_organization(
     try:
         # RLS will automatically check if user is a member of this organization
         supabase = get_supabase_client()
-        response = supabase.table('organizations').select('*').eq('id', org_id).single().execute()
+        response = supabase.table('organizations').select('id, name, created_at, created_by').eq('id', org_id).single().execute()
         
         # Handle not found or permission denied
         if hasattr(response, 'error') and response.error:
@@ -218,7 +218,7 @@ async def get_organization_members(
     try:
         # RLS will automatically check if user is a member of this organization
         supabase = get_supabase_client()
-        response = supabase.table('organization_members').select('*').eq('organization_id', org_id).execute()
+        response = supabase.table('organization_members').select('id, organization_id, user_id, email, role').eq('organization_id', org_id).execute()
         
         # If the response is empty because user isn't a member, we'll get an empty list not an error
         # We can specifically check if the user is a member of the org first
@@ -388,7 +388,7 @@ async def update_member_role(
         # If member is an owner, only allow role change if there's at least one other owner
         if member_to_update.data.get('role') == 'owner' and update.role != 'owner':
             # Count owners in this organization
-            owners_count = supabase.table('organization_members').select('id', 'count') \
+            owners_count = supabase.table('organization_members').select('id', count='exact') \
                 .eq('organization_id', org_id) \
                 .eq('role', 'owner') \
                 .execute()
