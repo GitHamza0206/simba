@@ -14,8 +14,10 @@ from fastapi import HTTPException, status
 from simba.models.api_key import APIKey, APIKeyInfo, APIKeyResponse, APIKeyCreate
 from simba.database.postgres import PostgresDB
 from simba.auth.role_service import RoleService
+from simba.auth.supabase_client import get_supabase_client
 
 logger = logging.getLogger(__name__)
+supabase = get_supabase_client()
 
 
 class APIKeyService:
@@ -86,49 +88,26 @@ class APIKeyService:
                         detail=f"Role '{role_name}' does not exist"
                     )
             
-            # Get tenant_id from key_data or set to NULL
-            tenant_id_param = str(key_data.tenant_id) if key_data.tenant_id else None
-            logger.info(f"Tenant ID parameter: {tenant_id_param}")
-            
-            # Log the query parameters
-            query = """
-                INSERT INTO api_keys 
-                (key, key_prefix, user_id, tenant_id, name, roles, expires_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                RETURNING id, key_prefix, tenant_id, name, roles, created_at, expires_at
-            """
-            
-            params = (
-                key_hash, 
-                key_prefix, 
-                str(user_id), 
-                tenant_id_param,
-                key_data.name, 
-                json.dumps(key_data.roles), 
-                key_data.expires_at
-            )
-            
+            # Prepare data for insert
+            insert_data = {
+                "key": key_hash,
+                "key_prefix": key_prefix,
+                "user_id": str(user_id),  # Convert UUID to string to match auth.uid() format
+                "tenant_id": str(key_data.tenant_id) if key_data.tenant_id else None,
+                "name": key_data.name,
+                "roles": key_data.roles,
+                "expires_at": key_data.expires_at.isoformat() if key_data.expires_at else None
+            }
             
             try:
-                # Insert into database using execute_query
-                result = PostgresDB.execute_query(query, params)
+                # Insert using Supabase client
+                result = supabase.table('api_keys').insert(insert_data).execute()
                 
-                if result > 0:
-                    # Fetch the inserted row to get the returned values
-                    row = PostgresDB.fetch_one("""
-                        SELECT id, key_prefix, tenant_id, name, roles, created_at, expires_at
-                        FROM api_keys
-                        WHERE key = %s
-                    """, (key_hash,))
-                    
-                    if row:
-                        logger.info(f"API key created successfully with ID: {row.get('id')}")
-                    else:
-                        logger.error("Failed to fetch created API key")
-                        raise Exception("Failed to fetch created API key")
-                else:
-                    logger.error("Database insert failed")
-                    raise Exception("Database insert failed")
+                if not result.data:
+                    logger.error("Failed to create API key through Supabase")
+                    raise Exception("Failed to create API key")
+                
+                row = result.data[0]
                 
                 # Return the response with the raw key (this is the only time it will be visible)
                 response = APIKeyResponse(
@@ -142,8 +121,9 @@ class APIKeyService:
                     expires_at=row['expires_at']
                 )
                 
-                logger.info(f"Returning API key response with key prefix: {response.key_prefix}")
+                logger.info(f"API key created successfully with ID: {response.id}")
                 return response
+                
             except Exception as db_error:
                 logger.error(f"Database error during API key creation: {str(db_error)}")
                 raise
@@ -173,50 +153,31 @@ class APIKeyService:
             # Add debug logging
             logger.info(f"Getting API keys for user: {user_id}, tenant: {tenant_id}")
             
-            # Build the query with potential tenant filter
-            query = """
-                SELECT id, key_prefix, tenant_id, name, roles, created_at, last_used, is_active, expires_at
-                FROM api_keys
-                WHERE user_id = %s
-            """
-            params = [str(user_id)]
+            # Build query using Supabase
+            query = supabase.table('api_keys').select('*').eq('user_id', str(user_id))
             
             # Add tenant filter if provided
             if tenant_id:
-                query += " AND tenant_id = %s"
-                params.append(str(tenant_id))
+                query = query.eq('tenant_id', str(tenant_id))
                 
-            query += " ORDER BY created_at DESC"
+            # Execute query
+            result = query.execute()
             
-            logger.info(f"Executing query: {query}")
-            logger.info(f"Query parameters: {params}")
-            
-            # Query API keys for user
-            rows = PostgresDB.fetch_all(query, tuple(params))
-            
-            logger.info(f"Found {len(rows)} API keys for user {user_id}")
+            if not result.data:
+                logger.info(f"No API keys found for user {user_id}")
+                return []
             
             # Convert rows to APIKeyInfo objects
             api_keys = []
-            for row in rows:
-                # Debug logging
+            for row in result.data:
                 logger.info(f"Processing API key: {row.get('id')} with prefix: {row.get('key_prefix')}")
-                
-                # Parse the roles JSON if it's a string
-                roles = row['roles']
-                if isinstance(roles, str):
-                    try:
-                        roles = json.loads(roles)
-                    except json.JSONDecodeError:
-                        logger.error(f"Failed to parse roles JSON: {roles}")
-                        roles = []
                 
                 api_keys.append(APIKeyInfo(
                     id=row['id'],
                     key_prefix=row['key_prefix'],
                     tenant_id=row['tenant_id'],
                     name=row['name'],
-                    roles=roles,
+                    roles=row['roles'],
                     created_at=row['created_at'],
                     last_used=row['last_used'],
                     is_active=row['is_active'],
