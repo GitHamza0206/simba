@@ -108,18 +108,27 @@ class APIKeyService:
                 key_data.expires_at
             )
             
-            logger.info(f"Executing query: {query}")
-            logger.info(f"Query parameters: {params}")
             
             try:
-                # Insert into database
-                row = PostgresDB.fetch_one(query, params)
+                # Insert into database using execute_query
+                result = PostgresDB.execute_query(query, params)
                 
-                if row:
-                    logger.info(f"API key created successfully with ID: {row.get('id')}")
+                if result > 0:
+                    # Fetch the inserted row to get the returned values
+                    row = PostgresDB.fetch_one("""
+                        SELECT id, key_prefix, tenant_id, name, roles, created_at, expires_at
+                        FROM api_keys
+                        WHERE key = %s
+                    """, (key_hash,))
+                    
+                    if row:
+                        logger.info(f"API key created successfully with ID: {row.get('id')}")
+                    else:
+                        logger.error("Failed to fetch created API key")
+                        raise Exception("Failed to fetch created API key")
                 else:
-                    logger.error("Database returned no result after insert")
-                    raise Exception("Database returned no result after insert")
+                    logger.error("Database insert failed")
+                    raise Exception("Database insert failed")
                 
                 # Return the response with the raw key (this is the only time it will be visible)
                 response = APIKeyResponse(

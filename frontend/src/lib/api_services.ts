@@ -8,7 +8,6 @@
 import { ingestionApi } from './ingestion_api';
 import { embeddingApi } from './embedding_api';
 import { previewApi } from './preview_api';
-import { folderApi } from './folder_api';
 import { parsingApi } from './parsing_api';
 import { apiKeyService, ApiKey, ApiKeyResponse, ApiKeyCreate } from './api_key_service';
 
@@ -17,7 +16,6 @@ export {
   ingestionApi,
   embeddingApi,
   previewApi,
-  folderApi,
   parsingApi,
   apiKeyService,
 };

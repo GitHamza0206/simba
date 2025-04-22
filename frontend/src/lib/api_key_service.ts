@@ -1,4 +1,4 @@
-import { authAxios } from './supabase';
+import httpClient from './http/client';
 
 export interface ApiKey {
   id: string;
@@ -35,7 +35,7 @@ export const apiKeyService = {
   getApiKeys: async (tenantId?: string): Promise<ApiKey[]> => {
     try {
       const params = tenantId ? { tenant_id: tenantId } : undefined;
-      const response = await authAxios.get('/api/api-keys', { params });
+      const response = await httpClient.get('/api/api-keys', { params });
       return response.data;
     } catch (error) {
       console.error('Failed to fetch API keys:', error);
@@ -46,7 +46,7 @@ export const apiKeyService = {
   // Create a new API key
   createApiKey: async (keyData: ApiKeyCreate): Promise<ApiKeyResponse> => {
     try {
-      const response = await authAxios.post('/api/api-keys', keyData);
+      const response = await httpClient.post('/api/api-keys', keyData);
       return response.data;
     } catch (error) {
       console.error('Failed to create API key:', error);
@@ -58,7 +58,7 @@ export const apiKeyService = {
   deleteApiKey: async (keyId: string, tenantId?: string): Promise<void> => {
     try {
       const params = tenantId ? { tenant_id: tenantId } : undefined;
-      await authAxios.delete(`/api/api-keys/${keyId}`, { params });
+      await httpClient.delete(`/api/api-keys/${keyId}`, { params });
     } catch (error) {
       console.error('Failed to delete API key:', error);
       throw error;
@@ -69,7 +69,7 @@ export const apiKeyService = {
   deactivateApiKey: async (keyId: string, tenantId?: string): Promise<void> => {
     try {
       const params = tenantId ? { tenant_id: tenantId } : undefined;
-      await authAxios.post(`/api/api-keys/${keyId}/deactivate`, null, { params });
+      await httpClient.post(`/api/api-keys/${keyId}/deactivate`, null, { params });
     } catch (error) {
       console.error('Failed to deactivate API key:', error);
       throw error;
