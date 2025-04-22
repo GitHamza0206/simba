@@ -40,12 +40,13 @@ class BaseRetriever(ABC):
         self.store = vector_store or VectorStoreFactory.get_vector_store()
 
     @abstractmethod
-    def retrieve(self, query: str, **kwargs) -> List[Document]:
+    def retrieve(self, query: str, user_id: str = None, **kwargs) -> List[Document]:
         """
         Retrieve relevant documents for the given query.
 
         Args:
             query: The search query
+            user_id: User ID for multi-tenant filtering
             **kwargs: Additional retrieval parameters
 
         Returns:

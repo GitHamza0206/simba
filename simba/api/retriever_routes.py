@@ -18,6 +18,7 @@ class RetrieveRequest(BaseModel):
     k: Optional[int] = 5
     score_threshold: Optional[float] = None
     filter: Optional[dict] = None
+    user_id: Optional[str] = None
 
 
 class RetrieveResponse(BaseModel):
@@ -50,6 +51,7 @@ async def retrieve_documents(request: RetrieveRequest) -> RetrieveResponse:
         k=request.k,
         score_threshold=request.score_threshold,
         filter=request.filter,
+        user_id=request.user_id,
     )
 
     return RetrieveResponse(documents=documents)

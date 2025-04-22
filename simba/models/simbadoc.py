@@ -44,6 +44,9 @@ class SimbaDoc(BaseModel):
     documents: List[Document]
     metadata: MetadataType
 
+    def dict(self, *args, **kwargs):
+        return self.model_dump()
+
     @classmethod
     def to_langchain_document(cls):
         """Convert SimbaDoc to a list of Langchain documents"""
@@ -55,3 +58,5 @@ class SimbaDoc(BaseModel):
     ) -> "SimbaDoc":
         """Create SimbaDoc from a list of Documents and metadata"""
         return cls(id=id, documents=documents, metadata=metadata)
+
+
