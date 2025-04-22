@@ -1,5 +1,5 @@
 import { SimbaDoc } from '@/types/document';
-import { authAxios } from './supabase';
+import httpClient from './http/client';
 
 export const parsingApi = {
   /**
@@ -7,7 +7,7 @@ export const parsingApi = {
    */
   getParsers: async (): Promise<string[]> => {
     try {
-      const response = await authAxios.get<{ parsers: string[] | string }>('/parsers');
+      const response = await httpClient.get<{ parsers: string[] | string }>('/parsers');
       
       // Handle string response (backward compatibility)
       if (typeof response.data.parsers === 'string') {
@@ -36,7 +36,7 @@ export const parsingApi = {
     
     console.log(`Starting parsing for ${documentId} using ${parser} (sync: ${sync})`);
     
-    const response = await authAxios.post<{ task_id?: string } | SimbaDoc>('/parse', {
+    const response = await httpClient.post<{ task_id?: string } | SimbaDoc>('/parse', {
       document_id: documentId,
       parser: parser,
       sync: sync
@@ -59,7 +59,7 @@ export const parsingApi = {
       error?: string;
     };
   }> => {
-    const response = await authAxios.get(`/parsing/tasks/${taskId}`);
+    const response = await httpClient.get(`/parsing/tasks/${taskId}`);
     return response.data;
   }
 }; 
