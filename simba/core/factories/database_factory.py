@@ -5,22 +5,21 @@ from typing import Optional
 
 from simba.core.config import settings
 from simba.database.litedb_service import LiteDocumentDB
-from simba.database.sqlite_service import SQLiteDocumentDB
+from simba.database.postgres import PostgresDB
 
 logger = logging.getLogger(__name__)
 
 
 class DatabaseType(Enum):
-    SQLITE = "sqlite"
     LITEDB = "litedb"  # Default option
-
+    POSTGRES = "postgres"
 
 SUPPORTED_DATABASES = {
-    DatabaseType.SQLITE: SQLiteDocumentDB,
     DatabaseType.LITEDB: LiteDocumentDB,
+    DatabaseType.POSTGRES: PostgresDB,
 }
 
-DEFAULT_DATABASE = DatabaseType.LITEDB
+DEFAULT_DATABASE = DatabaseType.POSTGRES
 
 
 @lru_cache()

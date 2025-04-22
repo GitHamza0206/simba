@@ -11,7 +11,7 @@ from simba.core.config import settings
 from simba.core.factories.vector_store_factory import VectorStoreFactory
 from simba.retrieval.base import BaseRetriever, RetrievalMethod
 from simba.retrieval.factory import RetrieverFactory
-
+from simba.auth.auth_service import get_supabase_client
 logger = logging.getLogger(__name__)
 
 
@@ -47,11 +47,16 @@ class Retriever:
         Args:
             query: The query string
             method: Retrieval method to use. If None, uses the configured default.
+            user_id: User ID for multi-tenant filtering (required for security)
             **kwargs: Additional parameters for the retrieval method
 
         Returns:
             List of relevant documents
         """
+        supabase = get_supabase_client()    
+        user = supabase.auth.get_user()
+        user_id = user.user.id
+
         # If method is specified, create a retriever for it
         if method:
             retriever = self.factory.get_retriever(method, vector_store=self.store)
@@ -60,6 +65,14 @@ class Retriever:
             # Use the default retriever
             retriever = self.default_retriever
             logger.debug(f"Using default retrieval strategy for query: {query[:50]}...")
+
+        # Log warning if user_id is not provided (insecure)
+        if user_id is None:
+            logger.warning("retrieve() called without user_id - this is not secure for multi-tenant systems")
+
+        # Add user_id to the kwargs for multi-tenancy
+        if user_id:
+            kwargs["user_id"] = user_id
 
         # Retrieve documents
         docs = retriever.retrieve(query, **kwargs)

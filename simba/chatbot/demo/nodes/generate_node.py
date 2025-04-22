@@ -26,6 +26,7 @@ def generate(state):
             "chat_history": state["messages"],
         }
     )
+
     messages = state["messages"] + [AIMessage(content=generation)]
 
-    return {"documents": documents, "messages": messages}
+    return {"documents": documents, "messages": messages, "generation": generation}

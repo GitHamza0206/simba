@@ -29,6 +29,9 @@ critical_env_vars = {
     "REDIS_HOST": os.getenv("REDIS_HOST"),
     "CELERY_BROKER_URL": os.getenv("CELERY_BROKER_URL"),
     "CELERY_RESULT_BACKEND": os.getenv("CELERY_RESULT_BACKEND"),
+    "POSTGRES_USER": os.getenv("POSTGRES_USER"),
+    "POSTGRES_PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+    "POSTGRES_HOST": os.getenv("POSTGRES_HOST"),
 }
 
 # Add MinIO settings if storage provider is minio
@@ -181,9 +184,96 @@ class StorageSettings(BaseSettings):
     )
     minio_secure: bool = Field(
         default=False,
-        description="Whether to use HTTPS for MinIO",
+        description="Use secure connection to MinIO",
         env="MINIO_SECURE"
     )
+
+
+class SupabaseSettings(BaseSettings):
+    """Supabase configuration settings"""
+    url: str = Field(
+        default="",
+        description="Supabase project URL",
+        env="SUPABASE_URL"
+    )
+    key: str = Field(
+        default="",
+        description="Supabase API key",
+        env="SUPABASE_KEY,SUPABASE_PUBLIC_KEY"  # Try both keys
+    )
+    jwt_secret: str = Field(
+        default="",
+        description="Supabase JWT secret for token verification",
+        env="SUPABASE_JWT_SECRET"
+    )
+
+
+class PostgresSettings(BaseSettings):
+    """PostgreSQL database settings"""
+    model_config = ConfigDict(env_prefix="", env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    
+    user: str = Field(
+        default="postgres",
+        description="PostgreSQL username",
+        env="POSTGRES_USER"
+    )
+    password: str = Field(
+        default="",
+        description="PostgreSQL password",
+        env="POSTGRES_PASSWORD"
+    )
+    host: str = Field(
+        default="localhost",
+        description="PostgreSQL host",
+        env="POSTGRES_HOST"
+    )
+    port: str = Field(
+        default="5432",
+        description="PostgreSQL port",
+        env="POSTGRES_PORT"
+    )
+    db: str = Field(
+        default="postgres",
+        description="PostgreSQL database name",
+        env="POSTGRES_DB"
+    )
+    connection_string: str = Field(
+        default="",
+        description="Full PostgreSQL connection string (if set, overrides individual settings)",
+        env="POSTGRES_CONNECTION_STRING,SUPABASE_CONNECTION_STRING"
+    )
+    
+    @property
+    def get_connection_string(self) -> str:
+        """Generate connection string if not explicitly provided"""
+        if self.connection_string:
+            return self.connection_string
+        return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db}"
+        
+    def __init__(self, **kwargs):
+        """Initialize with priority to environment variables"""
+        # Load from environment first
+        env_values = {}
+        for field_name, field in self.__class__.model_fields.items():
+            env_var = field.json_schema_extra.get("env") if field.json_schema_extra else None
+            if isinstance(env_var, str):
+                env_vars = [env_var]
+            elif isinstance(env_var, (list, tuple)):
+                env_vars = env_var
+            else:
+                env_vars = []
+                
+            for var in env_vars:
+                value = os.getenv(var)
+                if value is not None:
+                    env_values[field_name] = value
+                    break
+        
+        # Override with kwargs if provided
+        env_values.update(kwargs)
+        
+        # Initialize with combined values
+        super().__init__(**env_values)
 
 
 class Settings(BaseSettings):
@@ -200,6 +290,8 @@ class Settings(BaseSettings):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     celery: CelerySettings = Field(default_factory=CelerySettings)
     storage: StorageSettings = StorageSettings()
+    supabase: SupabaseSettings = SupabaseSettings()
+    postgres: PostgresSettings = PostgresSettings()
 
     @field_validator("celery")
     @classmethod

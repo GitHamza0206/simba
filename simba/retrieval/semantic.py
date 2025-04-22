@@ -33,12 +33,13 @@ class SemanticRetriever(BaseRetriever):
         self.default_k = k
         self.default_score_threshold = score_threshold
 
-    def retrieve(self, query: str, **kwargs) -> List[Document]:
+    def retrieve(self, query: str, user_id: str = None, **kwargs) -> List[Document]:
         """
         Retrieve documents using semantic search with configurable thresholds.
 
         Args:
             query: The query string
+            user_id: User ID for multi-tenant filtering
             **kwargs: Additional parameters including:
                 - k: Number of documents to retrieve (overrides instance default)
                 - score_threshold: Minimum similarity score (overrides instance default)
@@ -50,8 +51,14 @@ class SemanticRetriever(BaseRetriever):
         k = kwargs.get("k", self.default_k)
         score_threshold = kwargs.get("score_threshold", self.default_score_threshold)
         filter_dict = kwargs.get("filter", None)
-
+        
+        search_kwargs = {"k": k, "score_threshold": score_threshold, "filter": filter_dict}
+        
+        # Add user_id to search kwargs for multi-tenancy if provided
+        if user_id:
+            search_kwargs["user_id"] = user_id
+        
         return self.store.as_retriever(
             search_type="similarity_score_threshold",
-            search_kwargs={"k": k, "score_threshold": score_threshold, "filter": filter_dict},
+            search_kwargs=search_kwargs,
         ).get_relevant_documents(query)

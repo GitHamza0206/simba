@@ -64,10 +64,10 @@ class EnsembleSearchRetriever(BaseRetriever):
         Returns:
             List of relevant documents
         """
-        k = kwargs.get("k", 5)
+        k = kwargs.get("top_k", 5)  
 
         # Get raw retrievers
-        lc_retrievers = [r.as_retriever(search_kwargs={"k": k * 2}) for r in self.retrievers]
+        lc_retrievers = [r.as_retriever(search_kwargs={"top_k": k * 2}) for r in self.retrievers]
 
         # Create LangChain ensemble
         ensemble = EnsembleRetriever(retrievers=lc_retrievers, weights=self.weights)

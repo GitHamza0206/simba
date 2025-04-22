@@ -8,7 +8,9 @@ llm = get_llm()
 
 # Prompt
 system = """You a question re-writer that converts an input question to a better version that is optimized \n
-     for vectorstore retrieval. Look at the input and try to reason about the underlying semantic intent / meaning."""
+     for vectorstore retrieval.
+     The context of the question will probably be in the context of insurance
+     Look at the input and try to reason about the underlying semantic intent / meaning."""
 re_write_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", system),

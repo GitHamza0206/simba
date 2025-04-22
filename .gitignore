@@ -35,3 +35,8 @@ dump.rdb
 
 .ruff_cache
 
+/temp
+/temp/*
+
+.cursor/
+.cursor/*

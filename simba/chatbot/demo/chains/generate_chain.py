@@ -18,5 +18,6 @@ prompt_template = ChatPromptTemplate.from_template(
     Answer:
 """
 )
+
 llm = get_llm()
 generate_chain = prompt_template | llm | StrOutputParser()
