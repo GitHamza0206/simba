@@ -10,15 +10,23 @@ import { embeddingApi } from './embedding_api';
 import { previewApi } from './preview_api';
 import { folderApi } from './folder_api';
 import { parsingApi } from './parsing_api';
-// Re-export all services
+import { apiKeyService, ApiKey, ApiKeyResponse, ApiKeyCreate } from './api_key_service';
+
+// Re-export all services and types
 export {
   ingestionApi,
   embeddingApi,
   previewApi,
   folderApi,
   parsingApi,
+  apiKeyService,
+};
 
+export type {
+  ApiKey,
+  ApiKeyResponse,
+  ApiKeyCreate,
 };
 
 // Example usage in components:
-// import { ingestionApi, previewApi } from '@/lib/api_services'; 
+// import { ingestionApi, previewApi, apiKeyService, type ApiKey } from '@/lib/api_services'; 

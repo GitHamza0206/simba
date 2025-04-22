@@ -2,20 +2,20 @@
 API routes for managing API keys.
 """
 import logging
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
 
 from simba.models.api_key import APIKeyCreate, APIKeyResponse, APIKeyInfo
 from simba.auth.api_key_service import APIKeyService
-from simba.api.middleware.auth import get_current_user, require_role
+from simba.api.middleware.auth import get_current_user, require_role, require_tenant_access
 
 logger = logging.getLogger(__name__)
 
 # FastAPI router
 api_key_router = APIRouter(
-    prefix="/api-keys",
+    prefix="/api/api-keys",
     tags=["api-keys"],
 )
 
@@ -53,12 +53,14 @@ async def create_api_key(
 
 @api_key_router.get("", status_code=status.HTTP_200_OK, response_model=List[APIKeyInfo])
 async def get_api_keys(
+    tenant_id: Optional[UUID] = Query(None, description="Filter keys by tenant ID"),
     current_user: dict = Depends(get_current_user),
 ):
     """
-    Get all API keys for the current user.
+    Get all API keys for the current user, optionally filtered by tenant.
     
     Args:
+        tenant_id: Optional tenant ID to filter by
         current_user: Current authenticated user
         
     Returns:
@@ -68,8 +70,8 @@ async def get_api_keys(
         # Get user ID from current user
         user_id = UUID(current_user.get("id"))
         
-        # Get API keys
-        keys = APIKeyService.get_keys(user_id)
+        # Get API keys, optionally filtered by tenant
+        keys = APIKeyService.get_keys(user_id, tenant_id)
         
         return keys
     except Exception as e:
@@ -83,6 +85,7 @@ async def get_api_keys(
 @api_key_router.delete("/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_api_key(
     key_id: UUID,
+    tenant_id: Optional[UUID] = Query(None, description="Tenant ID for validation"),
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -90,14 +93,15 @@ async def delete_api_key(
     
     Args:
         key_id: API key ID
+        tenant_id: Optional tenant ID for additional validation
         current_user: Current authenticated user
     """
     try:
         # Get user ID from current user
         user_id = UUID(current_user.get("id"))
         
-        # Delete API key
-        success = APIKeyService.delete_key(user_id, key_id)
+        # Delete API key with optional tenant validation
+        success = APIKeyService.delete_key(user_id, key_id, tenant_id)
         
         if not success:
             raise HTTPException(
@@ -117,6 +121,7 @@ async def delete_api_key(
 @api_key_router.post("/{key_id}/deactivate", status_code=status.HTTP_200_OK)
 async def deactivate_api_key(
     key_id: UUID,
+    tenant_id: Optional[UUID] = Query(None, description="Tenant ID for validation"),
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -124,14 +129,15 @@ async def deactivate_api_key(
     
     Args:
         key_id: API key ID
+        tenant_id: Optional tenant ID for additional validation
         current_user: Current authenticated user
     """
     try:
         # Get user ID from current user
         user_id = UUID(current_user.get("id"))
         
-        # Deactivate API key
-        success = APIKeyService.deactivate_key(user_id, key_id)
+        # Deactivate API key with optional tenant validation
+        success = APIKeyService.deactivate_key(user_id, key_id, tenant_id)
         
         if not success:
             raise HTTPException(
@@ -163,13 +169,14 @@ async def test_api_key(
     Returns:
         Dict with user information
     """
-    is_api_key = current_user.get("metadata", {}).get("is_api_key", False)
+    is_api_key = current_user.get("auth_type") == "api_key"
     
     return {
         "authenticated": True,
         "user_id": current_user.get("id"),
-        "email": current_user.get("email"),
+        "email": current_user.get("email", "N/A"),
         "is_api_key": is_api_key,
+        "tenant_id": current_user.get("tenant_id"),
         "api_key_id": current_user.get("metadata", {}).get("api_key_id") if is_api_key else None,
         "roles": current_user.get("roles", [])
     } 

@@ -16,6 +16,7 @@ class APIKey(BaseModel):
     key: Optional[str] = None  # Only present when creating a new key
     key_prefix: str = Field(..., description="First few characters of key for display/identification")
     user_id: UUID = Field(..., description="Associated virtual user ID")
+    tenant_id: Optional[UUID] = Field(None, description="Associated tenant ID")
     name: str = Field(..., description="User-friendly name for the API key")
     roles: List[str] = Field(default_factory=list, description="Associated roles")
     created_at: Optional[datetime] = Field(None, description="Creation timestamp")
@@ -40,6 +41,7 @@ class APIKeyCreate(BaseModel):
     API Key creation request model.
     """
     name: str = Field(..., description="User-friendly name for the API key")
+    tenant_id: Optional[UUID] = Field(None, description="Associated tenant ID")
     roles: List[str] = Field(default_factory=list, description="Associated roles")
     expires_at: Optional[datetime] = Field(None, description="Expiration timestamp")
 
@@ -52,6 +54,7 @@ class APIKeyResponse(BaseModel):
     id: UUID
     key: str
     key_prefix: str
+    tenant_id: Optional[UUID] = None
     name: str
     roles: List[str]
     created_at: datetime
@@ -76,6 +79,7 @@ class APIKeyInfo(BaseModel):
     """
     id: UUID
     key_prefix: str
+    tenant_id: Optional[UUID] = None
     name: str
     roles: List[str]
     created_at: datetime

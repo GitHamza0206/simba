@@ -13,6 +13,7 @@ import SettingsPage from './pages/SettingsPage';
 import GeneralSettings from './pages/settings/GeneralSettings';
 import MembersSettings from './pages/settings/MembersSettings';
 import KnowledgeConfigPage from './pages/KnowledgeConfigPage';
+import ApiKeysPage from './pages/ApiKeysPage';
 import { Toaster } from '@/components/ui/toaster';
 
 // Use a direct path to the worker from node_modules
@@ -40,6 +41,11 @@ function App() {
           <Route path="/knowledge" element={
             <ProtectedRoute>
               <KnowledgeConfigPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/api-keys" element={
+            <ProtectedRoute>
+              <ApiKeysPage />
             </ProtectedRoute>
           } />
           

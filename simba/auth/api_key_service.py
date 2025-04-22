@@ -66,6 +66,10 @@ class APIKeyService:
             APIKeyResponse: Created API key with the full key value
         """
         try:
+            # Add debug logging
+            logger.info(f"Creating API key for user: {user_id}")
+            logger.info(f"Key data: {key_data.model_dump_json()}")
+            
             # Generate a new random key
             raw_key = cls._generate_key()
             key_hash = cls._hash_key(raw_key)
@@ -76,64 +80,168 @@ class APIKeyService:
             for role_name in key_data.roles:
                 role = role_service.get_role_by_name(role_name)
                 if not role:
+                    logger.error(f"Role '{role_name}' does not exist")
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail=f"Role '{role_name}' does not exist"
                     )
             
-            # Insert into database
-            row = PostgresDB.fetch_one("""
+            # Get tenant_id from key_data or set to NULL
+            tenant_id_param = str(key_data.tenant_id) if key_data.tenant_id else None
+            logger.info(f"Tenant ID parameter: {tenant_id_param}")
+            
+            # Log the query parameters
+            query = """
                 INSERT INTO api_keys 
-                (key, key_prefix, user_id, name, roles, expires_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                RETURNING id, key_prefix, name, roles, created_at, expires_at
-            """, (
+                (key, key_prefix, user_id, tenant_id, name, roles, expires_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, key_prefix, tenant_id, name, roles, created_at, expires_at
+            """
+            
+            params = (
                 key_hash, 
                 key_prefix, 
                 str(user_id), 
+                tenant_id_param,
                 key_data.name, 
                 json.dumps(key_data.roles), 
                 key_data.expires_at
-            ))
-            
-            # Return the response with the raw key (this is the only time it will be visible)
-            return APIKeyResponse(
-                id=row['id'],
-                key=raw_key,
-                key_prefix=row['key_prefix'],
-                name=row['name'],
-                roles=row['roles'],
-                created_at=row['created_at'],
-                expires_at=row['expires_at']
             )
+            
+            logger.info(f"Executing query: {query}")
+            logger.info(f"Query parameters: {params}")
+            
+            try:
+                # Insert into database
+                row = PostgresDB.fetch_one(query, params)
+                
+                if row:
+                    logger.info(f"API key created successfully with ID: {row.get('id')}")
+                else:
+                    logger.error("Database returned no result after insert")
+                    raise Exception("Database returned no result after insert")
+                
+                # Return the response with the raw key (this is the only time it will be visible)
+                response = APIKeyResponse(
+                    id=row['id'],
+                    key=raw_key,
+                    key_prefix=row['key_prefix'],
+                    tenant_id=row['tenant_id'],
+                    name=row['name'],
+                    roles=row['roles'],
+                    created_at=row['created_at'],
+                    expires_at=row['expires_at']
+                )
+                
+                logger.info(f"Returning API key response with key prefix: {response.key_prefix}")
+                return response
+            except Exception as db_error:
+                logger.error(f"Database error during API key creation: {str(db_error)}")
+                raise
+                
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Failed to create API key: {str(e)}")
+            logger.error(f"Failed to create API key: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create API key"
+                detail=f"Failed to create API key: {str(e)}"
             )
     
     @staticmethod
-    def get_keys(user_id: UUID) -> List[APIKeyInfo]:
+    def get_keys(user_id: UUID, tenant_id: Optional[UUID] = None) -> List[APIKeyInfo]:
         """
-        Get all API keys for a user.
+        Get all API keys for a user, optionally filtered by tenant.
         
         Args:
             user_id: User ID
+            tenant_id: Optional tenant ID to filter by
             
         Returns:
             List[APIKeyInfo]: List of API keys
         """
         try:
-            # Query API keys for user
-            rows = PostgresDB.fetch_all("""
-                SELECT id, key_prefix, name, roles, created_at, last_used, is_active, expires_at
+            # Add debug logging
+            logger.info(f"Getting API keys for user: {user_id}, tenant: {tenant_id}")
+            
+            # Build the query with potential tenant filter
+            query = """
+                SELECT id, key_prefix, tenant_id, name, roles, created_at, last_used, is_active, expires_at
                 FROM api_keys
                 WHERE user_id = %s
+            """
+            params = [str(user_id)]
+            
+            # Add tenant filter if provided
+            if tenant_id:
+                query += " AND tenant_id = %s"
+                params.append(str(tenant_id))
+                
+            query += " ORDER BY created_at DESC"
+            
+            logger.info(f"Executing query: {query}")
+            logger.info(f"Query parameters: {params}")
+            
+            # Query API keys for user
+            rows = PostgresDB.fetch_all(query, tuple(params))
+            
+            logger.info(f"Found {len(rows)} API keys for user {user_id}")
+            
+            # Convert rows to APIKeyInfo objects
+            api_keys = []
+            for row in rows:
+                # Debug logging
+                logger.info(f"Processing API key: {row.get('id')} with prefix: {row.get('key_prefix')}")
+                
+                # Parse the roles JSON if it's a string
+                roles = row['roles']
+                if isinstance(roles, str):
+                    try:
+                        roles = json.loads(roles)
+                    except json.JSONDecodeError:
+                        logger.error(f"Failed to parse roles JSON: {roles}")
+                        roles = []
+                
+                api_keys.append(APIKeyInfo(
+                    id=row['id'],
+                    key_prefix=row['key_prefix'],
+                    tenant_id=row['tenant_id'],
+                    name=row['name'],
+                    roles=roles,
+                    created_at=row['created_at'],
+                    last_used=row['last_used'],
+                    is_active=row['is_active'],
+                    expires_at=row['expires_at']
+                ))
+            
+            logger.info(f"Returning {len(api_keys)} API keys")
+            return api_keys
+        except Exception as e:
+            logger.error(f"Failed to get API keys: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to fetch API keys: {str(e)}"
+            )
+    
+    @staticmethod
+    def get_tenant_keys(tenant_id: UUID) -> List[APIKeyInfo]:
+        """
+        Get all API keys for a tenant.
+        
+        Args:
+            tenant_id: Tenant ID
+            
+        Returns:
+            List[APIKeyInfo]: List of API keys for the tenant
+        """
+        try:
+            # Query API keys for tenant
+            rows = PostgresDB.fetch_all("""
+                SELECT id, key_prefix, tenant_id, name, roles, created_at, last_used, is_active, expires_at
+                FROM api_keys
+                WHERE tenant_id = %s
                 ORDER BY created_at DESC
-            """, (str(user_id),))
+            """, (str(tenant_id),))
             
             # Convert rows to APIKeyInfo objects
             api_keys = []
@@ -150,6 +258,7 @@ class APIKeyService:
                 api_keys.append(APIKeyInfo(
                     id=row['id'],
                     key_prefix=row['key_prefix'],
+                    tenant_id=row['tenant_id'],
                     name=row['name'],
                     roles=roles,
                     created_at=row['created_at'],
@@ -160,30 +269,40 @@ class APIKeyService:
             
             return api_keys
         except Exception as e:
-            logger.error(f"Failed to get API keys: {str(e)}")
+            logger.error(f"Failed to get tenant API keys: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to fetch API keys"
+                detail="Failed to fetch tenant API keys"
             )
     
     @staticmethod
-    def delete_key(user_id: UUID, key_id: UUID) -> bool:
+    def delete_key(user_id: UUID, key_id: UUID, tenant_id: Optional[UUID] = None) -> bool:
         """
         Delete an API key.
         
         Args:
             user_id: User ID
             key_id: API key ID
+            tenant_id: Optional tenant ID for additional validation
             
         Returns:
             bool: True if key was deleted, False otherwise
         """
         try:
-            # Delete API key
-            result = PostgresDB.execute_query("""
+            # Build the query with potential tenant filter
+            query = """
                 DELETE FROM api_keys
                 WHERE id = %s AND user_id = %s
-            """, (str(key_id), str(user_id)))
+            """
+            params = [str(key_id), str(user_id)]
+            
+            # Add tenant filter if provided
+            if tenant_id:
+                query += " AND tenant_id = %s"
+                params.append(str(tenant_id))
+                
+            # Delete API key
+            result = PostgresDB.execute_query(query, tuple(params))
             
             return result > 0
         except Exception as e:
@@ -194,24 +313,61 @@ class APIKeyService:
             )
     
     @staticmethod
-    def deactivate_key(user_id: UUID, key_id: UUID) -> bool:
+    def delete_tenant_key(tenant_id: UUID, key_id: UUID) -> bool:
+        """
+        Delete a tenant API key.
+        
+        Args:
+            tenant_id: Tenant ID
+            key_id: API key ID
+            
+        Returns:
+            bool: True if key was deleted, False otherwise
+        """
+        try:
+            # Delete tenant API key
+            result = PostgresDB.execute_query("""
+                DELETE FROM api_keys
+                WHERE id = %s AND tenant_id = %s
+            """, (str(key_id), str(tenant_id)))
+            
+            return result > 0
+        except Exception as e:
+            logger.error(f"Failed to delete tenant API key: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete tenant API key"
+            )
+    
+    @staticmethod
+    def deactivate_key(user_id: UUID, key_id: UUID, tenant_id: Optional[UUID] = None) -> bool:
         """
         Deactivate an API key.
         
         Args:
             user_id: User ID
             key_id: API key ID
+            tenant_id: Optional tenant ID for additional validation
             
         Returns:
             bool: True if key was deactivated, False otherwise
         """
         try:
-            # Deactivate API key
-            result = PostgresDB.execute_query("""
+            # Build the query with potential tenant filter
+            query = """
                 UPDATE api_keys
                 SET is_active = FALSE
                 WHERE id = %s AND user_id = %s
-            """, (str(key_id), str(user_id)))
+            """
+            params = [str(key_id), str(user_id)]
+            
+            # Add tenant filter if provided
+            if tenant_id:
+                query += " AND tenant_id = %s"
+                params.append(str(tenant_id))
+                
+            # Deactivate API key
+            result = PostgresDB.execute_query(query, tuple(params))
             
             return result > 0
         except Exception as e:
@@ -222,12 +378,13 @@ class APIKeyService:
             )
     
     @staticmethod
-    def validate_key(api_key: str) -> Optional[Dict[str, Any]]:
+    def validate_key(api_key: str, tenant_id: Optional[UUID] = None) -> Optional[Dict[str, Any]]:
         """
         Validate an API key and return user information.
         
         Args:
             api_key: Raw API key
+            tenant_id: Optional tenant ID for tenant-specific validation
             
         Returns:
             Optional[Dict[str, Any]]: User data if key is valid, None otherwise
@@ -236,12 +393,21 @@ class APIKeyService:
             # Hash the key before comparing
             key_hash = APIKeyService._hash_key(api_key)
             
-            # Find the key in the database
-            row = PostgresDB.fetch_one("""
-                SELECT id, user_id, roles, is_active, expires_at
+            # Build the query with potential tenant filter
+            query = """
+                SELECT id, user_id, tenant_id, roles, is_active, expires_at
                 FROM api_keys
                 WHERE key = %s
-            """, (key_hash,))
+            """
+            params = [key_hash]
+            
+            # Add tenant filter if provided
+            if tenant_id:
+                query += " AND tenant_id = %s"
+                params.append(str(tenant_id))
+                
+            # Find the key in the database
+            row = PostgresDB.fetch_one(query, tuple(params))
             
             if not row:
                 logger.warning("API key not found")
@@ -254,17 +420,17 @@ class APIKeyService:
             
             # Check if key is expired
             if row['expires_at'] and row['expires_at'] < datetime.now():
-                logger.warning("API key has expired")
+                logger.warning("API key is expired")
                 return None
             
             # Update last used timestamp
             PostgresDB.execute_query("""
                 UPDATE api_keys
-                SET last_used = CURRENT_TIMESTAMP
+                SET last_used = NOW()
                 WHERE id = %s
             """, (row['id'],))
             
-            # Parse roles if needed
+            # Parse the roles JSON if it's a string
             roles = row['roles']
             if isinstance(roles, str):
                 try:
@@ -273,19 +439,16 @@ class APIKeyService:
                     logger.error(f"Failed to parse roles JSON: {roles}")
                     roles = []
             
-            # Get user data
-            user = {
+            # Return user data
+            return {
                 "id": row['user_id'],
-                "email": f"api-key-{row['id']}@api.internal",  # Virtual email
+                "tenant_id": row['tenant_id'],
+                "roles": roles,
                 "metadata": {
                     "is_api_key": True,
                     "api_key_id": row['id']
-                },
-                "roles": roles
+                }
             }
-            
-            return user
-            
         except Exception as e:
-            logger.error(f"Error validating API key: {str(e)}")
+            logger.error(f"Failed to validate API key: {str(e)}")
             return None 
