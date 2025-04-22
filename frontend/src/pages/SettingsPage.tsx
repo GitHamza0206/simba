@@ -17,6 +17,7 @@ const navItems: NavItem[] = [
   { name: 'SSO', path: '/settings/sso' },
   { name: 'Projects', path: '/settings/projects' },
   { name: 'Roles', path: '/settings/roles' },
+  { name: 'API Keys', path: '/settings/api-keys' },
 ];
 
 const SettingsPage: React.FC = () => {

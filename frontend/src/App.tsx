@@ -43,11 +43,7 @@ function App() {
               <KnowledgeConfigPage />
             </ProtectedRoute>
           } />
-          <Route path="/api-keys" element={
-            <ProtectedRoute>
-              <ApiKeysPage />
-            </ProtectedRoute>
-          } />
+          
           
           {/* Settings Routes */}
           <Route path="/settings" element={
@@ -61,6 +57,7 @@ function App() {
             <Route path="sso" element={<div className="p-8">SSO settings coming soon</div>} />
             <Route path="projects" element={<div className="p-8">Projects settings coming soon</div>} />
             <Route path="roles" element={<RolesPage />} />
+            <Route path="api-keys" element={<ApiKeysPage />} />
           </Route>
           
           {/* Legacy routes - redirect to the new settings structure */}
@@ -72,6 +69,11 @@ function App() {
           <Route path="/organizations" element={
             <ProtectedRoute>
               <Navigate to="/settings" replace />
+            </ProtectedRoute>
+          } />
+          <Route path="/api-keys" element={
+            <ProtectedRoute>
+              <Navigate to="/settings/api-keys" replace />
             </ProtectedRoute>
           } />
           
