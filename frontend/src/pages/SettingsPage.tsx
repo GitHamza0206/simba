@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, Outlet } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React from 'react';
+import { Link, Outlet } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { ExternalLink } from 'lucide-react';
 
@@ -12,6 +11,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { name: 'General', path: '/settings' },
+  { name: 'Organizations', path: '/settings/organizations' },
   { name: 'Members', path: '/settings/members' },
   { name: 'Billing', path: '/settings/billing' },
   { name: 'SSO', path: '/settings/sso' },
@@ -21,7 +21,6 @@ const navItems: NavItem[] = [
 ];
 
 const SettingsPage: React.FC = () => {
-  const navigate = useNavigate();
   // Get the current path to determine which nav item is active
   const currentPath = window.location.pathname;
   

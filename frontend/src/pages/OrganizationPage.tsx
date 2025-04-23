@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { authAxios } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -18,62 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusIcon, TrashIcon, ExternalLink } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-
-// Define organization and member interfaces
-interface Organization {
-  id: string;
-  name: string;
-  createdBy: string;
-  createdAt: Date;
-}
-
-interface OrganizationMember {
-  id: string;
-  userId: string;
-  name: string;
-  email: string;
-  role: MemberRole;
-  joinedAt: Date;
-}
-
-type MemberRole = 'owner' | 'admin' | 'member' | 'viewer' | 'none';
-
-// Test data for development
-const testOrganizations: Organization[] = [
-  {
-    id: '1',
-    name: 'Sample Organization',
-    createdBy: 'current-user',
-    createdAt: new Date(),
-  }
-];
-
-const testMembers: OrganizationMember[] = [
-  {
-    id: '1',
-    userId: 'current-user',
-    name: 'Current User',
-    email: 'user@example.com',
-    role: 'owner',
-    joinedAt: new Date(),
-  },
-  {
-    id: '2',
-    userId: 'user2',
-    name: 'John Doe',
-    email: 'john@example.com',
-    role: 'admin',
-    joinedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-  },
-  {
-    id: '3',
-    userId: 'user3',
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    role: 'member',
-    joinedAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
-  }
-];
+import { organizationApi, Organization, OrganizationMember, MemberRole } from '@/lib/api_services';
 
 const OrganizationPage: React.FC = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -87,7 +31,6 @@ const OrganizationPage: React.FC = () => {
   const [newOrgName, setNewOrgName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<MemberRole>('member');
-  const [useTestData, setUseTestData] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
   
   const { user } = useAuth();
@@ -96,25 +39,16 @@ const OrganizationPage: React.FC = () => {
   // Fetch user's organizations
   const fetchOrganizations = async () => {
     try {
-      if (useTestData) {
-        setOrganizations(testOrganizations);
-        if (!selectedOrgId && testOrganizations.length > 0) {
-          setSelectedOrgId(testOrganizations[0].id);
-          setSelectedOrgName(testOrganizations[0].name);
-        }
-        return;
-      }
-
       setLoading(true);
-      const response = await authAxios.get('/api/organizations');
-      setOrganizations(response.data);
+      const data = await organizationApi.getOrganizations();
+      setOrganizations(data);
       
-      if (response.data.length > 0 && !selectedOrgId) {
-        setSelectedOrgId(response.data[0].id);
-        setSelectedOrgName(response.data[0].name);
+      if (data.length > 0 && !selectedOrgId) {
+        setSelectedOrgId(data[0].id);
+        setSelectedOrgName(data[0].name);
       }
       
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching organizations:', err);
       toast({
         title: "Error",
@@ -132,15 +66,10 @@ const OrganizationPage: React.FC = () => {
     if (!selectedOrgId) return;
     
     try {
-      if (useTestData) {
-        setMembers(testMembers);
-        return;
-      }
-
       setLoading(true);
-      const response = await authAxios.get(`/api/organizations/${selectedOrgId}/members`);
-      setMembers(response.data);
-    } catch (err: any) {
+      const data = await organizationApi.getOrganizationMembers(selectedOrgId);
+      setMembers(data);
+    } catch (err) {
       console.error('Error fetching members:', err);
       toast({
         title: "Error",
@@ -165,34 +94,10 @@ const OrganizationPage: React.FC = () => {
     }
 
     try {
-      if (useTestData) {
-        const newOrg: Organization = {
-          id: Math.random().toString(36).substring(2, 9),
-          name: newOrgName,
-          createdBy: user?.id || 'current-user',
-          createdAt: new Date()
-        };
-        
-        setOrganizations([...organizations, newOrg]);
-        setSelectedOrgId(newOrg.id);
-        setSelectedOrgName(newOrg.name);
-        setShowCreateForm(false);
-        setNewOrgName('');
-        
-        toast({
-          title: "Success",
-          description: `Organization "${newOrgName}" created successfully`,
-        });
-        return;
-      }
-
-      const response = await authAxios.post('/api/organizations', {
-        name: newOrgName
-      });
-      
+      const newOrg = await organizationApi.createOrganization({ name: newOrgName });
       await fetchOrganizations();
-      setSelectedOrgId(response.data.id);
-      setSelectedOrgName(response.data.name);
+      setSelectedOrgId(newOrg.id);
+      setSelectedOrgName(newOrg.name);
       setShowCreateForm(false);
       setNewOrgName('');
       
@@ -200,7 +105,7 @@ const OrganizationPage: React.FC = () => {
         title: "Success",
         description: `Organization "${newOrgName}" created successfully`,
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error creating organization:', err);
       toast({
         title: "Error",
@@ -224,29 +129,7 @@ const OrganizationPage: React.FC = () => {
     }
 
     try {
-      if (useTestData) {
-        const newMember: OrganizationMember = {
-          id: Math.random().toString(36).substring(2, 9),
-          userId: Math.random().toString(36).substring(2, 9),
-          name: inviteEmail.split('@')[0],
-          email: inviteEmail,
-          role: inviteRole,
-          joinedAt: new Date()
-        };
-        
-        setMembers([...members, newMember]);
-        setInviteEmail('');
-        setInviteRole('member');
-        setShowInviteForm(false);
-        
-        toast({
-          title: "Success",
-          description: `Invitation sent to ${inviteEmail}`,
-        });
-        return;
-      }
-
-      await authAxios.post(`/api/organizations/${selectedOrgId}/invite`, {
+      await organizationApi.inviteMember(selectedOrgId, {
         email: inviteEmail,
         role: inviteRole
       });
@@ -260,7 +143,7 @@ const OrganizationPage: React.FC = () => {
         title: "Success",
         description: `Invitation sent to ${inviteEmail}`,
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error inviting member:', err);
       toast({
         title: "Error",
@@ -275,31 +158,14 @@ const OrganizationPage: React.FC = () => {
     if (!selectedOrgId) return;
     
     try {
-      if (useTestData) {
-        setMembers(members.map(member => 
-          member.id === memberId 
-            ? { ...member, role: newRole } 
-            : member
-        ));
-        
-        toast({
-          title: "Success",
-          description: "Member role updated successfully",
-        });
-        return;
-      }
-
-      await authAxios.put(`/api/organizations/${selectedOrgId}/members/${memberId}`, {
-        role: newRole
-      });
-      
+      await organizationApi.updateMemberRole(selectedOrgId, memberId, { role: newRole });
       await fetchMembers();
       
       toast({
         title: "Success",
         description: "Member role updated successfully",
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error updating member role:', err);
       toast({
         title: "Error",
@@ -314,25 +180,14 @@ const OrganizationPage: React.FC = () => {
     if (!selectedOrgId) return;
     
     try {
-      if (useTestData) {
-        setMembers(members.filter(member => member.id !== memberId));
-        
-        toast({
-          title: "Success",
-          description: "Member removed successfully",
-        });
-        return;
-      }
-
-      await authAxios.delete(`/api/organizations/${selectedOrgId}/members/${memberId}`);
-      
+      await organizationApi.removeMember(selectedOrgId, memberId);
       await fetchMembers();
       
       toast({
         title: "Success",
         description: "Member removed successfully",
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error removing member:', err);
       toast({
         title: "Error",
@@ -518,7 +373,10 @@ const OrganizationPage: React.FC = () => {
                         <TableCell className="font-medium">{member.name}</TableCell>
                         <TableCell>{member.email}</TableCell>
                         <TableCell>
-                          <Select defaultValue={member.role}>
+                          <Select 
+                            defaultValue={member.role}
+                            onValueChange={(value: MemberRole) => updateMemberRole(member.id, value)}
+                          >
                             <SelectTrigger className="w-24">
                               <SelectValue placeholder={member.role} />
                             </SelectTrigger>
@@ -530,9 +388,14 @@ const OrganizationPage: React.FC = () => {
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        <TableCell>{new Date(member.joinedAt).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(member.joined_at).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="text-red-500">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-red-500"
+                            onClick={() => removeMember(member.id)}
+                          >
                             <TrashIcon className="h-4 w-4" />
                           </Button>
                         </TableCell>

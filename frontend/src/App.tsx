@@ -8,10 +8,10 @@ import Signup from '@/pages/auth/Signup';
 import ResetPassword from '@/pages/auth/ResetPassword';
 import { AuthProvider, ProtectedRoute } from '@/context/AuthContext';
 import RolesPage from './pages/RolesPage';
-import OrganizationPage from './pages/OrganizationPage';
 import SettingsPage from './pages/SettingsPage';
 import GeneralSettings from './pages/settings/GeneralSettings';
 import MembersSettings from './pages/settings/MembersSettings';
+import OrganizationsSettings from './pages/settings/OrganizationsSettings';
 import KnowledgeConfigPage from './pages/KnowledgeConfigPage';
 import ApiKeysPage from './pages/ApiKeysPage';
 import { Toaster } from '@/components/ui/toaster';
@@ -44,7 +44,6 @@ function App() {
             </ProtectedRoute>
           } />
           
-          
           {/* Settings Routes */}
           <Route path="/settings" element={
             <ProtectedRoute>
@@ -52,6 +51,7 @@ function App() {
             </ProtectedRoute>
           }>
             <Route index element={<GeneralSettings />} />
+            <Route path="organizations" element={<OrganizationsSettings />} />
             <Route path="members" element={<MembersSettings />} />
             <Route path="billing" element={<div className="p-8">Billing settings coming soon</div>} />
             <Route path="sso" element={<div className="p-8">SSO settings coming soon</div>} />
@@ -68,7 +68,7 @@ function App() {
           } />
           <Route path="/organizations" element={
             <ProtectedRoute>
-              <Navigate to="/settings" replace />
+              <Navigate to="/settings/organizations" replace />
             </ProtectedRoute>
           } />
           <Route path="/api-keys" element={

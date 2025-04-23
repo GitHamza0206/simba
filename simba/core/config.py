@@ -160,7 +160,7 @@ class StorageSettings(BaseSettings):
     """Storage configuration settings"""
     provider: str = Field(
         default="local",
-        description="Storage provider type: 'local' or 'minio'"
+        description="Storage provider type: 'local', 'minio', or 'supabase'"
     )
     minio_endpoint: Optional[str] = Field(
         default=None,
@@ -186,6 +186,11 @@ class StorageSettings(BaseSettings):
         default=False,
         description="Use secure connection to MinIO",
         env="MINIO_SECURE"
+    )
+    supabase_bucket: Optional[str] = Field(
+        default="simba-bucket",
+        description="Supabase storage bucket name",
+        env="SUPABASE_STORAGE_BUCKET"
     )
 
 

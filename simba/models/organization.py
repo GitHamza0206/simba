@@ -27,7 +27,7 @@ class Organization(OrganizationBase):
 
 class OrganizationMemberBase(BaseModel):
     """Base organization member model with common fields."""
-    user_id: str = Field(..., description="User ID")
+    user_id: Optional[str] = Field(None, description="User ID (null for pending invites)")
     email: EmailStr = Field(..., description="User email")
     role: str = Field(..., description="Member role in the organization")
 

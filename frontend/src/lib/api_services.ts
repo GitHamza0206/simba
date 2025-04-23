@@ -10,6 +10,7 @@ import { embeddingApi } from './embedding_api';
 import { previewApi } from './preview_api';
 import { parsingApi } from './parsing_api';
 import { apiKeyService, ApiKey, ApiKeyResponse, ApiKeyCreate } from './api_key_service';
+import { organizationApi, Organization, OrganizationMember, MemberRole, OrganizationCreate, OrganizationMemberInvite, OrganizationMemberUpdate } from './organization_api';
 
 // Re-export all services and types
 export {
@@ -18,12 +19,19 @@ export {
   previewApi,
   parsingApi,
   apiKeyService,
+  organizationApi,
 };
 
 export type {
   ApiKey,
   ApiKeyResponse,
   ApiKeyCreate,
+  Organization,
+  OrganizationMember,
+  MemberRole,
+  OrganizationCreate,
+  OrganizationMemberInvite,
+  OrganizationMemberUpdate,
 };
 
 // Example usage in components:

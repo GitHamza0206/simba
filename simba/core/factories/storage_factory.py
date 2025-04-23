@@ -5,6 +5,7 @@ from simba.core.config import settings
 from simba.storage.base import StorageProvider
 from simba.storage.local import LocalStorageProvider
 from simba.storage.minio import MinIOStorageProvider
+from simba.storage.supabase_storage import SupabaseStorageProvider
 
 
 class StorageFactory:
@@ -13,6 +14,7 @@ class StorageFactory:
     _providers: Dict[str, Type[StorageProvider]] = {
         "local": LocalStorageProvider,
         "minio": MinIOStorageProvider,
+        "supabase": SupabaseStorageProvider,
     }
     
     @classmethod

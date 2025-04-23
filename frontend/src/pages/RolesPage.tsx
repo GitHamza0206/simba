@@ -41,7 +41,7 @@ const RolesPage: React.FC = () => {
   const fetchRoles = async () => {
     try {
       // Check if we're in development mode without backend
-      if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_API_URL) {
+      if (import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
         console.log('Using test data in development mode');
         setRoles(testRoles);
         setPermissions(testPermissions);
