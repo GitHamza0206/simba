@@ -27,7 +27,7 @@ const GeneralSettings: React.FC = () => {
     try {
       setLoading(true);
       // For development, use a sample organization
-      if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_API_URL) {
+      if (import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
         setOrganization({ id: 'cm8d8jb2u0ncad07rseshkov', name: 'atlanta' });
         setOrgName('atlanta');
         setMetadata(JSON.stringify({ id: 'cm8d8jb2u0ncad07rseshkov', name: 'atlanta' }, null, 2));
@@ -41,7 +41,7 @@ const GeneralSettings: React.FC = () => {
       
       // If API is commented out, provide some default or indicate error more clearly
       // For now, we'll let the error state handle it if not in dev mode.
-      if (!(process.env.NODE_ENV === 'development' && !process.env.REACT_APP_API_URL)) {
+      if (!(import.meta.env.DEV && !import.meta.env.VITE_API_URL)) {
          setError('Backend API calls are currently disabled.'); 
          // Optionally set some default state if needed
          // setOrganization(null);
@@ -70,7 +70,7 @@ const GeneralSettings: React.FC = () => {
 
     try {
       // For development, just show success
-      if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_API_URL) {
+      if (import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
         setOrganization(prev => prev ? { ...prev, name: orgName } : null);
         toast({
           title: "Success",

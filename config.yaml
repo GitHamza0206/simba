@@ -11,16 +11,16 @@ paths:
   vector_store_dir: "vector_stores"
 
 llm:
-  provider: "ollama"
-  model_name: "llama3.1:8b"
+  provider: "openai"
+  model_name: "gpt-4o-mini"
   temperature: 0.0
   max_tokens: null
   streaming: true
   additional_params: {}
 
 embedding:
-  provider: "huggingface"
-  model_name: "Alibaba-NLP/gte-Qwen2-1.5B-instruct"
+  provider: "openai"
+  model_name: "text-embedding-3-small"
   #model_name: "openai/clip-vit-base-patch32"
   device: "mps"  # Changed from mps to cpu for container compatibility
   additional_params: {}
