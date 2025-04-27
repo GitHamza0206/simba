@@ -708,8 +708,14 @@ class PGVectorStore(VectorStore):
             # Get cross-encoder scores
             scores = cross_encoder.predict(pairs)
             
-            # Sort results by scores (highest first)
-            reranked_results = [x for _, x in sorted(zip(scores, initial_results), reverse=True)]
+            # Create list of (score, index) tuples
+            scored_indices = [(score, i) for i, score in enumerate(scores)]
+            
+            # Sort by score and get indices
+            sorted_indices = [i for _, i in sorted(scored_indices, reverse=True)]
+            
+            # Reorder documents using the sorted indices
+            reranked_results = [initial_results[i] for i in sorted_indices]
             
             # Return top k results
             return reranked_results[:top_k]
