@@ -3,7 +3,7 @@ from simba.chatbot.demo.chains.grade_chain import grade_chain
 
 def grade(state):
     """
-    Grade documents
+    Grade compressed documents
 
     Args:
         state (dict): The current graph state
@@ -14,7 +14,7 @@ def grade(state):
 
     print("---CHECK DOCUMENT RELEVANCE TO QUESTION---")
     question = state["messages"][-1].content
-    documents = state["documents"]
+    documents = state["compressed_documents"]
 
     # Score each doc
     filtered_docs = []
@@ -28,4 +28,4 @@ def grade(state):
             print(f"---GRADE: DOCUMENT {i} NOT RELEVANT---")
             continue
 
-    return {"documents": filtered_docs, "question": question}
+    return {"compressed_documents": filtered_docs, "question": question}
