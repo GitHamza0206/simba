@@ -1,6 +1,5 @@
 from simba.retrieval import Retriever
 
-
 retriever = Retriever()
 
 

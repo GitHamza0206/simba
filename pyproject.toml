@@ -61,6 +61,8 @@ supabase = "^2.15.0"
 sqlalchemy = "^2.0.40"
 psycopg2-binary = "^2.9.10"
 redis = "^5.2.1"
+pgvector = "^0.4.1"
+email-validator = "^2.2.0"
 
 
 [tool.poetry.group.dev.dependencies]
