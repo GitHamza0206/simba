@@ -3,6 +3,7 @@ from simba.chatbot.demo.chains.question_rewrite_chain import question_rewrite_ch
 def transform_query(state):
     """
     Transform the query to produce a better question.
+    Tracks number of attempts to prevent infinite loops.
 
     Args:
         state (dict): The current graph state
@@ -14,7 +15,18 @@ def transform_query(state):
     print("---TRANSFORM QUERY---")
     question = state["messages"][-1].content
     documents = state["documents"]
-
+    
+    # Track transformation attempts
+    transform_attempts = state.get("transform_attempts", 0)
+    transform_attempts += 1
+    
+    print(f"Query transformation attempt #{transform_attempts}")
+    
     # Re-write question
     better_question = question_rewrite_chain.invoke({"question": question})
-    return {"documents": documents, "question": better_question}
+    
+    return {
+        "documents": documents, 
+        "question": better_question,
+        "transform_attempts": transform_attempts
+    }

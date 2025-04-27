@@ -8,7 +8,7 @@ from sqlalchemy import Column, String, DateTime, ForeignKey, func, Integer, text
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 from langchain.schema.embeddings import Embeddings
 from simba.core.config import settings
 from simba.models.simbadoc import SimbaDoc, MetadataType
@@ -21,6 +21,7 @@ from uuid import uuid4
 from langchain_community.retrievers import BM25Retriever
 from simba.auth.auth_service import get_supabase_client
 import numpy as np
+from collections import defaultdict
 
 supabase = get_supabase_client()
 
@@ -190,49 +191,6 @@ class PGVectorStore(VectorStore):
             if session:
                 session.close()
     
-    def _rerank_with_cross_encoder(self, query: str, initial_results: List[ChunkEmbedding], 
-                                top_k: int = 10, model_name: str = 'cross-encoder/mmarco-mMiniLMv2-L12-H384-v1') -> List[ChunkEmbedding]:
-        """
-        Rerank initial results using a cross-encoder model.
-        
-        Args:
-            query: The search query
-            initial_results: Initial retrieval results to rerank
-            top_k: Number of top results to return after reranking
-            model_name: Name of the cross-encoder model to use
-            
-        Returns:
-            Reranked list of ChunkEmbedding objects
-        """
-        try:
-            from sentence_transformers import CrossEncoder
-            
-            # Initialize cross-encoder model
-            cross_encoder = CrossEncoder(model_name)
-            
-            # Extract text content from results
-            pairs = []
-            for result in initial_results:
-                # Extract page_content from the data JSONB field
-                page_content = result.data.get('page_content', '')
-                pairs.append((query, page_content))
-            
-            # Get cross-encoder scores
-            scores = cross_encoder.predict(pairs)
-            
-            # Sort results by scores (highest first)
-            reranked_results = [x for _, x in sorted(zip(scores, initial_results), reverse=True)]
-            
-            # Return top k results
-            return reranked_results[:top_k]
-            
-        except ImportError:
-            logger.warning("Could not import sentence_transformers. Reranking skipped. Install with 'pip install sentence-transformers'")
-            return initial_results[:top_k]
-        except Exception as e:
-            logger.warning(f"Error during cross-encoder reranking: {e}. Using original ranking.")
-            return initial_results[:top_k]
-
     def _get_bm25_retriever(self, user_id: str, k: int = 10) -> BM25Retriever:
         """
         Get or create BM25 retriever for a user.
@@ -255,29 +213,43 @@ class PGVectorStore(VectorStore):
         
         return self._bm25_retriever
 
-    def similarity_search(self, query: str, user_id: str, top_k: int = 10, 
-                        hybrid_search: bool = True, alpha: float = 0.5,
-                        rerank: bool = False, rerank_model: str = 'cross-encoder/ms-marco-MiniLM-L-12-v2',
-                        rerank_factor: int = 4, 
-                        use_bm25_first_pass: bool = True,
-                        language: str = 'french') -> List[Document]:
+    def _retrieve_with_bm25(self, query: str, user_id: str, k: int = 30) -> List[str]:
         """
-        Search for documents similar to a query, filtered by user_id.
+        Perform first-pass BM25 retrieval to get candidate document IDs.
         
         Args:
-            query: The search query
-            user_id: The user ID to filter results by
-            top_k: The number of top results to return
-            hybrid_search: Whether to use hybrid search (both vector and text search)
-            alpha: Weight factor for blending vector and text scores (0.0-1.0)
-            rerank: Whether to apply cross-encoder reranking to improve result order
-            rerank_model: Name of the cross-encoder model to use for reranking
-            rerank_factor: Number of initial candidates to retrieve for reranking
-            use_bm25_first_pass: Whether to use BM25 for first-pass document retrieval
-            language: The language to use for text search (default: 'french')
+            query: Search query
+            user_id: User ID for filtering
+            k: Number of documents to retrieve
             
         Returns:
-            A list of documents similar to the query
+            List of document IDs from BM25 retrieval
+        """
+        # Get BM25 retriever (will be cached after first use)
+        bm25_retriever = self._get_bm25_retriever(user_id, k)
+        
+        # Get top documents using BM25
+        first_pass_docs = bm25_retriever.get_relevant_documents(query)
+        logger.debug(f"BM25 returned {len(first_pass_docs)} documents")
+        
+        # Extract document IDs from first pass results
+        first_pass_doc_ids = list({doc.metadata['document_id'] for doc in first_pass_docs})
+        
+        return first_pass_doc_ids
+
+    def _retrieve_with_dense_vector(self, query: str, user_id: str, top_k: int, 
+                               document_ids: Optional[List[str]] = None) -> List[Document]:
+        """
+        Perform pure vector similarity search.
+        
+        Args:
+            query: Search query
+            user_id: User ID for filtering
+            top_k: Number of results to retrieve
+            document_ids: Optional list of document IDs to filter by (from BM25)
+            
+        Returns:
+            List of Document objects with results
         """
         session = None
         try:
@@ -286,116 +258,211 @@ class PGVectorStore(VectorStore):
             conn = session.connection()
             cur = conn.connection.cursor(cursor_factory=RealDictCursor)
             
-            if use_bm25_first_pass:
-                first_pass_k = top_k * 3
-                # Get BM25 retriever (will be cached after first use)
-                bm25_retriever = self._get_bm25_retriever(user_id, first_pass_k)
-                
-                # Get top documents using BM25
-                first_pass_docs = bm25_retriever.get_relevant_documents(query)
-                logger.debug(f"BM25 returned {len(first_pass_docs)} documents")
-                
-                # Extract document IDs from first pass results
-                first_pass_doc_ids = list({doc.metadata['document_id'] for doc in first_pass_docs})
-            
             # Generate query embedding
             query_embedding = self.embeddings.embed_query(query)
             query_embedding_array = np.array(query_embedding)
             # Convert numpy array to list for psycopg2
             query_embedding_list = query_embedding_array.tolist()
             
-            # For reranking, we retrieve more initial candidates
-            initial_top_k = top_k * rerank_factor if rerank else top_k
-            
             # Prepare the SQL query
-            if hybrid_search:
-                # Hybrid search: combine vector similarity with text similarity
-                sql = """
-                    SELECT * FROM chunks_embeddings 
-                    WHERE user_id = %s 
-                """
-                
-                params = [user_id]
-                
-                if use_bm25_first_pass and first_pass_doc_ids:
-                    sql += " AND document_id = ANY(%s) "
-                    params.append(first_pass_doc_ids)
-                
-                sql += f"""
-                    ORDER BY ({alpha} * (1 - (embedding <=> %s::vector)/2) + 
-                             (1 - {alpha}) * ts_rank(to_tsvector(%s, data->>'page_content'), 
-                                                  plainto_tsquery(%s, %s))) DESC
-                    LIMIT %s
-                """
-                params.extend([query_embedding_list, language, language, query, initial_top_k])
-                
-            else:
-                # Vector search only
-                sql = """
-                    SELECT * FROM chunks_embeddings 
-                    WHERE user_id = %s 
-                """
-                
-                params = [user_id]
-                
-                if use_bm25_first_pass and first_pass_doc_ids:
-                    sql += " AND document_id = ANY(%s) "
-                    params.append(first_pass_doc_ids)
-                
-                sql += """
-                    ORDER BY embedding <=> %s::vector
-                    LIMIT %s
-                """
-                params.extend([query_embedding_list, initial_top_k])
+            sql = """
+                SELECT * FROM chunks_embeddings 
+                WHERE user_id = %s 
+            """
+            
+            params = [user_id]
+            
+            if document_ids:
+                sql += " AND document_id = ANY(%s) "
+                params.append(document_ids)
+            
+            sql += """
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s
+            """
+            params.extend([query_embedding_list, top_k])
             
             # Execute query
             cur.execute(sql, params)
             rows = cur.fetchall()
             
-            # Convert rows to ChunkEmbedding objects
+            # Convert rows to Document objects
             results = []
             for row in rows:
                 # Create a document with the data from the row
                 doc = Document(
                     page_content=row['data'].get('page_content', ''),
-                    metadata=row['data'].get('metadata', {})
+                    metadata={
+                        **row['data'].get('metadata', {}),
+                        'id': row['id'],
+                        'document_id': row['document_id']
+                    }
                 )
                 results.append(doc)
-            
-            # Apply cross-encoder reranking if requested
-            if rerank and results:
-                # Convert rows to ChunkEmbedding objects for reranking
-                chunk_objects = []
-                for row in rows:
-                    chunk = ChunkEmbedding(
-                        id=row['id'],
-                        document_id=row['document_id'],
-                        user_id=row['user_id'],
-                        data=row['data'],
-                        embedding=row['embedding']
-                    )
-                    chunk_objects.append(chunk)
-                
-                # Rerank using cross-encoder
-                reranked_chunks = self._rerank_with_cross_encoder(
-                    query=query,
-                    initial_results=chunk_objects,
-                    top_k=top_k,
-                    model_name=rerank_model
-                )
-                
-                # Convert reranked chunks to documents
-                results = [chunk.to_langchain_doc() for chunk in reranked_chunks]
-            elif len(results) > top_k:
-                # If we retrieved more results than needed (for reranking) but didn't rerank,
-                # trim to the requested top_k
-                results = results[:top_k]
             
             return results
         
         finally:
             if session:
                 session.close()
+
+    def _retrieve_with_text_search(self, query: str, user_id: str, top_k: int, 
+                                 document_ids: Optional[List[str]] = None,
+                                 language: str = 'french') -> List[Document]:
+        """
+        Perform text-based search using PostgreSQL's full-text search.
+        
+        Args:
+            query: Search query
+            user_id: User ID for filtering
+            top_k: Number of results to retrieve
+            document_ids: Optional list of document IDs to filter by
+            language: Language for text search
+            
+        Returns:
+            List of Document objects with results
+        """
+        session = None
+        try:
+            # Get a session and its engine
+            session = self._Session()
+            conn = session.connection()
+            cur = conn.connection.cursor(cursor_factory=RealDictCursor)
+            
+            # Prepare the SQL query for text search
+            sql = """
+                SELECT * FROM chunks_embeddings 
+                WHERE user_id = %s 
+            """
+            
+            params = [user_id]
+            
+            if document_ids:
+                sql += " AND document_id = ANY(%s) "
+                params.append(document_ids)
+            
+            sql += f"""
+                ORDER BY ts_rank(to_tsvector(%s, data->>'page_content'), 
+                               plainto_tsquery(%s, %s)) DESC
+                LIMIT %s
+            """
+            params.extend([language, language, query, top_k])
+            
+            # Execute query
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            
+            # Convert rows to Document objects
+            results = []
+            for row in rows:
+                # Create a document with the data from the row
+                doc = Document(
+                    page_content=row['data'].get('page_content', ''),
+                    metadata={
+                        **row['data'].get('metadata', {}),
+                        'id': row['id'],
+                        'document_id': row['document_id']
+                    }
+                )
+                results.append(doc)
+            
+            return results
+        
+        finally:
+            if session:
+                session.close()
+
+    def _fuse_results_rrf(self, *ranked_lists: List[Document], k: int = 60, top_k: int = 100) -> List[Document]:
+        """
+        Fuse multiple result lists using Reciprocal Rank Fusion.
+        
+        Args:
+            ranked_lists: Multiple lists of Documents in rank order
+            k: RRF constant (default=60)
+            top_k: Number of results to return after fusion
+            
+        Returns:
+            List of fused Document objects
+        """
+        # Create a mapping from document ID to document object
+        doc_map = {}
+        
+        # Calculate RRF scores
+        scores = defaultdict(float)
+        for lst in ranked_lists:
+            for rank, doc in enumerate(lst, start=1):
+                doc_id = doc.metadata.get('id')
+                if doc_id is None:
+                    continue
+                
+                # Store document for later retrieval
+                doc_map[doc_id] = doc
+                
+                # Add RRF score
+                scores[doc_id] += 1 / (k + rank)
+        
+        # Sort by score and get top_k document IDs
+        top_ids = [d for d, _ in sorted(scores.items(), key=lambda x: x[1], reverse=True)][:top_k]
+        
+        # Return documents in the new fused order
+        return [doc_map[doc_id] for doc_id in top_ids if doc_id in doc_map]
+
+    def similarity_search(self, query: str, user_id: str, top_k: int = 200,
+                        bm25_k: int = 100, dense_k: int = 100,
+                        use_bm25_first_pass: bool = True,
+                        language: str = 'french') -> List[Document]:
+        """
+        Search for documents similar to a query, filtered by user_id.
+        Uses a fusion of BM25 and dense retrieval results.
+        
+        Args:
+            query: The search query
+            user_id: The user ID to filter results by
+            top_k: The number of top results to return after fusion (default: 200)
+            bm25_k: Number of results to retrieve from BM25 (default: 100)
+            dense_k: Number of results to retrieve from dense vectors (default: 100)
+            use_bm25_first_pass: Whether to use BM25 retrieval
+            language: The language to use for text search (default: 'french')
+            
+        Returns:
+            A list of documents similar to the query
+        """
+        # Step 1: Sparse BM25 retrieval
+        sparse_results = []
+        if use_bm25_first_pass:
+            # Get document IDs from BM25
+            bm25_doc_ids = self._retrieve_with_bm25(query, user_id, bm25_k)
+            # Get actual documents from database with text search ranking
+            sparse_results = self._retrieve_with_text_search(
+                query=query,
+                user_id=user_id,
+                top_k=bm25_k,
+                document_ids=bm25_doc_ids,
+                language=language
+            )
+        
+        # Step 2: Dense vector retrieval
+        dense_results = self._retrieve_with_dense_vector(
+            query=query,
+            user_id=user_id,
+            top_k=dense_k,
+            document_ids=None  # Don't filter by BM25 results for pure dense retrieval
+        )
+        
+        # Step 3: Fuse results using RRF
+        if use_bm25_first_pass and sparse_results:
+            fused_results = self._fuse_results_rrf(
+                sparse_results, 
+                dense_results,
+                k=60, 
+                top_k=top_k
+            )
+        else:
+            # If no BM25, just use dense results
+            fused_results = dense_results[:top_k]
+        
+        # Return fused results
+        return fused_results
 
     def from_texts(
         self,
@@ -613,129 +680,66 @@ class PGVectorStore(VectorStore):
             if session:
                 session.close()
 
-    def check_cross_encoder_dependencies(self) -> bool:
+    def rerank_results(self, query: str, initial_results: List[Document], top_k: int = 20, 
+                      model_name: str = 'cross-encoder/ms-marco-MiniLM-L-12-v2') -> List[Document]:
         """
-        Check if necessary dependencies for cross-encoder reranking are installed.
-        Returns True if dependencies are available, False otherwise.
+        Rerank retrieval results using cross-encoder.
+        
+        Args:
+            query: Search query
+            initial_results: Initial retrieval results as Documents
+            top_k: Number of results to return (default: 20)
+            model_name: Cross-encoder model to use
+            
+        Returns:
+            Reranked list of Document objects
         """
         try:
-            import sentence_transformers
             from sentence_transformers import CrossEncoder
-            logger.info("Cross-encoder dependencies are available.")
-            return True
+            
+            # Initialize cross-encoder model
+            cross_encoder = CrossEncoder(model_name)
+            
+            # Extract text content from results
+            pairs = []
+            for doc in initial_results:
+                pairs.append((query, doc.page_content))
+            
+            # Get cross-encoder scores
+            scores = cross_encoder.predict(pairs)
+            
+            # Sort results by scores (highest first)
+            reranked_results = [x for _, x in sorted(zip(scores, initial_results), reverse=True)]
+            
+            # Return top k results
+            return reranked_results[:top_k]
+            
         except ImportError:
-            logger.warning(
-                "Cross-encoder dependencies not found. "
-                "Install with: pip install sentence-transformers"
-            )
-            return False
+            logger.warning("Could not import sentence_transformers. Reranking skipped. Install with 'pip install sentence-transformers'")
+            return initial_results[:top_k]
+        except Exception as e:
+            logger.warning(f"Error during cross-encoder reranking: {e}. Using original ranking.")
+            return initial_results[:top_k]
 
-if __name__ == "__main__":
-    # Initialize vector store with optimized indexes
-    pgvector = PGVectorStore(create_indexes=True)
-    health = pgvector.health_check()
-    print(f"Vector store health: {health}")
-    
-    # Create test documents
-    from langchain.schema import Document as LangchainDocument
-    from simba.models.simbadoc import SimbaDoc, MetadataType
-    
-    # Test user ID
-    test_user_id = "test_user_123"
-    
-    # Create multiple test documents
-    doc1 = SimbaDoc(
-        id="test_doc_1",
-        documents=[
-            LangchainDocument(page_content="This is a test document for pgvector", metadata={"source": "test", "document_id": "test_doc_1"})
-        ],
-        metadata=MetadataType(filename="test1.txt", type="text", enabled=True)
-    )
-    
-    doc2 = SimbaDoc(
-        id="test_doc_2",
-        documents=[
-            LangchainDocument(page_content="Another test document with different content", metadata={"source": "test", "document_id": "test_doc_2"})
-        ],
-        metadata=MetadataType(filename="test2.txt", type="text", enabled=True)
-    )
-    
-    # Insert into database first to associate with user
-    db = PostgresDB()
-    db.insert_document(doc1, test_user_id)
-    db.insert_document(doc2, test_user_id)
-    
-    # Test adding multiple documents
-    print(f"Adding multiple documents to vector store...")
-    # Add documents to vector store
-    pgvector.add_documents(doc1.documents, doc1.id)
-    pgvector.add_documents(doc2.documents, doc2.id)
-    
-    # Count chunks
-    chunk_count = pgvector.count_chunks()
-    print(f"Total chunks in store: {chunk_count}")
-    
-    # Test retrieving each document
-    retrieved_doc1 = pgvector.get_document(doc1.id)
-    retrieved_doc2 = pgvector.get_document(doc2.id)
-    
-    print(f"Retrieved document: {retrieved_doc1.id}, with {len(retrieved_doc1.documents)} chunks")
-    print(f"Document content: {retrieved_doc1.documents[0].page_content}")
-    
-    print(f"Retrieved document: {retrieved_doc2.id}, with {len(retrieved_doc2.documents)} chunks")
-    print(f"Document content: {retrieved_doc2.documents[0].page_content}")
-    
-    # Search for similar documents using vector search only
-    print(f"\nSearching for 'test document' using vector search...")
-    results = pgvector.similarity_search("test document", test_user_id, hybrid_search=False, rerank=False)
-    print(f"Found {len(results)} results")
-    for doc in results:
-        print(f"- {doc.page_content} (score: {doc.metadata.get('score', 'N/A')})")
-    
-    # Search using hybrid search (vector + full-text)
-    print(f"\nSearching for 'another document' using hybrid search without reranking...")
-    results = pgvector.similarity_search("another document", test_user_id, hybrid_search=True, rerank=False)
-    print(f"Found {len(results)} results")
-    for doc in results:
-        print(f"- {doc.page_content} (score: {doc.metadata.get('score', 'N/A')})")
-    
-    # Check if cross-encoder dependencies are available
-    has_cross_encoder = pgvector.check_cross_encoder_dependencies()
-    
-    if has_cross_encoder:
-        # Search using hybrid search with reranking (optimized retrieval pipeline)
-        print(f"\nSearching for 'document test' using the full optimized retrieval pipeline...")
-        print(f"(Hybrid search → 20 candidates → Cross-encoder reranking → Top 5 results)")
-        results = pgvector.similarity_search(
-            "document test", 
-            test_user_id, 
-            top_k=5,               # Return 5 final results
-            hybrid_search=True,    # Use hybrid search
-            rerank=True,           # Apply cross-encoder reranking
-            rerank_factor=4,       # Get 4x more initial candidates (20 for reranking)
-            use_bm25_first_pass=True,
-            first_pass_k=5
-        )
-        print(f"Found {len(results)} results after optimized retrieval pipeline")
-        for doc in results:
-            print(f"- {doc.page_content} (score: {doc.metadata.get('score', 'N/A')})")
-    else:
-        print("\nCross-encoder reranking not available. Install dependencies to enable this feature.")
-    
-    # Test with BM25 first-pass retrieval only (no hybrid search or reranking)
-    print(f"\nSearching for 'document test' using BM25 first-pass and then vector search...")
-    results = pgvector.similarity_search(
-        "document test", 
-        test_user_id, 
-        top_k=5,               
-        hybrid_search=False,   # Use vector search only for second pass
-        rerank=False,          # No reranking
-        use_bm25_first_pass=True,  # Enable BM25 first-pass
-        first_pass_k=5         # Get top 5 documents from BM25
-    )
-    print(f"Found {len(results)} results using BM25 + vector search pipeline")
-    for doc in results:
-        print(f"- {doc.page_content} (score: {doc.metadata.get('score', 'N/A')})")
-    
-    print("\nTest completed successfully!")
-    
+    def context_compression(self, query: str, documents: List[Document], num_passages: int = 5) -> List[Document]:
+        """
+        Select the most relevant passages for context compression.
+        
+        Args:
+            query: Search query
+            documents: List of documents to compress
+            num_passages: Number of passages to select (default: 5, range 4-6)
+            
+        Returns:
+            Compressed list of Document objects
+        """
+        # Simple implementation - just take the top n documents
+        # In a production system, this could be replaced with more sophisticated
+        # context compression like xRAG/RECOMP
+        
+        # Ensure num_passages is in the 4-6 range
+        num_passages = max(4, min(6, num_passages))
+        
+        # Take the top n passages
+        return documents[:num_passages]
+

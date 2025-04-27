@@ -8,6 +8,8 @@ from simba.chatbot.demo.nodes.hallucination_node import grade_generation_v_docum
 # ===========================================
 # Import nodes
 from simba.chatbot.demo.nodes.retrieve_node import retrieve
+from simba.chatbot.demo.nodes.rerank_node import rerank
+from simba.chatbot.demo.nodes.compress_node import compress
 from simba.chatbot.demo.state import State
 
 # ===========================================
@@ -19,6 +21,8 @@ memory = MemorySaver()
 # ===========================================
 # Define the nodes
 workflow.add_node("retrieve", retrieve)
+workflow.add_node("rerank", rerank)
+workflow.add_node("compress", compress)
 workflow.add_node("grade", grade)
 workflow.add_node("generate", generate)
 workflow.add_node("transform_query", transform_query)
@@ -29,6 +33,7 @@ workflow.add_node("transform_query", transform_query)
 def decide_to_generate(state):
     """
     Determines whether to generate an answer, or re-generate a question.
+    Limits query transformation to a maximum of 2 attempts to prevent infinite loops.
 
     Args:
         state (dict): The current graph state
@@ -38,8 +43,20 @@ def decide_to_generate(state):
     """
 
     print("---ASSESS GRADED DOCUMENTS---")
+    
+    # Check if we've reached the maximum number of transformation attempts
+    transform_attempts = state.get("transform_attempts", 0)
+    MAX_TRANSFORM_ATTEMPTS = 2  # Limit to 2 attempts maximum
+    
+    if transform_attempts >= MAX_TRANSFORM_ATTEMPTS:
+        print(f"Reached maximum query transformation attempts ({MAX_TRANSFORM_ATTEMPTS})")
+        print("Proceeding to generate with best available information")
+        return "generate"  # Force generation even with poor documents
+    
+    # Continue with normal assessment
     state["question"]
-    filtered_documents = state["documents"]
+    # Use compressed documents for relevance assessment
+    filtered_documents = state["compressed_documents"]
 
     if not filtered_documents:
         # All documents have been filtered check_relevance
@@ -54,14 +71,12 @@ def decide_to_generate(state):
         return "generate"
 
 
-
-
-
-
 # ===========================================
 # define the edges
 workflow.add_edge(START, "retrieve")
-workflow.add_edge("retrieve", "grade")
+workflow.add_edge("retrieve", "rerank")
+workflow.add_edge("rerank", "compress")
+workflow.add_edge("compress", "grade")
 
 workflow.add_conditional_edges(
     "grade",
