@@ -139,7 +139,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                       </div>
                     )}
                     {/* Feedback Buttons Row */}
-                    <div className="w-full flex justify-start gap-2 mt-4">
+                    <div className="flex justify-center gap-2 mt-4 mx-auto">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
