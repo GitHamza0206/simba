@@ -2,7 +2,6 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from simba.chatbot.demo.nodes.generate_node import generate
-from simba.chatbot.demo.nodes.grade_node import grade
 from simba.chatbot.demo.nodes.hallucination_node import grade_generation_v_documents_and_question
 # ===========================================
 # Import nodes
@@ -22,7 +21,6 @@ memory = MemorySaver()
 workflow.add_node("retrieve", retrieve)
 workflow.add_node("rerank", rerank)
 workflow.add_node("compress", compress)
-workflow.add_node("grade", grade)
 workflow.add_node("generate", generate)
 
 # ===========================================
@@ -57,8 +55,7 @@ def decide_to_generate(state):
 workflow.add_edge(START, "retrieve")
 workflow.add_edge("retrieve", "rerank")
 workflow.add_edge("rerank", "compress")
-workflow.add_edge("compress", "grade")
-workflow.add_edge("grade", "generate")
+workflow.add_edge("compress", "generate")
 workflow.add_edge("generate", END)
 
 # ===========================================
