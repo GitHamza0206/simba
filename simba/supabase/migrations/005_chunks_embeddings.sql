@@ -2,6 +2,9 @@
 -- Section 5: Embeddings (chunks_embeddings) Table
 -- =============================================================
 
+-- Install pgvector extension if it doesn't exist
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- Create the embeddings table for LangChain documents and vector data
 CREATE TABLE IF NOT EXISTS chunks_embeddings (
     id TEXT PRIMARY KEY,  -- Using string UUIDs as per LangChain convention
