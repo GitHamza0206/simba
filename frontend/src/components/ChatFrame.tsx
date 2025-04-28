@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Paperclip, X, Smile, Plus, Loader2, MessageSquare } from 'lucide-react';
+import { Send, Paperclip, X, Smile, Plus, Loader2, MessageSquare, Globe, Megaphone, Image as ImageIcon, MoreHorizontal, Mic } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import { Message } from '@/types/chat';
 import Thinking from '@/components/Thinking';
@@ -227,68 +227,28 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
           )}
 
           <CardFooter className="p-4 border-t bg-white">
-            <form onSubmit={handleSubmit} className="flex w-full gap-2">
-              <div className="flex-1 flex items-center gap-1 px-3 py-2 rounded-xl border bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={onUploadClick}
-                        className="h-8 w-8 rounded-full hover:bg-blue-50 hover:text-blue-600 p-0"
-                      >
-                        <Paperclip className="h-5 w-5 text-gray-500 rotate-45" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      <p>Upload document</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
+            <form onSubmit={handleSubmit} className="w-full flex justify-center">
+              <div className="w-full max-w-3xl flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow-lg border border-gray-100">
                 <Input
                   ref={inputRef}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Type a message..."
+                  placeholder="Poser une question"
                   disabled={isLoading}
-                  className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-2 py-1 text-base"
+                  className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-2 py-1 text-base placeholder:text-gray-400"
                 />
-                
-                <div className="flex items-center gap-1">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          // Add emoji picker functionality here if needed
-                          className="h-8 w-8 rounded-full hover:bg-blue-50 hover:text-blue-600 p-0"
-                        >
-                          <Smile className="h-5 w-5 text-gray-500" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <p>Add emoji</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+                <Button
+                  type="submit"
+                  disabled={isLoading || !inputMessage.trim()}
+                  className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all duration-200"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </Button>
               </div>
-              <Button 
-                type="submit" 
-                disabled={isLoading || !inputMessage.trim()}
-                className="rounded-xl shadow-md bg-blue-600 hover:bg-blue-700 transition-all duration-200"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
             </form>
           </CardFooter>
         </Card>
