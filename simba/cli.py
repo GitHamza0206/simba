@@ -23,7 +23,7 @@ def run_server():
     app = create_app()
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000, workers=1)
+    uvicorn.run(app, host="0.0.0.0", port=5005, workers=1)
 
 
 @cli.command("parsers")

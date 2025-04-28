@@ -17,6 +17,15 @@ CREATE TABLE IF NOT EXISTS documents (
 CREATE INDEX IF NOT EXISTS idx_documents_data ON documents USING GIN (data);
 CREATE INDEX IF NOT EXISTS idx_documents_user_id ON documents(user_id);
 
+-- Function to update the updated_at column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Trigger to update the updated_at column
 CREATE TRIGGER update_documents_updated_at
     BEFORE UPDATE ON documents

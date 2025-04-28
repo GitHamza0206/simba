@@ -112,7 +112,7 @@ export default function KnowledgeConfigPage() {
   const fetchConfig = async () => {
     try {
       const token = getAccessToken();
-      const response = await fetch('/api/config', {
+      const response = await fetch('/config', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

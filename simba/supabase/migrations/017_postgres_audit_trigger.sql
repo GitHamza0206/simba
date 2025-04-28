@@ -1,8 +1,14 @@
--- Enable audit.user_id setting in sessions
+-- Enable audit functionality
 CREATE EXTENSION IF NOT EXISTS plpgsql_check;
 
--- Create custom settings for audit
-ALTER DATABASE postgres SET audit.user_id = '';
+-- Create a function to set the audit user ID for the current session
+CREATE OR REPLACE FUNCTION set_audit_user_id(user_id text)
+RETURNS void AS $$
+BEGIN
+    -- Set at session level only
+    PERFORM set_config('audit.user_id', user_id, false);
+END;
+$$ LANGUAGE plpgsql;
 
 -- Update the audit trigger function to use session context
 CREATE OR REPLACE FUNCTION process_audit_log()
@@ -11,6 +17,7 @@ DECLARE
     org_id_val uuid;
     old_data_val jsonb;
     new_data_val jsonb;
+    user_id_val text;
 BEGIN
     -- Get organization_id from the record if it exists
     IF TG_TABLE_NAME = 'organizations' THEN
@@ -29,9 +36,19 @@ BEGIN
     END IF;
 
     -- Get the current user ID from session context
-    IF current_setting('audit.user_id', TRUE) IS NULL THEN
-        RAISE EXCEPTION 'audit.user_id must be set';
-    END IF;
+    BEGIN
+        user_id_val := current_setting('audit.user_id', true);
+        -- If no user_id set in session, use auth.uid() if available
+        IF user_id_val IS NULL THEN
+            BEGIN
+                user_id_val := auth.uid()::text;
+            EXCEPTION WHEN OTHERS THEN
+                user_id_val := 'system';
+            END;
+        END IF;
+    EXCEPTION WHEN OTHERS THEN
+        user_id_val := 'system';
+    END;
 
     -- Insert audit log
     INSERT INTO audit_logs (
@@ -49,7 +66,7 @@ BEGIN
         org_id_val,
         TG_TABLE_NAME,
         COALESCE(NEW.id, OLD.id),
-        current_setting('audit.user_id')::text,
+        user_id_val,
         current_timestamp,
         TG_OP,
         old_data_val,
@@ -75,6 +92,8 @@ CREATE TRIGGER audit_organization_members_trigger
 -- Grant necessary permissions
 GRANT ALL ON audit_logs TO authenticated;
 GRANT ALL ON audit_logs TO service_role;
+GRANT EXECUTE ON FUNCTION set_audit_user_id TO authenticated;
+GRANT EXECUTE ON FUNCTION set_audit_user_id TO service_role;
 
 -- Add indexes for better audit log performance
 CREATE INDEX IF NOT EXISTS idx_audit_logs_organization_id ON audit_logs(organization_id);
@@ -91,8 +110,9 @@ CREATE POLICY audit_logs_org_access_policy ON audit_logs
         organization_id IN (
             SELECT organization_id 
             FROM organization_members 
-            WHERE user_id = current_setting('audit.user_id')::text
+            WHERE user_id = auth.uid()
         )
     );
 
-COMMENT ON FUNCTION process_audit_log() IS 'Audit trigger function that logs changes to organizations and organization_members tables'; 
+COMMENT ON FUNCTION process_audit_log() IS 'Audit trigger function that logs changes to organizations and organization_members tables';
+COMMENT ON FUNCTION set_audit_user_id IS 'Function to set the audit user ID for the current session'; 

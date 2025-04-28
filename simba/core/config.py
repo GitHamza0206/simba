@@ -203,13 +203,18 @@ class SupabaseSettings(BaseSettings):
     )
     key: str = Field(
         default="",
-        description="Supabase API key",
-        env="SUPABASE_KEY,SUPABASE_PUBLIC_KEY"  # Try both keys
+        description="Supabase anon/public key",
+        env="SUPABASE_ANON_KEY,ANON_KEY"  # Try both keys for compatibility
+    )
+    service_role_key: str = Field(
+        default="",
+        description="Supabase service role key for admin access",
+        env="SERVICE_ROLE_KEY"
     )
     jwt_secret: str = Field(
         default="",
         description="Supabase JWT secret for token verification",
-        env="SUPABASE_JWT_SECRET"
+        env="JWT_SECRET"
     )
 
 
