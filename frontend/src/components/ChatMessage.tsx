@@ -5,7 +5,7 @@ import remarkBreaks from 'remark-breaks';
 import chatbotIcon from "../assets/chatbot-icon.svg";
 import FollowUpQuestions from './FollowUpQuestions';
 import { Button } from "@/components/ui/button";
-import { FileText, Copy, Check } from 'lucide-react';
+import { FileText, Copy, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
@@ -100,25 +100,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                   }`}
                 >
                   <div className="prose prose-sm max-w-none break-words overflow-auto relative">
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={copyToClipboard}
-                              className="h-7 w-7 rounded-full hover:bg-gray-100"
-                            >
-                              {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-gray-400" />}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{copied ? 'Copied!' : 'Copy message'}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm, remarkBreaks]}
                       className="prose-pre:bg-gray-100 prose-pre:border prose-pre:border-gray-200 prose-code:text-blue-600 prose-code:bg-blue-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded-md"
@@ -157,6 +138,32 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                         />
                       </div>
                     )}
+                    {/* Feedback Buttons Row */}
+                    <div className="w-full flex justify-start gap-2 mt-4">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-gray-500 hover:bg-gray-100"
+                              onClick={copyToClipboard}
+                            >
+                              {copied ? <Check className="h-5 w-5 text-green-500" /> : <Copy className="h-5 w-5" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{copied ? 'Copied!' : 'Copy message'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <Button variant="ghost" size="icon" className="text-gray-500 hover:bg-gray-100">
+                        <ThumbsUp className="h-5 w-5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-gray-500 hover:bg-gray-100">
+                        <ThumbsDown className="h-5 w-5" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
