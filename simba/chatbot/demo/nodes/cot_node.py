@@ -11,13 +11,24 @@ def cot(state: State):
     question = state["messages"][-1].content
     sub_queries = state["sub_queries"] 
     response = cot_chain.invoke({"question": question, "sub_queries": sub_queries, "summaries": all_summaries})
+    is_summary_enough = response.is_summary_enough
     ids, summaries = response.id, response.page_content
-    context = db.get_document(ids)
+    if is_summary_enough:
+        return {
+            "summaries": summaries,
+            "sub_queries": sub_queries,
+            "question": question,
+            "documents": [],
+            "is_summary_enough": response.is_summary_enough
+        }
+    else:
+        
+        context = db.get_document(ids)
+        return {
 
-    return {
-
-        "summaries": summaries,
-        "sub_queries": sub_queries,
-        "question": question,
-        "documents": context
-    }
+            "summaries": summaries,
+            "sub_queries": sub_queries,
+            "question": question,
+            "documents": context,
+            "is_summary_enough": response.is_summary_enough
+        }

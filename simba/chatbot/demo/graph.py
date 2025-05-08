@@ -43,6 +43,7 @@ workflow.add_conditional_edges(
 )
 workflow.add_edge("transform_query", "cot")
 workflow.add_edge("cot", "generate")
+
 #workflow.add_edge("retrieve", "rerank")
 #workflow.add_edge("rerank", "generate")
 #workflow.add_edge("compress", "generate")
