@@ -28,6 +28,7 @@ class State(TypedDict):
     generation: str
     transform_attempts: Optional[int]
     sub_queries: List[str]
+    is_summary_enough: bool
     summaries: List[str] 
     # New: Client-facing state representation
 
