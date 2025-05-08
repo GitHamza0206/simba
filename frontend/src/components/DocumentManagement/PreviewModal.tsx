@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { cn } from '@/lib/utils';
+import { SimbaDoc, Document } from "@/types/document"; // Ensure SimbaDoc and Document are imported
 
 interface PreviewModalProps {
   isOpen: boolean;
@@ -303,9 +304,9 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
     }
 
     return (
-      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-280px)]">
+      <div className="flex flex-col lg:flex-row gap-4 flex-1 overflow-hidden">
         {/* Left side - File preview */}
-        <Card className="flex-1 min-h-[200px] lg:max-w-[50%] overflow-hidden">
+        <Card className="flex-1 min-h-[200px] lg:max-w-[50%] flex flex-col overflow-hidden">
           <CardHeader className="p-3 flex flex-row justify-between items-center">
             <CardTitle className="text-lg">Original Document</CardTitle>
             <div className="flex items-center gap-2">
@@ -319,20 +320,20 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-0 h-[calc(100vh-380px)]">
+          <CardContent className="p-0 flex-1 overflow-hidden">
             {renderFilePreview()}
           </CardContent>
         </Card>
 
         {/* Right side - Chunks with new buttons */}
-        <Card className="flex-1 min-h-[200px] lg:max-w-[50%]">
+        <Card className="flex-1 min-h-[200px] lg:max-w-[50%] flex flex-col overflow-hidden">
           <CardHeader className="p-3">
             <CardTitle className="text-lg">Document Chunks</CardTitle>
           </CardHeader>
-          <CardContent className="p-3">
-            <ScrollArea className="h-[calc(100vh-380px)]">
+          <CardContent className="p-3 flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
               <div className="space-y-3">
-                {document.documents.map((chunk, index) => (
+                {document.documents.map((chunk: Document, index: number) => (
                   <div key={index} className="p-3 border rounded-lg">
                     <div className="flex justify-between items-center mb-2">
                       <div className="text-sm font-medium">
@@ -406,12 +407,23 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleModalClose}>
-      <DialogContent className="w-[95vw] max-w-7xl h-[90vh] max-h-[90vh] p-6">
+      <DialogContent className="w-[95vw] max-w-7xl h-[90vh] max-h-[90vh] p-6 flex flex-col">
         <DialogHeader className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <DialogTitle>{document?.metadata.filename || 'Document Preview'}</DialogTitle>
           </div>
-          
+          {/* Add summary display if present */}
+          {document?.metadata.summary && (
+            <div className="flex flex-col w-full">
+              <div className="text-sm text-muted-foreground whitespace-nowrap font-semibold mb-1">Summary:</div>
+              <div
+                className="text-sm bg-muted rounded p-2 border border-muted-foreground/10 max-w-2xl whitespace-pre-line overflow-auto"
+                style={{ maxHeight: '180px' }}
+              >
+                {document.metadata.summary}
+              </div>
+            </div>
+          )}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="text-sm text-muted-foreground whitespace-nowrap">Loader:</div>

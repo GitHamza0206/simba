@@ -229,20 +229,32 @@ class PostgresDB(DatabaseService):
         finally:
             session.close()
     
-    def get_document(self, document_id: str, user_id: str = None) -> Optional[SimbaDoc]:
-        """Retrieve a document by ID using SQLAlchemy ORM."""
+    def get_document(self, document_id: str | List[str], user_id: str = None) -> Optional[SimbaDoc] | List[Optional[SimbaDoc]]:
+        """Retrieve a document by ID or a list of documents by IDs using SQLAlchemy ORM.
+        If a list of IDs is provided, returns a list of SimbaDoc (None for not found).
+        If a single ID is provided, returns a single SimbaDoc or None.
+        """
         try:
             session = self._Session()
-            query = session.query(SQLDocument).filter(SQLDocument.id == document_id)
-            
-            # Filter by user_id if provided
-            if user_id:
-                query = query.filter(SQLDocument.user_id == user_id)
-            
-            doc = query.first()
-            return doc.to_simbadoc() if doc else None
+            if isinstance(document_id, list):
+                query = session.query(SQLDocument).filter(SQLDocument.id.in_(document_id))
+                if user_id:
+                    query = query.filter(SQLDocument.user_id == user_id)
+                docs = query.all()
+                # Map id to doc for fast lookup
+                doc_map = {doc.id: doc for doc in docs}
+                # Return in the same order as input list, None if not found
+                return [doc_map.get(doc_id).to_simbadoc() if doc_map.get(doc_id) else None for doc_id in document_id]
+            else:
+                query = session.query(SQLDocument).filter(SQLDocument.id == document_id)
+                if user_id:
+                    query = query.filter(SQLDocument.user_id == user_id)
+                doc = query.first()
+                return doc.to_simbadoc() if doc else None
         except Exception as e:
-            logger.error(f"Failed to get document {document_id}: {e}")
+            logger.error(f"Failed to get document(s) {document_id}: {e}")
+            if isinstance(document_id, list):
+                return [None for _ in document_id]
             return None
         finally:
             session.close()

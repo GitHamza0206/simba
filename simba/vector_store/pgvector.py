@@ -727,7 +727,7 @@ class PGVectorStore(VectorStore):
             logger.warning(f"Error during cross-encoder reranking: {e}. Using original ranking.")
             return initial_results[:top_k]
 
-    def context_compression(self, query: str, documents: List[Document], num_passages: int = 5) -> List[Document]:
+    def context_compression(self, query: str, documents: List[Document], num_passages: int = 10) -> List[Document]:
         """
         Select the most relevant passages for context compression.
         
