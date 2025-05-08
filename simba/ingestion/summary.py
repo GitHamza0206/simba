@@ -7,58 +7,60 @@ llm = get_llm()
 
 prompt = ChatPromptTemplate.from_template(
     """
-    # Extraction Prompt — Mode « Guideflexible »  
-        *(Documents Atlanta Sanad – Assurances, Maroc)*  
+    # Extraction Prompt — Mode « Guideflexible »
 
-        ## Rôle  
-        Analyste assurance/juridique devant condenser tout document Atlanta Sanad (police, avenant, CGV, guide sinistre, FAQ, note interne, etc.) en un guide destiné à un LLM de recherche.
+            *(Generic Documents — Any Type of Document)*
 
-        ## Objectif  
-        Restituer **tous** les points saillants : notions, montants, clauses, acteurs, dates, relations et conditions ; offrir au LLM une « carte » permettant de retrouver n’importe quelle information, même issue d’une question vague.
+            ## Role  
+            Analyst tasked with condensing any document into a guide for use by an LLM for research purposes.  
 
-        ## Directives de Contenu  
-        - Parcourir l’intégralité du texte ; aucune info pertinente ne doit être omise même si elle ne correspond pas à un gabarit pré‑défini.  
-        - Synthétiser sans interprétation personnelle ; conserver le vocabulaire juridique, les guillemets pour les clauses importantes.  
-        - Lorsque nécessaire, créer vos **propres sous-rubriques** pour ranger des informations atypiques.  
-        - Mentionner chaque entité nommée (produit, garantie, exclusion, partie prenante, instance, loi, décret, montant, date, téléphone, procédure).  
-        - Décrire brièvement les relations ou conditions (ex. déclencheurs, seuils, dépendances entre garanties).  
-        - Si une information ne « rentre » nulle part, placer-la sous **« Autres points saillants »**.
+            ## Objective  
+            Extract **all** key points: concepts, amounts, clauses, actors, dates, relationships, and conditions; provide the LLM with a "map" to find any information, even from vague questions.  
 
-        ## Style & Format  
-        - Markdown hiérarchique **flexible** : vous pouvez ajouter, renommer ou supprimer des sections selon le document.  
-        - Chaque élément : phrase courte ou puce terminée par « ; » ou « . ».  
-        - Pas de listes numérotées imbriquées > 2 niveaux pour garder la lisibilité.  
-        - Pas de JSON, pas de tableau.  
-        - Commencer par le titre court du document en **gras**, suivi d’un « : ».
+            ## Content Guidelines  
+            - Review the entire text; no relevant information should be omitted, even if it doesn't fit a predefined template.  
+            - Summarize without personal interpretation; retain specific terminology and use quotation marks for significant clauses.  
+            - When necessary, create your **own subheadings** to categorize atypical information.  
+            - Mention every named entity (product, coverage, exclusion, stakeholder, instance, law, decree, amount, date, phone number, procedure).  
+            - Briefly describe relationships or conditions (e.g., triggers, thresholds, dependencies between coverages).  
+            - If information doesn't fit any category, place it under **"Other Key Points"**.  
 
-        ## Squelette (à adapter librement)  
+            ## Style & Format  
+            - **Flexible hierarchical Markdown**: you can add, rename, or remove sections according to the document.  
+            - Each element: short sentence or bullet point ending with ";" or ".".  
+            - No nested numbered lists > 2 levels to maintain readability.  
+            - No JSON, no tables.  
+            - Start with the short title of the document in **bold**, followed by a colon.  
 
-        text
-        **Titre Court** :
+            ## Skeleton (freely adaptable)  
 
-        ### Vue d’ensemble
-        Bref résumé du but et de la portée du document ;
+            text  
+            **Short Title**:  
 
-        ### Concepts & Entités clés
-        - … ;
+            ### Overview  
+            Brief summary of the purpose and scope of the document;  
 
-        ### Garanties / Couvertures
-        - … ;
+            ### Key Concepts & Entities  
+            - … ;  
 
-        ### Conditions, Plafonds & Seuils
-        - … ;
+            ### Coverages / Guarantees  
+            - … ;  
 
-        ### Procédures (Souscription, Sinistre, résiliation, etc.)
-        - … ;
+            ### Conditions, Limits & Thresholds  
+            - … ;  
 
-        ### Bases légales & Références
-        - … ;
+            ### Procedures (Subscription, Claims, Cancellation, etc.)  
+            - … ;  
 
-        ### Autres points saillants
-        - … ;
+            ### Legal Bases & References  
+            - … ;  
 
-        Here is the document: 
-        {document}
+            ### Other Key Points  
+            - … ;  
+
+            Here is the document:  
+            {document}
+
     """
 )
 

@@ -9,23 +9,22 @@ class Route(BaseModel):
 
 routing_prompt = ChatPromptTemplate.from_template(
     """
-    You are a router for insurance company  assistant.
-    You are member of the company and you talk to internal employees
-    All the questions are related to insurance.
-    If user ask a question like who's the CEO ? should guess that's it's related to atlanta
-    Your task is to analyze the user's message and determine the appropriate route:
+      You are an assistant router for a document management system.
+      You are tasked with analyzing user queries related to various types of documents.
 
-    - Choose 'transform_query' if the message is:
-      * Related to Atlanta (the city, events, travel, etc.)
-      * Related to insurance (questions about insurance, coverage, claims, etc.)
+      Your task is to analyze the user's message and determine the appropriate route:
 
-    - Choose 'fallback' if the message is:
-      * Not related to Atlanta or insurance
-      * Off-topic, general, or cannot be answered by the system
+      - Choose 'transform_query' if the message is:
+        * Related to the specific type of documents managed (e.g., legal documents, technical manuals, research papers).
+        * Pertains to document retrieval, content specifics, summaries, etc.
 
-    User message: {question}
-    Route (respond with only 'transform_query' or 'fallback'):
-    """
+      - Choose 'fallback' if the message is:
+        * Not directly related to document management or retrieval.
+        * Off-topic, general, or cannot be answered within the document context.
+
+      User message: {question}
+      Route (respond with only 'transform_query' or 'fallback'):
+      """
 )
 
 

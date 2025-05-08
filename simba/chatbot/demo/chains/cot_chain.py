@@ -11,41 +11,40 @@ class DocumentSelectorChain(BaseModel):
 prompt = ChatPromptTemplate.from_template(
     """
     # Prompt « Sélection Top 5 »
-        *(RAG – Documents Atlanta Sanad, liste de glossaires structurés)*
+        *(RAG – General Documents, structured glossary list)*
 
-        ## Contexte
-        Tu reçois :
-        1. **Question principale** de l'utilisateur ;
-        2. **Liste Q** : variantes reformulées (Q1…Qn) ;
-        3. **Corpus** : N documents déjà résumés sous forme de glossaires hiérarchiques Markdown (cf. prompt d'extraction).
+        ## Context
+        You receive:
+        1. **Main question** from the user;
+        2. **Q List**: reformulated variants (Q1…Qn);
+        3. **Corpus**: N documents already summarized in hierarchical Markdown glossaries (see extraction prompt).
 
-        ## Rôle
-        Agir comme moteur de recherche expert : identifier **jusqu'à 5 documents** les plus pertinents pour répondre à la question, en tenant compte des variantes Q1…Qn.
+        ## Role
+        Act as an expert search engine: identify **up to 5 documents** most relevant to answer the question, considering variants Q1…Qn.
 
-        ## Critères de Pertinence (par ordre décroissant)
-        1. **Correspondance sémantique** avec concepts, garanties, exclusions, montants, dates, acteurs cités dans la question ou ses reformulations ;
-        2. **Chevauchement lexical** (mots exacts, synonymes, acronyms) ;
-        3. **Spécificité** : un document ciblant précisément le sujet > un document généraliste ;
-        4. **Hiérarchie interne** : si la section *Garanties Couvertures* ou *Conditions* traite directement d'un terme clé, bonus ;
-        5. **Actualité** : privilégier les versions ou avenants les plus récents si date disponible ;
-        6. **Type de doc** : Police avenant > Guide sinistre > FAQ > CGV > Note interne, sauf si la question appelle explicitement un autre type.
+        ## Relevance Criteria (in descending order)
+        1. **Semantic match** with concepts, guarantees, exclusions, amounts, dates, actors mentioned in the question or its reformulations;
+        2. **Lexical overlap** (exact words, synonyms, acronyms);
+        3. **Specificity**: a document specifically targeting the subject > a generalist document;
+        4. **Internal hierarchy**: if the *Coverage Guarantees* or *Conditions* section directly addresses a key term, bonus points;
+        5. **Freshness**: prioritize newer versions or amendments if date available;
+        6. **Document type**: Endorsement Policy > Claims Guide > FAQ > Terms of Service > Internal Memo, unless the question explicitly calls for another type.
 
-        ## Directives d'Extraction
-        - **Ne lis que les glossaires fournis** ; n'invente rien.
-        - Lorsque plusieurs docs semblent équivalents, choisis celui qui couvre **le plus grand nombre d'entités** mentionnées dans Q & Qn.
-        - Si < 5 documents atteignent un seuil de pertinence raisonnable, retourne-en moins, jamais plus de 5.
+        ## Extraction Guidelines
+        - **Only read the provided glossaries**; do not invent any information.
+        - When multiple documents seem equivalent, choose the one covering **the most entities** mentioned in Q & Qn.
+        - If fewer than 5 documents meet a reasonable relevance threshold, return fewer, never more than 5.
 
-        ## Format de Sortie
-        Renvoie l'ID du document et le contenu du document.
+        ## Output Format
+        Return the document ID and its content.
 
-    Here is the question:
-    {question}
-    Here are sub queries:
-    {sub_queries}
-    Here is the context:
-    {summaries}
-    If the context is enough to answer the question, is_summary_enough is True else False.
-
+        Here is the question:
+        {question}
+        Here are sub queries:
+        {sub_queries}
+        Here is the context:
+        {summaries}
+        If the context is enough to answer the question, is_summary_enough is True else False.
 
     """
 )
