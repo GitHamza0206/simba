@@ -17,14 +17,21 @@ def generate(state):
     question = state["messages"][-1].content
     
     # Use compressed documents as context (fallback to original documents if compression not available)
-    context_docs = state["compressed_documents"]
+    context_docs = state["documents"]
     print(f"Using {len(context_docs)} compressed documents for generation")
     
 
-    docs_content = "\n\n".join(doc.page_content for doc in context_docs)
+    docs_content = "\n\n".join(
+        doc.page_content
+        for simbadoc in context_docs
+        for doc in getattr(simbadoc, "documents", [])
+    )
+
+    summaries = state["summaries"]
     # RAG generation
     generation = generate_chain.invoke(
         {
+            "summaries": summaries,
             "context": docs_content,
             "question": question,
             "chat_history": state["messages"],

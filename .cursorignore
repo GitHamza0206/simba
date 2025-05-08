@@ -37,7 +37,6 @@ vector_stores/
 
 # Dependencies
 node_modules/
-.cursor/
 
 # Logs and databases
 *.log

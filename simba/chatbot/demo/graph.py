@@ -9,7 +9,11 @@ from simba.chatbot.demo.nodes.retrieve_node import retrieve
 from simba.chatbot.demo.nodes.rerank_node import rerank
 from simba.chatbot.demo.nodes.compress_node import compress
 from simba.chatbot.demo.state import State
-
+from simba.chatbot.demo.nodes.hyde_node import hyde
+from simba.chatbot.demo.nodes.routing_node import routing
+from simba.chatbot.demo.nodes.fallback_node import fallback
+from simba.chatbot.demo.nodes.transform_query_node import transform_query
+from simba.chatbot.demo.nodes.cot_node import cot
 # ===========================================
 
 workflow = StateGraph(State)
@@ -18,6 +22,11 @@ memory = MemorySaver()
 
 # ===========================================
 # Define the nodes
+# ===========================================
+workflow.add_node("routing", routing)
+workflow.add_node("fallback", fallback)
+workflow.add_node("transform_query", transform_query)    
+workflow.add_node("cot", cot)
 workflow.add_node("retrieve", retrieve)
 workflow.add_node("rerank", rerank)
 workflow.add_node("compress", compress)
@@ -26,36 +35,18 @@ workflow.add_node("generate", generate)
 # ===========================================
 #EDGE functions 
 
-def decide_to_generate(state):
-    """
-    Determines whether to generate an answer based on document relevance.
-
-    Args:
-        state (dict): The current graph state
-
-    Returns:
-        str: Decision for next node to call
-    """
-    print("---ASSESS GRADED DOCUMENTS---")
-    
-    # Use compressed documents for relevance assessment
-    filtered_documents = state["compressed_documents"]
-
-    if not filtered_documents:
-        # If no relevant documents, still try to generate with what we have
-        print("---DECISION: NO RELEVANT DOCUMENTS, BUT PROCEEDING WITH GENERATION---")
-        return "generate"
-    else:
-        # We have relevant documents, so generate answer
-        print("---DECISION: GENERATE WITH RELEVANT DOCUMENTS---")
-        return "generate"
-
 # ===========================================
 # define the edges
-workflow.add_edge(START, "retrieve")
-workflow.add_edge("retrieve", "rerank")
-workflow.add_edge("rerank", "compress")
-workflow.add_edge("compress", "generate")
+workflow.add_conditional_edges(
+    START, 
+    routing # gives either "fallback" or "transform_query"
+)
+workflow.add_edge("transform_query", "cot")
+workflow.add_edge("cot", "generate")
+#workflow.add_edge("retrieve", "rerank")
+#workflow.add_edge("rerank", "generate")
+#workflow.add_edge("compress", "generate")
+workflow.add_edge("fallback", END)
 workflow.add_edge("generate", END)
 
 # ===========================================

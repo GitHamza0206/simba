@@ -19,6 +19,7 @@ from simba.storage.base import StorageProvider
 from .loader import Loader
 from .file_handling import delete_file_locally
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,6 +44,8 @@ class DocumentIngestionService:
             SimbaDoc: The ingested document
         """
         try:
+            # Import here to avoid circular import
+            from simba.tasks.generate_summary import generate_summary_task
             # Generate file path
             file_path = Path(folder_path.strip("/")) / file.filename
             file_extension = f".{file.filename.split('.')[-1].lower()}"
@@ -79,9 +82,11 @@ class DocumentIngestionService:
                 parser=None,
             )
             
-            return SimbaDoc.from_documents(
+            simbadoc = SimbaDoc.from_documents(
                 id=str(uuid.uuid4()), documents=document, metadata=metadata
             )
+            generate_summary_task.delay(simbadoc.model_dump())
+            return simbadoc
             
         except Exception as e:
             logger.error(f"Error ingesting document: {str(e)}")

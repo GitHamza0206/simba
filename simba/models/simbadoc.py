@@ -19,6 +19,7 @@ class MetadataType(BaseModel):
     file_path: str = Field(default="")
     parsing_status: str = Field(default="")
     parsed_at: str = Field(default="")
+    summary: str = Field(default="")
 
     def dict(self, *args, **kwargs):
         # Override dict method to ensure all fields are JSON serializable

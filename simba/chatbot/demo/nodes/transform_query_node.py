@@ -1,4 +1,4 @@
-from simba.chatbot.demo.chains.question_rewrite_chain import question_rewrite_chain
+from simba.chatbot.demo.chains.transform_query_chain import question_rewrite_chain
 
 def transform_query(state):
     """
@@ -14,7 +14,6 @@ def transform_query(state):
 
     print("---TRANSFORM QUERY---")
     question = state["messages"][-1].content
-    documents = state["documents"]
     
     # Track transformation attempts
     transform_attempts = state.get("transform_attempts", 0)
@@ -26,7 +25,7 @@ def transform_query(state):
     better_question = question_rewrite_chain.invoke({"question": question})
     
     return {
-        "documents": documents, 
-        "question": better_question,
+        "question": question,
+        "sub_queries": better_question.sub_queries,
         "transform_attempts": transform_attempts
     }

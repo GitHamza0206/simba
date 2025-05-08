@@ -21,12 +21,14 @@ class State(TypedDict):
 
     messages: Annotated[Sequence[BaseMessage], add_messages]
     documents: List[dict]
+    hyde_retreived: List[dict]
     reranked_documents: List[dict]
     compressed_documents: List[dict]
     question: str
     generation: str
     transform_attempts: Optional[int]
-
+    sub_queries: List[str]
+    summaries: List[str] 
     # New: Client-facing state representation
 
 
