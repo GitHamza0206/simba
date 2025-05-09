@@ -30,6 +30,7 @@
     "axios": "^1.6.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "framer-motion": "^11.0.8",
     "lucide-react": "^0.469.0",
     "pdfjs-dist": "^4.10.38",
