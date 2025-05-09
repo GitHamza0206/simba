@@ -1,63 +1,14 @@
 # Simplified Makefile for Simba Docker Build and Deployment
 
 # Variables with sensible defaults
-DEVICE ?= auto
-PLATFORM ?= auto
-IMAGE_NAME ?= simba
-IMAGE_TAG ?= latest
+DEVICE ?= cpu
 
-# Auto-detect device type
-ifeq ($(DEVICE),auto)
-	ifeq ($(shell uname -m),arm64)
-		ifeq ($(shell uname -s),Darwin)
-			DEVICE := cpu
-		else
-			DEVICE := cpu
-		endif
-	else
-		ifneq ($(shell which nvidia-smi 2>/dev/null),)
-			DEVICE := cuda
-		else
-			DEVICE := cpu
-		endif
-	endif
-endif
-
-# Auto-detect platform
-ifeq ($(PLATFORM),auto)
-	ifeq ($(shell uname -m),arm64)
-		DOCKER_PLATFORM := linux/arm64
-	else
-		DOCKER_PLATFORM := linux/amd64
-	endif
-else ifeq ($(PLATFORM),arm64)
+# Set platform based on architecture
+ifeq ($(shell uname -m),arm64)
 	DOCKER_PLATFORM := linux/arm64
-else ifeq ($(PLATFORM),amd64)
+else
 	DOCKER_PLATFORM := linux/amd64
-else
-	$(error Invalid PLATFORM. Must be one of: auto, arm64, amd64)
 endif
-
-# Set device-specific options
-ifeq ($(DEVICE),cuda)
-	USE_GPU := true
-	RUNTIME := nvidia
-	ifeq ($(DOCKER_PLATFORM),linux/arm64)
-		$(error CUDA device is not supported on ARM architecture)
-	endif
-else ifeq ($(DEVICE),mps)
-	# Show warning for MPS
-	$(warning MPS device requested but Docker containers cannot access Metal framework on macOS. Setting to CPU mode.)
-	DEVICE := cpu
-	USE_GPU := false
-	RUNTIME :=
-else
-	USE_GPU := false
-	RUNTIME :=
-endif
-
-# Derived variables
-FULL_IMAGE_NAME = $(IMAGE_NAME):$(IMAGE_TAG)
 
 # Free up Docker storage before building
 docker-prune:
@@ -70,28 +21,34 @@ setup-network:
 	@echo "Setting up Docker network..."
 	@docker network inspect simba_network >/dev/null 2>&1 || docker network create simba_network
 
-# Setup Buildx builder
+# Setup Buildx builder (preserves cache)
 setup-builder:
 	@echo "Setting up Buildx builder..."
-	@docker buildx rm simba-builder 2>/dev/null || true
-	@docker buildx create --name simba-builder \
-		--driver docker-container \
-		--driver-opt "image=moby/buildkit:buildx-stable-1" \
-		--driver-opt "network=host" \
-		--buildkitd-flags '--allow-insecure-entitlement security.insecure' \
-		--bootstrap --use
+	@if ! docker buildx inspect simba-builder >/dev/null 2>&1; then \
+	  docker buildx create --name simba-builder \
+	    --driver docker-container \
+	    --driver-opt "image=moby/buildkit:buildx-stable-1" \
+	    --driver-opt "network=host" \
+	    --buildkitd-flags '--allow-insecure-entitlement security.insecure' \
+	    --bootstrap --use; \
+	else \
+	  docker buildx use simba-builder; \
+	fi
+
+# Build frontend image
+build-frontend:
+	@echo "Building frontend Docker image..."
+	@docker build -t simba-frontend:latest -f frontend/Dockerfile frontend
 
 # Build image
-build: docker-prune setup-network setup-builder
-	@echo "Building Docker image..."
+build: build-frontend setup-network setup-builder
+	@echo "Building backend Docker image..."
 	@docker buildx build --builder simba-builder \
 		--platform ${DOCKER_PLATFORM} \
 		--build-arg USE_GPU=${USE_GPU} \
-		--build-arg TARGETARCH=${TARGETARCH} \
 		--build-arg BUILDKIT_INLINE_CACHE=1 \
 		--progress=plain \
-		--no-cache \
-		-t ${IMAGE_NAME}:${IMAGE_TAG} \
+		-t simba-backend:latest \
 		-f docker/Dockerfile \
 		--load \
 		.
@@ -107,7 +64,7 @@ up: setup-network
 		DEVICE=${DEVICE} RUNTIME="" RUN_OLLAMA=ollama docker compose -f docker/docker-compose.yml up -d; \
 	else \
 		echo "Running without Ollama"; \
-		DEVICE=${DEVICE} RUNTIME="" RUN_OLLAMA=none docker compose -f docker/docker-compose.yml up -d; \
+		DEVICE=${DEVICE} RUNTIME="" RUN_OLLAMA=none docker compose -f docker/docker-compose.yml up -d --force-recreate; \
 	fi
 	@echo "Containers started successfully!"
 
@@ -116,9 +73,6 @@ down:
 	@echo "Stopping containers..."
 	@docker compose -f docker/docker-compose.yml down
 	@echo "Containers stopped."
-
-# Restart command - keep this part
-restart: down up
 
 # Clean everything
 clean: down
@@ -132,24 +86,19 @@ clean: down
 logs:
 	@docker compose -f docker/docker-compose.yml logs -f
 
-# One-step build and run
-run: build up
-
 # Show help
 help:
 	@echo "Simba Docker Commands:"
 	@echo "  make build         - Build Docker image"
 	@echo "  make up            - Start containers"
 	@echo "  make down          - Stop containers"
-	@echo "  make restart       - Restart all containers"
 	@echo "  make clean         - Clean up Docker resources"
 	@echo "  make logs          - View logs"
 	@echo ""
 	@echo "Options:"
 	@echo "  DEVICE=cpu|cuda|auto   (current: $(DEVICE))"
-	@echo "  PLATFORM=amd64|arm64|auto  (current: $(PLATFORM))"
 	@echo "  Current platform: $(DOCKER_PLATFORM)"
 	@echo ""
 	@echo "Note: MPS (Metal Performance Shaders) is not supported in Docker containers."
 
-.PHONY: setup-network setup-builder build up down restart clean logs run help ollama-enable ollama-disable docker-prune
+.PHONY: setup-network setup-builder build up down clean logs help docker-prune

@@ -6,7 +6,7 @@ ARG TARGETARCH
 ARG BUILDKIT_INLINE_CACHE=1
 
 # Stage 1: Build dependencies
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -83,7 +83,7 @@ RUN if [ "$USE_GPU" = "true" ] && [ "$TARGETARCH" = "amd64" ]; then \
     fi
 
 # Expose port
-EXPOSE 8000
+EXPOSE 5005
 
 # Start the server
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["uvicorn", "simba.__main__:create_app", "--host", "0.0.0.0", "--port", "5005", "--factory"] 
