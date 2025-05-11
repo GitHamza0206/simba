@@ -1,23 +1,5 @@
-import { config } from '@/config';
 import { SimbaDoc } from '@/types/document';
-
-// Helper function for making API requests
-const request = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
-  const response = await fetch(`${config.apiUrl}${endpoint}`, {
-    ...options,
-    headers: {
-      'Accept': 'application/json',
-      ...options.headers,
-    }
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || 'Request failed');
-  }
-
-  return response.json();
-};
+import httpClient from './http/client';
 
 export const parsingApi = {
   /**
@@ -25,19 +7,19 @@ export const parsingApi = {
    */
   getParsers: async (): Promise<string[]> => {
     try {
-      const response = await request<{ parsers: string[] | string }>('/parsers');
+      const response = await httpClient.get<{ parsers: string[] | string }>('/parsers');
       
       // Handle string response (backward compatibility)
-      if (typeof response.parsers === 'string') {
-        return [response.parsers];
+      if (typeof response.data.parsers === 'string') {
+        return [response.data.parsers];
       }
       
       // Handle array response
-      if (Array.isArray(response.parsers)) {
-        return response.parsers;
+      if (Array.isArray(response.data.parsers)) {
+        return response.data.parsers;
       }
       
-      console.warn('Unexpected parsers response format:', response);
+      console.warn('Unexpected parsers response format:', response.data);
       return ['docling']; // Default fallback
     } catch (error) {
       console.error('Error fetching parsers:', error);
@@ -54,21 +36,15 @@ export const parsingApi = {
     
     console.log(`Starting parsing for ${documentId} using ${parser} (sync: ${sync})`);
     
-    const response = await request<{ task_id?: string } | SimbaDoc>('/parse', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        document_id: documentId,
-        parser: parser,
-        sync: sync
-      })
+    const response = await httpClient.post<{ task_id?: string } | SimbaDoc>('/parse', {
+      document_id: documentId,
+      parser: parser,
+      sync: sync
     });
     
     // The response could be either a task_id (for docling) or a SimbaDoc (for Mistral OCR)
-    console.log('Parse response:', response);
-    return response;
+    console.log('Parse response:', response.data);
+    return response.data;
   },
 
   /**
@@ -83,6 +59,7 @@ export const parsingApi = {
       error?: string;
     };
   }> => {
-    return request(`/parsing/tasks/${taskId}`);
+    const response = await httpClient.get(`/parsing/tasks/${taskId}`);
+    return response.data;
   }
 }; 

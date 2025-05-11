@@ -1,0 +1,47 @@
+# Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+env/
+venv/
+ENV/
+dist/
+build/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Project specific
+.mypy_cache/
+.ruff_cache/
+temp/
+uploads/
+vector_stores/
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Logs and databases
+*.log
+*.sqlite
+dump.rdb
+
+# Documentation builds
+docs/_build/

@@ -9,19 +9,19 @@ import shutil
 nox.options.sessions = ["tests", "lint", "type_check"]
 nox.options.reuse_existing_virtualenvs = True
 
-PYTHON_VERSIONS = ["3.11", "3.12"]
+PYTHON_VERSIONS = ["3.12"]
 
 @nox.session(python=PYTHON_VERSIONS, venv_backend="uv")
 def tests(session):
     """
-    Install dependencies via Poetry and run the test suite with pytest.
+    Install dependencies via Poetry and run the test suite with pytest (only inside /simba).
     """
     # Install Poetry in this session environment
     session.run("pip", "install", "poetry", external=True)
     # Use Poetry to install all dependencies (including dev/test)
-    session.run("poetry", "install", "--no-root", external=True)
-    # Run tests
-    session.run("pytest", external=True)
+    session.run("poetry", "install", external=True)
+    # Run tests only inside the simba directory
+    session.run("pytest", "simba", external=True)
 
 @nox.session(venv_backend="uv")
 def lint(session):

@@ -1,4 +1,4 @@
-from typing import Annotated, List, Sequence
+from typing import Annotated, List, Sequence, Optional
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
@@ -12,13 +12,24 @@ class State(TypedDict):
     Attributes:
         question: question
         generation: LLM generation
-        documents: list of documents
+        documents: list of retrieved documents
+        reranked_documents: list of reranked documents
+        compressed_documents: list of compressed documents for LLM context
         messages: list of messages
+        transform_attempts: counter tracking query reformulation attempts
     """
 
     messages: Annotated[Sequence[BaseMessage], add_messages]
     documents: List[dict]
-
+    hyde_retreived: List[dict]
+    reranked_documents: List[dict]
+    compressed_documents: List[dict]
+    question: str
+    generation: str
+    transform_attempts: Optional[int]
+    sub_queries: List[str]
+    is_summary_enough: bool
+    summaries: List[str] 
     # New: Client-facing state representation
 
 

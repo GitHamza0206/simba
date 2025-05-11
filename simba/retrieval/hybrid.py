@@ -30,13 +30,14 @@ class HybridRetriever(BaseRetriever):
         super().__init__(vector_store)
         self.prioritize_semantic = prioritize_semantic
 
-    def retrieve(self, query: str, **kwargs) -> List[Document]:
+    def retrieve(self, query: str, user_id: str = None, **kwargs) -> List[Document]:
         """
         Retrieve documents using a custom hybrid approach that combines
         multiple retrieval strategies and post-processes the results.
 
         Args:
             query: The query string
+            user_id: User ID for multi-tenant filtering
             **kwargs: Additional parameters including:
                 - k: Number of documents to retrieve (default: 5)
                 - filter: Metadata filters to apply
@@ -45,7 +46,7 @@ class HybridRetriever(BaseRetriever):
         Returns:
             List of relevant documents
         """
-        k = kwargs.get("k", 5)
+        k = kwargs.get("top_k", 5)
         filter_dict = kwargs.get("filter", None)
         prioritize_semantic = kwargs.get("prioritize_semantic", self.prioritize_semantic)
 
@@ -57,8 +58,19 @@ class HybridRetriever(BaseRetriever):
         default_retriever = DefaultRetriever(self.store)
         semantic_retriever = SemanticRetriever(self.store)
 
-        default_docs = default_retriever.retrieve(query, k=k * 2, filter=filter_dict)
-        semantic_docs = semantic_retriever.retrieve(query, k=k * 2, filter=filter_dict)
+        # Pass user_id to both retrievers for multi-tenancy
+        default_docs = default_retriever.retrieve(
+            query, 
+            user_id=user_id, 
+            top_k=k * 2, 
+            filter=filter_dict
+        )
+        semantic_docs = semantic_retriever.retrieve(
+            query, 
+            user_id=user_id, 
+            top_k=k * 2, 
+            filter=filter_dict
+        )
 
         # Combine results (removing duplicates)
         combined_docs = []

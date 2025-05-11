@@ -3,6 +3,7 @@ import logging
 import torch
 from celery import Celery
 from celery.signals import worker_init, worker_shutdown, worker_shutting_down
+from celery.schedules import crontab
 
 from simba.core.config import settings
 
@@ -31,10 +32,22 @@ def get_celery_config():
         "task_time_limit": 3600,  # 1 hour time limit per task
         "task_soft_time_limit": 3000,  # 50 minutes soft time limit,
         "worker_shutdown_timeout": 10,  # Give tasks 10 seconds to clean up
-        "imports": ["simba.tasks.parsing_tasks"],
+        "imports": [
+            "simba.tasks.parsing_tasks",
+            "simba.tasks.generate_summary",
+        ],
         "task_routes": {
             "parse_markitdown": {"queue": "parsing"},
             "parse_docling": {"queue": "parsing"},
+            "generate_summary_task": {"queue": "summaries"},
+            "catchup_summaries_task": {"queue": "summaries"},
+        },
+        "beat_schedule": {
+            "catchup-document-summaries": {
+                "task": "catchup_summaries_task",
+                "schedule": crontab(minute="*", hour="*"),  # Run every hour
+                "args": (20,),  # Process 20 documents at a time
+            },
         },
     }
 
