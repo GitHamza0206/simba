@@ -9,7 +9,7 @@ from langchain_community.vectorstores.faiss import FAISS
 
 from simba.core.config import settings
 from simba.core.factories.embeddings_factory import get_embeddings
-from simba.vector_store import VectorStoreService
+from simba.vector_store import VectorStoreService, PGVectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,8 @@ class VectorStoreFactory:
         embeddings = get_embeddings()
         if settings.vector_store.provider == "faiss":
             self._vector_store = self._initialize_faiss(embeddings)
-        elif settings.vector_store.provider == "chroma":
-            self._vector_store = self._initialize_chroma(embeddings)
+        elif settings.vector_store.provider == "pgvector":
+            self._vector_store = self._initialize_pgvector(embeddings)
         else:
             raise ValueError(f"Unsupported vector store provider: {settings.vector_store.provider}")
 
@@ -85,45 +85,8 @@ class VectorStoreFactory:
             store.save_local(settings.paths.faiss_index_dir)
         return VectorStoreService(store=store, embeddings=embeddings)
 
-    def _initialize_chroma(self, embeddings):
-        logging.info("Initializing Chroma vector store")
-
-        try:
-            # Ensure embeddings are initialized
-            if embeddings is None:
-                raise ValueError("Embeddings must be provided for Chroma initialization")
-
-            # Ensure directory exists
-            os.makedirs(settings.paths.vector_store_dir, exist_ok=True)
-
-            # Try to load existing store first
-            try:
-                logging.info("Attempting to load existing Chroma store")
-                store = Chroma(
-                    persist_directory=str(settings.paths.vector_store_dir),
-                    embedding_function=embeddings,
-                    collection_name=settings.vector_store.collection_name,
-                )
-                # Test the store
-                store.similarity_search("test", k=1)
-                logging.info("Successfully loaded existing Chroma store")
-            except Exception as e:
-                logging.info(f"Creating new Chroma store: {str(e)}")
-                # Initialize with a test document
-                store = Chroma.from_documents(
-                    documents=[Document(page_content="test", metadata={})],
-                    embedding_function=embeddings,
-                    persist_directory=str(settings.paths.vector_store_dir),
-                    collection_name=settings.vector_store.collection_name,
-                )
-                store.persist()
-                logging.info("Successfully created new Chroma store")
-
-            return VectorStoreService(store=store, embeddings=embeddings)
-
-        except Exception as e:
-            logger.error(f"Error initializing Chroma store: {e}", exc_info=True)
-            raise ValueError(f"Failed to initialize Chroma vector store: {str(e)}")
+    def _initialize_pgvector(self, embeddings):
+        return PGVectorStore()
 
     @classmethod
     def get_vector_store(cls) -> VectorStoreService:

@@ -1,26 +1,27 @@
-FROM node:18-slim
+FROM node:18-alpine
 
 WORKDIR /app
 
-# Install necessary build tools
-RUN apt-get update && \
-    apt-get install -y python3 make g++ git && \
-    rm -rf /var/lib/apt/lists/*
+# Install necessary build tools and dependencies
+RUN apk add --no-cache python3 make g++ git
 
-# Copy package files first for better caching
+# Copy package files for better layer caching
 COPY package*.json ./
 
-# Install all dependencies including remark-math and rehype-katex
-RUN npm install && \
-    npm install remark-math rehype-katex && \
-    npm install @rollup/rollup-linux-x64-gnu && \
-    npm install rehype-sanitize remark-gfm
+# Install dependencies
+RUN npm ci
 
 # Add node_modules/.bin to PATH
 ENV PATH="/app/node_modules/.bin:$PATH"
 
 # Copy source code
 COPY . .
+
+# Ensure all required packages are installed
+RUN npm install remark-math rehype-katex && \
+    npm install @rollup/rollup-linux-x64-gnu && \
+    npm install rehype-sanitize remark-gfm && \
+    npm install date-fns --save
 
 EXPOSE 5173
 

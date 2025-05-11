@@ -2,6 +2,7 @@ import logging
 import sys
 
 
+
 def setup_logging(level=logging.INFO):
     """Configure logging to output to console."""
     # Create formatter with colors

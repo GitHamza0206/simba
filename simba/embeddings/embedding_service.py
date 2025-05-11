@@ -7,7 +7,7 @@ from simba.core.factories.database_factory import get_database
 from simba.core.factories.vector_store_factory import VectorStoreFactory
 from simba.embeddings.utils import _clean_documents
 from simba.models.simbadoc import SimbaDoc
-
+from simba.splitting.splitter import Splitter
 logger = logging.getLogger(__name__)
 
 
@@ -23,6 +23,7 @@ class EmbeddingService:
         """Initialize the EmbeddingService with necessary components."""
         self.vector_store = VectorStoreFactory.get_vector_store()
         self.database = get_database()
+        self.splitter = Splitter(chunk_size=5000, chunk_overlap=300)  
 
     def embed_all_documents(self) -> List[Document]:
         """
@@ -75,12 +76,14 @@ class EmbeddingService:
 
             langchain_documents = simbadoc.documents
 
+            langchain_documents = self.splitter.split_document(langchain_documents) 
+
             # Clean documents
             langchain_documents = _clean_documents(langchain_documents)
 
             try:
                 # Add documents to vector store
-                self.vector_store.add_documents(langchain_documents)
+                self.vector_store.add_documents(document_id=doc_id, documents=langchain_documents)
 
                 # Update document status
                 simbadoc.metadata.enabled = True
@@ -143,8 +146,8 @@ class EmbeddingService:
             if not simbadoc:
                 raise ValueError(f"Document {doc_id} not found")
 
-            docs_ids = [doc.id for doc in simbadoc.documents]
-            self.vector_store.delete_documents(docs_ids)
+            #docs_ids: List[str] = [doc.id for doc in simbadoc.documents]
+            self.vector_store.delete_documents(doc_id)
 
             # Update document status
             simbadoc.metadata.enabled = False

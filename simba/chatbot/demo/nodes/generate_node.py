@@ -15,17 +15,35 @@ def generate(state):
     """
     print("---GENERATE---")
     question = state["messages"][-1].content
-    documents = state["documents"]
+    
+    # Use compressed documents as context (fallback to original documents if compression not available)
+    context_docs = state["documents"]
+    print(f"Using {len(context_docs)} compressed documents for generation")
+    
 
-    docs_content = "\n\n".join(doc.page_content for doc in documents)
+    docs_content = "\n\n".join(
+        doc.page_content
+        for simbadoc in context_docs
+        for doc in getattr(simbadoc, "documents", [])
+    )
+
+    summaries = state["summaries"]
     # RAG generation
     generation = generate_chain.invoke(
         {
+            "summaries": summaries,
             "context": docs_content,
             "question": question,
             "chat_history": state["messages"],
         }
     )
+
     messages = state["messages"] + [AIMessage(content=generation)]
 
-    return {"documents": documents, "messages": messages}
+    # Return both the compressed documents and original documents to maintain state
+    return {
+        "documents": state.get("documents", []),
+        "compressed_documents": context_docs,
+        "messages": messages, 
+        "generation": generation
+    }

@@ -1,4 +1,5 @@
 version: "3.9"
+name: simba
 
 services:
   server:
@@ -6,7 +7,7 @@ services:
     env_file:
       - ../.env
     ports:
-      - "8000:8000"
+      - "5005:5005"
     environment:
       - REDIS_HOST=redis
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -17,6 +18,16 @@ services:
       - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY:-}
       - DEVICE=${DEVICE:-cpu}
       - OLLAMA_HOST=ollama:11434
+      
+      - SUPABASE_URL=http://host.docker.internal:8000
+      - SUPABASE_JWT_SECRET
+      - ANON_KEY
+      - SUPABASE_PUBLIC_KEY
+      - POSTGRES_HOST=host.docker.internal
+      - POSTGRES_PORT
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
     volumes:
       - ../config.yaml:/app/config.yaml
       - ../uploads:/app/uploads:rw
@@ -27,12 +38,13 @@ services:
     networks:
       - simba_network
     runtime: ${RUNTIME:+${RUNTIME}}
-    command: ["python", "-m", "uvicorn", "simba.__main__:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"]
+    entrypoint: ["/app/docker-entrypoint.sh"]
+    command: ["python", "-m", "uvicorn", "simba.__main__:create_app", "--host", "0.0.0.0", "--port", "5005", "--factory"]
 
   celery_worker:
     image: ${IMAGE_NAME:-simba}:${IMAGE_TAG:-latest}
     env_file:
-      - ../.env
+      - /Users/mac/Documents/simba/.env
     environment:
       - REDIS_HOST=redis
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -40,6 +52,15 @@ services:
       - PYTHONPATH=/app
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - DEVICE=${DEVICE:-cpu}
+      - SUPABASE_URL
+      - SUPABASE_JWT_SECRET
+      - ANON_KEY
+      - SUPABASE_PUBLIC_KEY
+      - POSTGRES_HOST
+      - POSTGRES_PORT
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
     volumes:
       - ../config.yaml:/app/config.yaml
       - ../uploads:/app/uploads:rw
@@ -49,6 +70,7 @@ services:
     networks:
       - simba_network
     runtime: ${RUNTIME:+${RUNTIME}}
+    entrypoint: ["/app/docker-entrypoint.sh"]
     command: ["celery", "-A", "simba.core.celery_config.celery_app", "worker", "--loglevel=info", "-Q", "parsing"]
 
   redis:
@@ -66,16 +88,14 @@ services:
       retries: 3
 
   frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
+    image: ${FRONTEND_IMAGE_NAME:-simba-frontend}:${FRONTEND_IMAGE_TAG:-latest}
     ports:
       - "5173:5173"
     volumes:
       - ../frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://localhost:5005
       - NODE_ENV=development
     networks:
       - simba_network

@@ -53,7 +53,9 @@ class SimbaClient:
         Returns:
             Response data (parsed JSON, text, or bytes depending on context)
         """
-        url = f"{self.api_url}/{endpoint.lstrip('/')}"
+        # Clean up endpoint by removing leading and trailing slashes
+        endpoint = endpoint.strip("/")
+        url = f"{self.api_url}/{endpoint}"
         
         # Handle files upload - don't send Content-Type header
         request_headers = self.headers

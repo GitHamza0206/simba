@@ -1,51 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Progress } from "@/components/ui/progress";
 import DocumentManagementHeader from '@/components/DocumentManagement/DocumentManagementHeader';
-import DocumentList from '@/components/DocumentManagement/DocumentList';
-import { DocumentType, DocumentStatsType } from '@/types/document';
+import CollectionTabs from '@/components/DocumentManagement/CollectionTabs';
+import { SimbaDoc } from '@/types/document';
 import { ingestionApi } from '@/lib/ingestion_api';
 import PreviewModal from '@/components/DocumentManagement/PreviewModal';
 
-import { folderApi } from '@/lib/folder_api';
+interface DocumentStats {
+  lastQueried: string;
+  totalQueries: number;
+  itemsIndexed: number;
+  createdAt: string;
+}
 
-interface DocumentManagementHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
-  stats: DocumentStatsType;
+interface Collection {
+  id: string;
+  name: string;
+  documents: SimbaDoc[];
 }
 
 const DocumentManagementApp: React.FC = () => {
-  const [documents, setDocuments] = useState<DocumentType[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const { toast } = useToast();
-  const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<SimbaDoc | null>(null);
   const [loadingStatus, setLoadingStatus] = useState<string>("Loading...");
 
   // New handlers for multi-select actions
-  const handleParse = async (doc: DocumentType) => {
+  const handleParse = async (doc: SimbaDoc) => {
     console.log("Parsing document:", doc.id);
     // TODO: implement actual parse logic
     toast({ title: "Parsing", description: `Parsing document ${doc.id}` });
   };
 
-  const handleDisable = async (doc: DocumentType) => {
+  const handleDisable = async (doc: SimbaDoc) => {
     console.log("Disabling document:", doc.id);
     // TODO: implement actual disable logic
     toast({ title: "Disable", description: `Disabling document ${doc.id}` });
   };
 
-  const handleEnable = async (doc: DocumentType) => {
+  const handleEnable = async (doc: SimbaDoc) => {
     console.log("Enabling document:", doc.id);
     // TODO: implement actual enable logic
     toast({ title: "Enable", description: `Enabling document ${doc.id}` });
   };
 
-  const stats: DocumentStatsType = {
+  const stats: DocumentStats = {
     lastQueried: "2 hours ago",
     totalQueries: 145,
-    itemsIndexed: documents.filter(doc => !doc.is_folder).length,
+    itemsIndexed: collections.reduce((acc, collection) => acc + collection.documents.filter(doc => !doc.metadata.is_folder).length, 0),
     createdAt: "Apr 12, 2024"
   };
 
@@ -53,7 +59,22 @@ const DocumentManagementApp: React.FC = () => {
     setIsLoading(true);
     try {
       const docs = await ingestionApi.getDocuments();
-      setDocuments(docs);
+      // Group documents by collection
+      const collectionsMap = new Map<string, Collection>();
+      
+      docs.forEach(doc => {
+        const collectionId = doc.metadata.folder_id || 'default';
+        if (!collectionsMap.has(collectionId)) {
+          collectionsMap.set(collectionId, {
+            id: collectionId,
+            name: doc.metadata.folder_path || 'Default Collection',
+            documents: []
+          });
+        }
+        collectionsMap.get(collectionId)?.documents.push(doc);
+      });
+
+      setCollections(Array.from(collectionsMap.values()));
     } catch (error) {
       console.error('Error fetching documents:', error);
       toast({
@@ -73,17 +94,21 @@ const DocumentManagementApp: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await ingestionApi.deleteDocument(id);
-      setDocuments(docs => docs.filter(doc => doc.id !== id));
+      setCollections(prev => prev.map(collection => ({
+        ...collection,
+        documents: collection.documents.filter(doc => doc.id !== id)
+      })));
       toast({
         title: "Success",
         description: "Document successfully deleted",
       });
-    } catch (error: any) {
-      if (error.message !== 'Delete cancelled by user') {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage !== 'Delete cancelled by user') {
         toast({
           variant: "destructive",
           title: "Error",
-          description: error.message || "Failed to delete document",
+          description: errorMessage || "Failed to delete document",
         });
       }
     }
@@ -93,7 +118,7 @@ const DocumentManagementApp: React.FC = () => {
     console.log('Searching:', query);
   };
 
-  const handlePreview = (document: DocumentType) => {
+  const handlePreview = (document: SimbaDoc) => {
     setSelectedDocument(document);
   };
 
@@ -116,12 +141,13 @@ const DocumentManagementApp: React.FC = () => {
         title: "Success",
         description: `${uploadedDocs.length} ${uploadedDocs.length === 1 ? 'file' : 'files'} uploaded successfully`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Upload error:', error);
       toast({
         variant: "destructive",
         title: "Upload Failed",
-        description: error.message || "Failed to upload files. Please try again.",
+        description: errorMessage || "Failed to upload files. Please try again.",
       });
     } finally {
       setIsLoading(false);
@@ -130,42 +156,50 @@ const DocumentManagementApp: React.FC = () => {
     }
   };
 
-  const handleDocumentUpdate = (updatedDoc: DocumentType) => {
-    setDocuments(prev => prev.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
+  const handleDocumentUpdate = (updatedDoc: SimbaDoc) => {
+    setCollections(prev => prev.map(collection => ({
+      ...collection,
+      documents: collection.documents.map(doc => 
+        doc.id === updatedDoc.id ? updatedDoc : doc
+      )
+    })));
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="flex-1 p-6">
-        {isLoading && (
-          <div className="fixed inset-0 bg-background/50 backdrop-blur-sm flex flex-col gap-4 items-center justify-center z-50">
-            <Progress value={progress} className="w-[60%] max-w-md" />
-            <p className="text-sm text-muted-foreground">{loadingStatus} {progress}%</p>
-          </div>
-        )}
-        <Card className="bg-white shadow-xl rounded-xl h-full flex flex-col">
-          <DocumentManagementHeader stats={stats} />
-          <DocumentList
-            documents={documents}
-            isLoading={isLoading}
-            onDelete={handleDelete}
-            onSearch={handleSearch}
-            onUpload={handleUpload}
-            onPreview={handlePreview}
-            fetchDocuments={fetchDocuments}
-            onDocumentUpdate={handleDocumentUpdate}
-            onParse={handleParse}
-            onDisable={handleDisable}
-            onEnable={handleEnable}
-          />
-        </Card>
+    <div className="min-h-screen flex flex-col bg-background">
+      {isLoading && (
+        <div className="fixed inset-0 bg-background/50 backdrop-blur-sm flex flex-col gap-4 items-center justify-center z-50">
+          <Progress value={progress} className="w-[60%] max-w-md" />
+          <p className="text-sm text-muted-foreground">{loadingStatus} {progress}%</p>
+        </div>
+      )}
+      
+      <div className="flex-none p-6 pb-0 bg-background border-b">
+        <DocumentManagementHeader stats={stats} />
       </div>
+
+      <div className="flex-1 px-6">
+        <CollectionTabs
+          collections={collections}
+          isLoading={isLoading}
+          onDelete={handleDelete}
+          onSearch={handleSearch}
+          onUpload={handleUpload}
+          onPreview={handlePreview}
+          fetchDocuments={fetchDocuments}
+          onDocumentUpdate={handleDocumentUpdate}
+          onParse={handleParse}
+          onDisable={handleDisable}
+          onEnable={handleEnable}
+        />
+      </div>
+
       <PreviewModal 
         isOpen={!!selectedDocument}
         onClose={() => setSelectedDocument(null)}
         document={selectedDocument}
         onUpdate={(updatedDoc) => {
-          setDocuments(prev => prev.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
+          handleDocumentUpdate(updatedDoc);
           setSelectedDocument(updatedDoc);
         }}
       />
