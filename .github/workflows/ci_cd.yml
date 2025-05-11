@@ -104,3 +104,66 @@ jobs:
 
       - name: Build and push Docker images (Makefile)
         run: make push-docker USER=hamza0206
+
+  # test:
+  #   name: Run Nox Tests
+  #   runs-on: ubuntu-latest
+  #   services:
+  #     postgres:
+  #       image: postgres:15
+  #       env:
+  #         POSTGRES_PASSWORD: postgres
+  #         POSTGRES_USER: postgres
+  #         POSTGRES_DB: postgres
+  #       ports:
+  #         - 5432:5432
+  #       options: >-
+  #         --health-cmd pg_isready
+  #         --health-interval 10s
+  #         --health-timeout 5s
+  #         --health-retries 5
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.12'
+  #     - name: Install Nox
+  #       run: pip install nox "nox[uv]" uv
+  #     - name: Load environment variables from .env
+  #       run: |
+  #         set -a
+  #         [ -f .env ] && . .env
+  #         set +a
+  #     - name: Run tests
+  #       env:
+  #         POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
+  #         POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+  #         POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+  #         POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  #         POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+  #       run: nox -s tests -- -k "not e2e"
+
+  build-and-push-docker:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker images (Makefile)
+        run: DEVICE=cpu make build
+
+      - name: Push Docker images (Makefile)
+        run: make push-docker USER=hamza0206
