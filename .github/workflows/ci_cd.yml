@@ -76,18 +76,6 @@ jobs:
           set -a
           [ -f .env ] && . .env
           set +a
-      - name: Export SUPABASE_URL and SUPABASE_KEY from secrets if present
-        run: |
-          if [ ! -z "${{ secrets.SUPABASE_URL }}" ]; then
-            echo "Using SUPABASE_URL from GitHub Secrets"
-            export SUPABASE_URL="${{ secrets.SUPABASE_URL }}"
-          fi
-          if [ ! -z "${{ secrets.SUPABASE_KEY }}" ]; then
-            echo "Using SUPABASE_KEY from GitHub Secrets"
-            export SUPABASE_KEY="${{ secrets.SUPABASE_KEY }}"
-          fi
-          echo "SUPABASE_URL=$SUPABASE_URL" >> $GITHUB_ENV
-          echo "SUPABASE_KEY=$SUPABASE_KEY" >> $GITHUB_ENV
       - name: Run tests
         env:
           POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
