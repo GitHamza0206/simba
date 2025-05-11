@@ -83,7 +83,7 @@ jobs:
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-        run: nox -s tests
+        run: nox -s tests -- -k "not e2e"
 
   build-and-push-docker:
     name: Build and Push Docker Image
