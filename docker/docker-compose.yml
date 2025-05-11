@@ -38,6 +38,7 @@ services:
     networks:
       - simba_network
     runtime: ${RUNTIME:+${RUNTIME}}
+    entrypoint: ["/app/docker-entrypoint.sh"]
     command: ["python", "-m", "uvicorn", "simba.__main__:create_app", "--host", "0.0.0.0", "--port", "5005", "--factory"]
 
   celery_worker:
@@ -69,6 +70,7 @@ services:
     networks:
       - simba_network
     runtime: ${RUNTIME:+${RUNTIME}}
+    entrypoint: ["/app/docker-entrypoint.sh"]
     command: ["celery", "-A", "simba.core.celery_config.celery_app", "worker", "--loglevel=info", "-Q", "parsing"]
 
   redis:
