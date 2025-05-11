@@ -101,4 +101,24 @@ help:
 	@echo ""
 	@echo "Note: MPS (Metal Performance Shaders) is not supported in Docker containers."
 
-.PHONY: setup-network setup-builder build up down clean logs help docker-prune
+# Push both backend and frontend images to Docker Hub
+push-docker:
+	@if [ -z "$(USER)" ]; then \
+		echo "Error: USER is not set. Set it as an environment variable or pass it as 'make push-docker USER=yourdockerhubuser'"; \
+		exit 1; \
+	fi
+	@echo "Tagging and pushing backend image..."
+	docker tag simba-backend:latest $(USER)/simba-backend:latest
+	docker push $(USER)/simba-backend:latest
+	@echo "Tagging and pushing frontend image..."
+	docker tag simba-frontend:latest $(USER)/simba-frontend:latest
+	docker push $(USER)/simba-frontend:latest
+
+# Run Supabase migrations and seed locally
+migrate:
+	@echo "Ensuring migration script is executable..."
+	@chmod +x scripts/migrate_local.sh
+	@echo "Running Supabase migrations and seed..."
+	@cd simba && ../scripts/migrate_local.sh
+
+.PHONY: setup-network setup-builder build up down clean logs help docker-prune push-docker migrate

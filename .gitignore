@@ -40,3 +40,5 @@ dump.rdb
 
 .cursor/
 .cursor/*
+
+.db 
