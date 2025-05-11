@@ -71,8 +71,6 @@ jobs:
           python-version: '3.12'
       - name: Install Nox
         run: pip install nox "nox[uv]" uv
-      - name: Set up Supabase CLI
-        run: npm install -g supabase
       - name: Load environment variables from .env
         run: |
           set -a
