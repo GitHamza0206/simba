@@ -221,7 +221,7 @@ class AuthService:
     
     @staticmethod
     async def get_user(access_token: str) -> Dict[str, Any]:
-        """Get user data from access token.
+        """Get user data from access token by validating it with Supabase.
         
         Args:
             access_token: Access token
@@ -230,48 +230,32 @@ class AuthService:
             Dict with user data
             
         Raises:
-            ValueError: If getting user data fails
+            ValueError: If getting user data fails or token is invalid
         """
         try:
-            # Log token prefix for debugging (first 10 chars only for security)
             token_prefix = access_token[:10] + "..." if access_token else "None"
-            logger.debug(f"Validating token starting with: {token_prefix}")
+            logger.debug(f"Attempting to validate token and get user via Supabase: {token_prefix}")
+
+            supabase = get_supabase_client()
+            response = supabase.auth.get_user(access_token) # Use Supabase client to validate token
+
+            if not response or not hasattr(response, 'user') or not response.user:
+                logger.warning("Supabase validation failed or no user returned for token.")
+                raise ValueError("Invalid or expired token, or user not found.")
+
+            logger.info(f"Successfully validated token and retrieved user: {response.user.email}")
             
-            # Decode the JWT token without verification to extract the payload
-            # This is sufficient for our needs as the token was already verified by Supabase
-            import jwt
+            # Return user information in the expected format
+            return {
+                "id": str(response.user.id), # Ensure ID is string
+                "email": response.user.email,
+                "created_at": response.user.created_at.isoformat() if response.user.created_at else None,
+                "metadata": response.user.user_metadata or {} 
+            }
             
-            try:
-                # Decode the token without verifying the signature
-                payload = jwt.decode(access_token, options={"verify_signature": False})
-                
-                # Check if token is expired
-                import time
-                current_time = int(time.time())
-                if payload.get("exp", 0) < current_time:
-                    logger.warning("Token has expired")
-                    raise ValueError("Token has expired")
-                
-                # Extract user data from payload
-                user_id = payload.get("sub")
-                if not user_id:
-                    raise ValueError("Invalid token: missing subject claim")
-                
-                # Return user information from the token
-                return {
-                    "id": user_id,
-                    "email": payload.get("email", ""),
-                    "created_at": payload.get("created_at", ""),
-                    "metadata": payload.get("user_metadata", {})
-                }
-                
-            except jwt.PyJWTError as e:
-                logger.error(f"JWT decoding error: {str(e)}")
-                raise ValueError(f"Invalid token format: {str(e)}")
-                
-        except ValueError as ve:
-            logger.error(f"ValueError in get_user: {str(ve)}")
+        except ValueError as ve: # Catch specific ValueErrors we raise
+            logger.error(f"Validation error in get_user: {str(ve)}")
             raise
-        except Exception as e:
-            logger.error(f"Failed to get user: {str(e)}, error type: {type(e).__name__}")
-            raise ValueError(f"Get user failed: {str(e)}") 
+        except Exception as e: # Catch other exceptions, e.g., from Supabase client
+            logger.error(f"Failed to get user via Supabase: {str(e)}, error type: {type(e).__name__}")
+            raise ValueError(f"Get user failed: Supabase validation error - {str(e)}") 
