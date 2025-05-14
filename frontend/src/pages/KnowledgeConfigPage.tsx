@@ -3,87 +3,13 @@ import { Settings, Database, Brain, FileText, ChevronDown, ChevronRight, Info, S
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getAccessToken } from '@/lib/supabase';
+import { knowledgeConfigApi, KnowledgePageConfig } from '@/lib/knowledgeConfigApi';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AxiosError, isAxiosError } from 'axios';
 
-interface LLMConfig {
-  provider: string;
-  model_name: string;
-  api_key?: string;
-  base_url?: string;
-  temperature: number;
-  streaming: boolean;
-  max_tokens: number | null;
-  additional_params: Record<string, unknown>;
-}
-
-interface EmbeddingConfig {
-  provider: string;
-  model_name: string;
-  device: string;
-  additional_params: Record<string, unknown>;
-}
-
-interface VectorStoreConfig {
-  provider: string;
-  collection_name: string;
-  additional_params: Record<string, unknown>;
-}
-
-interface RetrievalParams {
-  score_threshold: number;
-  prioritize_semantic: boolean;
-  weights: number[];
-  reranker_model: string;
-  reranker_threshold: number;
-}
-
-interface RetrievalConfig {
-  method: string;
-  k: number;
-  params: RetrievalParams;
-}
-
-interface ProjectConfig {
-  name: string;
-  version: string;
-  api_version: string;
-}
-
-interface DatabaseConfig {
-  provider: string;
-  additional_params: Record<string, unknown>;
-}
-
-interface StorageConfig {
-  provider: string;
-  minio_endpoint?: string;
-  minio_access_key?: string;
-  minio_secret_key?: string;
-  minio_bucket?: string;
-  minio_secure?: boolean;
-}
-
-interface CeleryConfig {
-  broker_url: string;
-  result_backend: string;
-}
-
-interface ChunkingConfig {
-  chunk_size: number;
-  chunk_overlap: number;
-}
-
-interface Config {
-  llm?: LLMConfig;
-  embedding?: EmbeddingConfig;
-  vector_store?: VectorStoreConfig;
-  retrieval?: RetrievalConfig;
-  project?: ProjectConfig;
-  database?: DatabaseConfig;
-  storage?: StorageConfig;
-  celery?: CeleryConfig;
-  chunking?: ChunkingConfig;
+// Define BackendErrorDetail locally for this component's error handling
+interface BackendErrorDetail {
+  detail?: string;
 }
 
 interface ConfigSection {
@@ -99,7 +25,7 @@ interface ConfigSection {
 export default function KnowledgeConfigPage() {
   const { toast } = useToast();
   const { loading: authLoading } = useAuth();
-  const [config, setConfig] = useState<Config | null>(null);
+  const [config, setConfig] = useState<KnowledgePageConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
@@ -110,28 +36,26 @@ export default function KnowledgeConfigPage() {
   }, [authLoading]);
 
   const fetchConfig = async () => {
+    setLoading(true);
     try {
-      const token = getAccessToken();
-      const response = await fetch('/config', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const data = await response.json();
+      const data = await knowledgeConfigApi.getConfig();
       setConfig(data);
-      setLoading(false);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching config:', error);
+      const err = error as Error | AxiosError<BackendErrorDetail>;
+      let description = 'Failed to load configuration';
+      if (isAxiosError(err) && err.response?.data?.detail) {
+        description = err.response.data.detail;
+      } else if (err.message) {
+        description = err.message;
+      }
       toast({
         title: 'Error',
-        description: 'Failed to load configuration',
+        description,
         variant: 'destructive'
       });
+    } finally {
+      setLoading(false);
     }
   };
 

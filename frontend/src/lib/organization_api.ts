@@ -1,4 +1,5 @@
-import httpClient from './http/client';
+import apiClient from './http/client'; // Import the new Axios client
+import { config } from '@/config';         // Keep for type interfaces if not for apiUrl directly
 
 export interface Organization {
   id: string;
@@ -10,7 +11,7 @@ export interface Organization {
 export interface OrganizationMember {
   id: string;
   user_id: string;
-  name: string;
+  name?: string;
   email: string;
   role: MemberRole;
   joined_at: string;
@@ -32,21 +33,19 @@ export interface OrganizationMemberUpdate {
 }
 
 export const organizationApi = {
-  // Get all organizations for the current user
   getOrganizations: async (): Promise<Organization[]> => {
     try {
-      const response = await httpClient.get('/organizations');
+      const response = await apiClient.get('/organizations');
       return response.data;
     } catch (error) {
       console.error('Failed to fetch organizations:', error);
-      throw error;
+      throw error; // Axios errors can be re-thrown
     }
   },
 
-  // Create a new organization
-  createOrganization: async (organization: OrganizationCreate): Promise<Organization> => {
+  createOrganization: async (organizationData: OrganizationCreate): Promise<Organization> => {
     try {
-      const response = await httpClient.post('/organizations', organization);
+      const response = await apiClient.post('/organizations', organizationData);
       return response.data;
     } catch (error) {
       console.error('Failed to create organization:', error);
@@ -54,10 +53,9 @@ export const organizationApi = {
     }
   },
 
-  // Get organization by ID
   getOrganization: async (orgId: string): Promise<Organization> => {
     try {
-      const response = await httpClient.get(`/organizations/${orgId}`);
+      const response = await apiClient.get(`/organizations/${orgId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to fetch organization:', error);
@@ -65,10 +63,9 @@ export const organizationApi = {
     }
   },
 
-  // Get organization members
   getOrganizationMembers: async (orgId: string): Promise<OrganizationMember[]> => {
     try {
-      const response = await httpClient.get(`/organizations/${orgId}/members`);
+      const response = await apiClient.get(`/organizations/${orgId}/members`);
       return response.data;
     } catch (error) {
       console.error('Failed to fetch organization members:', error);
@@ -76,10 +73,9 @@ export const organizationApi = {
     }
   },
 
-  // Invite a member to an organization
-  inviteMember: async (orgId: string, invite: OrganizationMemberInvite): Promise<OrganizationMember> => {
+  inviteMember: async (orgId: string, inviteData: OrganizationMemberInvite): Promise<OrganizationMember> => {
     try {
-      const response = await httpClient.post(`/organizations/${orgId}/invite`, invite);
+      const response = await apiClient.post(`/organizations/${orgId}/invite`, inviteData);
       return response.data;
     } catch (error) {
       console.error('Failed to invite member:', error);
@@ -87,10 +83,9 @@ export const organizationApi = {
     }
   },
 
-  // Update a member's role
-  updateMemberRole: async (orgId: string, memberId: string, update: OrganizationMemberUpdate): Promise<OrganizationMember> => {
+  updateMemberRole: async (orgId: string, memberUserId: string, updateData: OrganizationMemberUpdate): Promise<OrganizationMember> => {
     try {
-      const response = await httpClient.put(`/organizations/${orgId}/members/${memberId}`, update);
+      const response = await apiClient.put(`/organizations/${orgId}/members/${memberUserId}`, updateData);
       return response.data;
     } catch (error) {
       console.error('Failed to update member role:', error);
@@ -98,10 +93,10 @@ export const organizationApi = {
     }
   },
 
-  // Remove a member from an organization
-  removeMember: async (orgId: string, memberId: string): Promise<void> => {
+  removeMember: async (orgId: string, memberUserId: string): Promise<void> => {
     try {
-      await httpClient.delete(`/organizations/${orgId}/members/${memberId}`);
+      // Axios DELETE typically doesn't return data, so we don't assign response.data
+      await apiClient.delete(`/organizations/${orgId}/members/${memberUserId}`);
     } catch (error) {
       console.error('Failed to remove member:', error);
       throw error;

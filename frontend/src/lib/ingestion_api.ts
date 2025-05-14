@@ -1,5 +1,12 @@
 import { SimbaDoc } from '@/types/document';
-import httpClient from './http/client';
+import apiClient from './http/client'; // Import the new Axios client
+import { AxiosError } from 'axios'; // Import AxiosError
+// Config import might not be needed if apiClient has baseURL set
+
+// Define a common error structure if your backend sends one, e.g., { detail: string }
+interface BackendErrorDetail {
+  detail?: string;
+}
 
 const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
 const ALLOWED_FILE_TYPES = [
@@ -20,10 +27,10 @@ class IngestionApi {
     // Validate all files
     for (const file of files) {
       if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-        throw new Error(`File type not supported for ${file.name}`);
+        throw new Error(`File type not supported for ${file.name}: ${file.type}`);
       }
       if (file.size === 0 || file.size > MAX_FILE_SIZE) {
-        throw new Error(`Invalid file size for ${file.name}`);
+        throw new Error(`Invalid file size for ${file.name}: ${file.size} bytes`);
       }
     }
 
@@ -32,12 +39,17 @@ class IngestionApi {
       formData.append('files', file);
     });
 
-    const response = await httpClient.post<SimbaDoc[]>('/ingestion', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
+    try {
+      // Axios automatically sets Content-Type for FormData.
+      // Auth header is added by the interceptor.
+      const response = await apiClient.post<SimbaDoc[]>('/ingestion', formData);
+      return response.data;
+    } catch (e: unknown) {
+      const error = e as AxiosError<BackendErrorDetail>; 
+      console.error('Failed to upload documents:', error.response?.data || error.message || error);
+      const detail = error.response?.data?.detail;
+      throw new Error(detail || `Failed to upload documents (HTTP ${error.response?.status || 'Unknown'})`);
+    }
   }
 
   async uploadDocument(file: File): Promise<SimbaDoc[]> {
@@ -45,41 +57,68 @@ class IngestionApi {
   }
 
   async getDocuments(): Promise<SimbaDoc[]> {
-    const response = await httpClient.get<Record<string, SimbaDoc>>('/ingestion');
-    const data = response.data;
-    
-    if (!data || Object.keys(data).length === 0) {
-      return [];
+    try {
+      const response = await apiClient.get<Record<string, SimbaDoc> | SimbaDoc[]>('/ingestion');
+      // Backend might return a map {id: doc} or an array [doc]
+      // This logic assumes it could be either, preferring array, then converting map.
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
+        const docMap = response.data as Record<string, SimbaDoc>;
+        return Object.keys(docMap).length > 0 ? Object.values(docMap) : [];
+      }
+      return []; // Default to empty array if response is unexpected
+    } catch (e: unknown) {
+      const error = e as AxiosError<BackendErrorDetail>; 
+      console.error('Failed to get documents:', error.response?.data || error.message || error);
+      const detail = error.response?.data?.detail;
+      throw new Error(detail || `Failed to get documents (HTTP ${error.response?.status || 'Unknown'})`);
     }
-    
-    return Object.values(data);
   }
 
   async getDocument(id: string): Promise<SimbaDoc> {
-    const response = await httpClient.get<SimbaDoc>(`/ingestion/${id}`);
-    return response.data;
+    try {
+      const response = await apiClient.get<SimbaDoc>(`/ingestion/${id}`);
+      return response.data;
+    } catch (e: unknown) {
+      const error = e as AxiosError<BackendErrorDetail>; 
+      console.error('Failed to get document:', error.response?.data || error.message || error);
+      const detail = error.response?.data?.detail;
+      throw new Error(detail || `Failed to get document ${id} (HTTP ${error.response?.status || 'Unknown'})`);
+    }
   }
 
   async deleteDocument(id: string): Promise<void> {
     const isConfirmed = window.confirm('Are you sure you want to delete this document?');
     if (!isConfirmed) {
-      throw new Error('Delete cancelled by user');
+      console.log('Document deletion cancelled by user.');
+      return;
     }
-
-    await httpClient.delete('/ingestion', {
-      data: [id]
-    });
+    await this.deleteDocumentWithoutConfirmation(id);
   }
 
   async deleteDocumentWithoutConfirmation(id: string): Promise<void> {
-    await httpClient.delete('/ingestion', {
-      data: [id]
-    });
+    try {
+      await apiClient.delete('/ingestion', { data: [id] }); // Send ID in data for DELETE body
+    } catch (e: unknown) {
+      const error = e as AxiosError<BackendErrorDetail>; 
+      console.error('Failed to delete document:', error.response?.data || error.message || error);
+      const detail = error.response?.data?.detail;
+      throw new Error(detail || `Failed to delete document ${id} (HTTP ${error.response?.status || 'Unknown'})`);
+    }
   }
 
-  async updateDocument(id: string, document: SimbaDoc): Promise<SimbaDoc> {
-    const response = await httpClient.put<SimbaDoc>(`/ingestion/update_document?doc_id=${id}`, document);
-    return response.data;
+  async updateDocument(id: string, documentData: Partial<SimbaDoc>): Promise<SimbaDoc> {
+    try {
+      const response = await apiClient.put<SimbaDoc>(`/ingestion/update_document?doc_id=${id}`, documentData);
+      return response.data;
+    } catch (e: unknown) {
+      const error = e as AxiosError<BackendErrorDetail>;
+      console.error('Failed to update document:', error.response?.data || error.message || error);
+      const detail = error.response?.data?.detail;
+      throw new Error(detail || `Failed to update document ${id} (HTTP ${error.response?.status || 'Unknown'})`);
+    }
   }
 }
 

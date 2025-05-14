@@ -1,11 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { authAxios } from '@/lib/supabase';
+// import instance from '@/lib/http/client'; // No longer directly used
+import { rolesApi, Role, Permission } from '@/lib/rolesApi'; // Import the new API service and types
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AxiosError } from 'axios'; // For typing errors from the API service if needed directly here
 
+// Local BackendErrorDetail for this component's specific error handling if needed
+// This could also be imported from rolesApi if made exportable and common there.
+interface BackendErrorDetail {
+  detail?: string;
+}
+
+// Remove local definitions of Role and Permission, as they are imported from rolesApi.ts
+/*
 interface Role {
   id: number;
   name: string;
@@ -17,6 +27,7 @@ interface Permission {
   name: string;
   description: string;
 }
+*/
 
 const testRoles = [
   { id: 1, name: 'admin', description: 'Full system access' },
@@ -30,56 +41,68 @@ const testPermissions = [
 ];
 
 const RolesPage: React.FC = () => {
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [userPermissions, setUserPermissions] = useState<Permission[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]); // Uses imported Role type
+  const [permissions, setPermissions] = useState<Permission[]>([]); // Uses imported Permission type
+  const [userPermissions, setUserPermissions] = useState<Permission[]>([]); // Uses imported Permission type
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchRoles = async () => {
+    setLoading(true);
+    setError(null); // Clear previous errors
     try {
       // Check if we're in development mode without backend
       if (import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
-        console.log('Using test data in development mode');
+        console.log('Using test data in development mode for RolesPage');
         setRoles(testRoles);
         setPermissions(testPermissions);
-        setError(null);
+        // Optionally set dummy user permissions or leave empty
+        setUserPermissions(user?.id === '1' ? [testPermissions[0]] : []); // Example dummy user perm
         return;
       }
       
-      console.log('Fetching roles...');
-      // Use /api prefix for consistent proxy routing
-      const rolesResponse = await authAxios.get('/api/roles');
-      console.log('Roles response:', rolesResponse.data);
-      setRoles(rolesResponse.data);
+      console.log('Fetching roles using rolesApi...');
+      const rolesData = await rolesApi.getRoles();
+      console.log('Roles response:', rolesData);
+      setRoles(rolesData);
       
-      console.log('Fetching permissions...');
-      const permissionsResponse = await authAxios.get('/api/roles/permissions');
-      console.log('Permissions response:', permissionsResponse.data);
-      setPermissions(permissionsResponse.data);
+      console.log('Fetching permissions using rolesApi...');
+      const permissionsData = await rolesApi.getPermissions();
+      console.log('Permissions response:', permissionsData);
+      setPermissions(permissionsData);
 
       if (user?.id) {
-        console.log('Fetching user permissions...');
-        const userPermissionsResponse = await authAxios.get(`/api/roles/user/${user.id}/permissions`);
-        console.log('User permissions response:', userPermissionsResponse.data);
-        setUserPermissions(userPermissionsResponse.data);
+        console.log('Fetching user permissions using rolesApi...');
+        const userPermissionsData = await rolesApi.getUserPermissions(user.id);
+        console.log('User permissions response:', userPermissionsData);
+        setUserPermissions(userPermissionsData);
       }
       
-      setError(null);
-    } catch (err: any) {
-      console.error('Error fetching roles or permissions:', err.response || err);
-      
-      if (err.response?.status === 401) {
+    } catch (err: unknown) {
+      console.error('Error in fetchRoles:', err);
+      // The error thrown from rolesApi is already an Error instance with a message.
+      // We can also check if it's an AxiosError if we need to access response status/data directly.
+      let errorMessage = 'Failed to fetch roles and permissions';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      // Further check for AxiosError if specific status handling is needed
+      const axiosError = err as AxiosError<BackendErrorDetail>; // Cast for potential Axios specific details
+      if (axiosError.isAxiosError && axiosError.response?.status === 401) {
         toast({
           title: "Authentication Error",
           description: "Your session may have expired. Please try signing in again.",
           variant: "destructive"
         });
+        // Use detail from AxiosError if available, otherwise the general error message
+        errorMessage = axiosError.response?.data?.detail || errorMessage;
+      } else if (axiosError.isAxiosError && axiosError.response?.data?.detail) {
+         errorMessage = axiosError.response.data.detail;
       }
-      
-      setError(err.response?.data?.detail || err.message || 'Failed to fetch roles and permissions');
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
