@@ -1,4 +1,5 @@
-import httpClient from './http/client';
+import apiClient from './http/client'; // Import the new Axios client
+// Config import removed as apiClient's baseURL is already configured
 
 export interface ApiKey {
   id: string;
@@ -12,9 +13,9 @@ export interface ApiKey {
   expires_at?: string;
 }
 
-export interface ApiKeyResponse {
+export interface ApiKeyResponse { // This is usually what's returned on creation
   id: string;
-  key: string;
+  key: string; // The full API key, shown only once on creation
   key_prefix: string;
   tenant_id?: string;
   name: string;
@@ -30,12 +31,13 @@ export interface ApiKeyCreate {
   expires_at?: string;
 }
 
+// The local handleApiResponse function is removed as Axios handles this.
+
 export const apiKeyService = {
-  // Get all API keys for the current user
   getApiKeys: async (tenantId?: string): Promise<ApiKey[]> => {
     try {
       const params = tenantId ? { tenant_id: tenantId } : undefined;
-      const response = await httpClient.get('/api/api-keys', { params });
+      const response = await apiClient.get('/api/api-keys', { params });
       return response.data;
     } catch (error) {
       console.error('Failed to fetch API keys:', error);
@@ -43,10 +45,9 @@ export const apiKeyService = {
     }
   },
 
-  // Create a new API key
   createApiKey: async (keyData: ApiKeyCreate): Promise<ApiKeyResponse> => {
     try {
-      const response = await httpClient.post('/api/api-keys', keyData);
+      const response = await apiClient.post('/api/api-keys', keyData);
       return response.data;
     } catch (error) {
       console.error('Failed to create API key:', error);
@@ -54,22 +55,20 @@ export const apiKeyService = {
     }
   },
 
-  // Delete an API key
   deleteApiKey: async (keyId: string, tenantId?: string): Promise<void> => {
     try {
       const params = tenantId ? { tenant_id: tenantId } : undefined;
-      await httpClient.delete(`/api/api-keys/${keyId}`, { params });
+      await apiClient.delete(`/api/api-keys/${keyId}`, { params });
     } catch (error) {
       console.error('Failed to delete API key:', error);
       throw error;
     }
   },
 
-  // Deactivate an API key
   deactivateApiKey: async (keyId: string, tenantId?: string): Promise<void> => {
     try {
       const params = tenantId ? { tenant_id: tenantId } : undefined;
-      await httpClient.post(`/api/api-keys/${keyId}/deactivate`, null, { params });
+      await apiClient.post(`/api/api-keys/${keyId}/deactivate`, null, { params });
     } catch (error) {
       console.error('Failed to deactivate API key:', error);
       throw error;

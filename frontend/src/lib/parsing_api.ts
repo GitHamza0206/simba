@@ -1,5 +1,5 @@
 import { SimbaDoc } from '@/types/document';
-import httpClient from './http/client';
+import apiClient from './http/client';
 
 export const parsingApi = {
   /**
@@ -7,19 +7,16 @@ export const parsingApi = {
    */
   getParsers: async (): Promise<string[]> => {
     try {
-      const response = await httpClient.get<{ parsers: string[] | string }>('/parsers');
+      const response = await apiClient.get<{ parsers: string[] | string }>('/parsers');
+      const data = response.data;
       
-      // Handle string response (backward compatibility)
-      if (typeof response.data.parsers === 'string') {
-        return [response.data.parsers];
+      if (typeof data.parsers === 'string') {
+        return [data.parsers];
       }
-      
-      // Handle array response
-      if (Array.isArray(response.data.parsers)) {
-        return response.data.parsers;
+      if (Array.isArray(data.parsers)) {
+        return data.parsers;
       }
-      
-      console.warn('Unexpected parsers response format:', response.data);
+      console.warn('Unexpected parsers response format:', data);
       return ['docling']; // Default fallback
     } catch (error) {
       console.error('Error fetching parsers:', error);
@@ -31,20 +28,22 @@ export const parsingApi = {
    * Start parsing a document
    */
   startParsing: async (documentId: string, parser: string): Promise<{ task_id?: string } | SimbaDoc> => {
-    // For Mistral OCR, always use synchronous processing
-    const sync = parser === 'mistral_ocr' ? true : false;
-    
-    console.log(`Starting parsing for ${documentId} using ${parser} (sync: ${sync})`);
-    
-    const response = await httpClient.post<{ task_id?: string } | SimbaDoc>('/parse', {
-      document_id: documentId,
-      parser: parser,
-      sync: sync
-    });
-    
-    // The response could be either a task_id (for docling) or a SimbaDoc (for Mistral OCR)
-    console.log('Parse response:', response.data);
-    return response.data;
+    try {
+      const sync = parser === 'mistral_ocr' ? true : false;
+      console.log(`Starting parsing for ${documentId} using ${parser} (sync: ${sync})`);
+      
+      const response = await apiClient.post<{ task_id?: string } | SimbaDoc>('/parse', {
+        document_id: documentId,
+        parser: parser,
+        sync: sync
+      });
+      
+      console.log('Parse response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error starting parsing:', error);
+      throw error;
+    }
   },
 
   /**
@@ -59,7 +58,12 @@ export const parsingApi = {
       error?: string;
     };
   }> => {
-    const response = await httpClient.get(`/parsing/tasks/${taskId}`);
-    return response.data;
+    try {
+      const response = await apiClient.get(`/parsing/tasks/${taskId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching parse status:', error);
+      throw error;
+    }
   }
 }; 

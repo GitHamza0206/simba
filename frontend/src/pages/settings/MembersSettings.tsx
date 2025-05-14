@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { authAxios } from '@/lib/supabase';
+import instance from '@/lib/http/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +62,7 @@ const MembersSettings: React.FC = () => {
   const fetchCurrentUser = async () => {
     try {
       setLoading(true);
-      const response = await authAxios.get('/auth/me');
+      const response = await instance.get('/auth/me');
       
       if (response.data) {
         const userData = response.data;
