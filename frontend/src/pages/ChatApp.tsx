@@ -15,18 +15,31 @@ import { ingestionApi } from '@/lib/ingestion_api';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from "@/components/ui/toaster";
 import { motion } from 'framer-motion';
-
-const STORAGE_KEY = 'chat_messages';
+import { useAuth } from '@/context/AuthContext';
 
 const ChatApp: React.FC = () => {
   const [isMobile, setIsMobile] = useState(false);
-  const [messages, setMessages] = useState<Message[]>(() => {
-    // Load messages from localStorage on initial render
-    const savedMessages = localStorage.getItem(STORAGE_KEY);
-    return savedMessages ? JSON.parse(savedMessages) : [];
-  });
+  const { user } = useAuth();
+  const [currentStorageKey, setCurrentStorageKey] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (user?.id) {
+      setCurrentStorageKey(`chat_messages_${user.id}`);
+    } else {
+      setCurrentStorageKey(null);
+      setMessages([]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (currentStorageKey) {
+      const savedMessages = localStorage.getItem(currentStorageKey);
+      setMessages(savedMessages ? JSON.parse(savedMessages) : []);
+    }
+  }, [currentStorageKey]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -37,14 +50,18 @@ const ChatApp: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Save messages to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-  }, [messages]);
+    if (currentStorageKey) {
+      if (messages.length > 0) {
+        localStorage.setItem(currentStorageKey, JSON.stringify(messages));
+      } else {
+        localStorage.removeItem(currentStorageKey);
+      }
+    }
+  }, [messages, currentStorageKey]);
 
   const handleClearMessages = () => {
     setMessages([]);
-    localStorage.removeItem(STORAGE_KEY);
   };
 
   const handleEndDiscussion = () => {
