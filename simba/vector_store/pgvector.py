@@ -407,8 +407,8 @@ class PGVectorStore(VectorStore):
         # Return documents in the new fused order
         return [doc_map[doc_id] for doc_id in top_ids if doc_id in doc_map]
 
-    def similarity_search(self, query: str, user_id: str, top_k: int = 200,
-                        bm25_k: int = 100, dense_k: int = 100,
+    def similarity_search(self, query: str, user_id: str, top_k: int = 100,
+                        bm25_k: int = 50, dense_k: int = 50,
                         use_bm25_first_pass: bool = True,
                         language: str = 'french') -> List[Document]:
         """

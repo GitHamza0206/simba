@@ -31,6 +31,7 @@ def create_app():
     from simba.api.role_routes import role_router
     from simba.api.organization_routes import organization_router
     from simba.api.api_key_routes import api_key_router
+    from simba.api.summarize_routes import summarize_router
     from simba.core.config import settings
     from simba.core.utils.logger import setup_logging
 
@@ -119,6 +120,7 @@ def create_app():
     app.include_router(role_router)
     app.include_router(organization_router)
     app.include_router(api_key_router)
+    app.include_router(summarize_router)
 
     return app
 

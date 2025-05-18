@@ -35,6 +35,7 @@ def get_celery_config():
         "imports": [
             "simba.tasks.parsing_tasks",
             "simba.tasks.generate_summary",
+            "simba.tasks.ingestion_tasks",
         ],
         "task_routes": {
             "parse_markitdown": {"queue": "parsing"},

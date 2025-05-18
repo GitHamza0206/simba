@@ -29,6 +29,6 @@ export interface Metadata {
 export interface Document {
   id: string;
   content: string;
-  metadata: Record<string, any>;
+  metadata: Partial<Metadata>;
 }
 

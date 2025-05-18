@@ -5,16 +5,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useState, useRef } from "react"
-import { Upload, Paperclip, Trash2 } from "lucide-react"
+import { Upload, Trash2, FolderUp } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+// import { toast } from "@/components/ui/use-toast" // Removed unused import
+// import { ingestionApi } from "@/lib/ingestion_api" // Commenting out direct API call
 
 interface FileUploadModalProps {
   isOpen: boolean
   onClose: () => void
-  onUpload: (files: FileList) => void
+  onUpload: (files: FileList) => Promise<void>; // Added onUpload prop
   currentFolderId?: string | null
   folderName?: string
 }
@@ -22,14 +27,18 @@ interface FileUploadModalProps {
 export function FileUploadModal({ 
   isOpen, 
   onClose, 
-  onUpload, 
+  onUpload, // Destructure onUpload
   currentFolderId = null, 
   folderName = 'Home' 
 }: FileUploadModalProps) {
   const [dragActive, setDragActive] = useState(false)
   const [activeTab, setActiveTab] = useState("file")
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null)
+  const [destinationPath, setDestinationPath] = useState("/")
+  const [recursive, setRecursive] = useState(true)
+  const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const directoryInputRef = useRef<HTMLInputElement>(null)
 
   const addFiles = (newFiles: FileList) => {
     setSelectedFiles(prevFiles => {
@@ -77,6 +86,13 @@ export function FileUploadModal({
     }
   }
 
+  const handleDirectorySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFiles(e.target.files); // treat as files to upload
+    }
+  }
+
   const removeFile = (indexToRemove: number) => {
     if (!selectedFiles) return;
     
@@ -89,28 +105,56 @@ export function FileUploadModal({
     setSelectedFiles(dt.files);
   };
 
-  const handleUpload = () => {
-    if (selectedFiles) {
-      onUpload(selectedFiles)
-      onClose()
+  const handleUpload = async () => {
+    if (selectedFiles && selectedFiles.length > 0) {
+      try {
+        setIsUploading(true);
+        // await ingestionApi.uploadDocuments(Array.from(selectedFiles)); // Replaced with onUpload call
+        await onUpload(selectedFiles); // Call the passed onUpload function
+        
+        // Toasting and onClose will now be handled by the parent (DocumentList) 
+        // to ensure correct feedback after all parent logic (like fetchDocuments) is done.
+        // toast({
+        //   title: "Success",
+        //   description: `Files uploaded successfully!`,
+        // });
+        // onClose(); // Parent will call onClose after its handleUpload completes
+      } catch (error) {
+        console.error('Error during upload process:', error); // Log error from parent
+        // Parent (DocumentList) will show its own error toast
+        // toast({
+        //   title: "Error",
+        //   description: "Failed to upload files. Please try again.",
+        //   variant: "destructive"
+        // });
+      } finally {
+        setIsUploading(false);
+      }
     }
   }
 
   const handleAreaClick = () => {
-    fileInputRef.current?.click()
+    if (activeTab === "file") {
+      fileInputRef.current?.click()
+    } else {
+      directoryInputRef.current?.click()
+    }
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Upload File {currentFolderId ? `to ${folderName}` : ''}</DialogTitle>
+          <DialogTitle>Upload {activeTab === "file" ? "File" : "Folder"} {currentFolderId ? `to ${folderName}` : ''}</DialogTitle>
+          <DialogDescription>
+            Choose files or folders to upload to your document collection.
+          </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="file" className="w-full flex-1 flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="file">Local uploads</TabsTrigger>
-            <TabsTrigger value="directory">S3 uploads</TabsTrigger>
+            <TabsTrigger value="file">File Upload</TabsTrigger>
+            <TabsTrigger value="directory">Folder Upload</TabsTrigger>
           </TabsList>
 
           <TabsContent value="file" className="flex-1 flex flex-col min-h-0">
@@ -182,9 +226,44 @@ export function FileUploadModal({
 
           <TabsContent value="directory" className="flex-1">
             <div className="mt-4 space-y-4">
-              <p className="text-sm text-gray-600">
-                Upload files from directory
-              </p>
+              <div
+                className={`grid place-items-center border-2 border-dashed rounded-lg h-32 flex-shrink-0 ${
+                  dragActive ? "border-primary" : "border-gray-300"
+                } cursor-pointer`}
+                onClick={handleAreaClick}
+              >
+                <div className="text-center">
+                  <FolderUp className="w-10 h-10 mx-auto text-blue-500 mb-2" />
+                  <p className="text-sm text-gray-600">
+                    Click to select folders to upload
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Select one or more folders to be processed for ingestion
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3 mt-4">
+                <div className="flex flex-col space-y-1.5">
+                  <Label htmlFor="destination-path">Destination Path</Label>
+                  <Input
+                    id="destination-path"
+                    value={destinationPath}
+                    onChange={(e) => setDestinationPath(e.target.value)}
+                    placeholder="Destination path (e.g., /my-documents)"
+                  />
+                  <p className="text-xs text-gray-500">Where to store the ingested documents</p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="recursive" 
+                    checked={recursive} 
+                    onCheckedChange={(checked) => setRecursive(checked as boolean)} 
+                  />
+                  <Label htmlFor="recursive">Process subfolders recursively</Label>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
@@ -202,13 +281,25 @@ export function FileUploadModal({
               className="hidden"
               onChange={handleChange}
               accept=".pdf,.doc,.docx,.txt,.md"
-              {...(activeTab === "directory" ? { webkitdirectory: "", directory: "" } : {})}
+            />
+            <input
+              ref={directoryInputRef}
+              id="directory-upload"
+              type="file"
+              // @ts-expect-error - webkitdirectory and directory are valid attributes but not in TypeScript definitions
+              webkitdirectory=""
+              directory=""
+              multiple
+              className="hidden"
+              onChange={handleDirectorySelect}
             />
             <Button 
               onClick={handleUpload}
-              disabled={!selectedFiles}
+              disabled={(activeTab === "file" && !selectedFiles) || 
+                        (activeTab === "directory" && !selectedFiles) ||
+                        isUploading}
             >
-              OK
+              {isUploading ? "Uploading..." : "OK"}
             </Button>
           </div>
         </DialogFooter>

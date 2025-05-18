@@ -26,6 +26,12 @@ def run_server():
     uvicorn.run(app, host="0.0.0.0", port=5005, workers=1)
 
 
+@cli.command("worker")
+def run_worker():
+    """Run the Celery worker for parsing tasks."""
+    click.echo("Starting Celery worker for parsing tasks...")
+    os.system("celery -A simba.core.celery_config.celery_app worker --loglevel=debug")
+
 @cli.command("parsers")
 def run_parsers():
     """Run the Celery worker for parsing tasks."""
