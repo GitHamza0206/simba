@@ -1,5 +1,95 @@
 # Changelog
 
+## [0.5.0](https://github.com/GitHamza0206/simba/compare/v0.4.0...v0.5.0) (2025-05-19)
+
+
+### ✨ Features
+
+* add dropdown menu for document management actions ([d2c5e22](https://github.com/GitHamza0206/simba/commit/d2c5e22c13397494884827ef4aa4dbaddbcbc2a8))
+* add Knowledge Configuration page and update sidebar ([7a4f5a2](https://github.com/GitHamza0206/simba/commit/7a4f5a2e2c8e1a2d768f64b97ce5e4c3d0cffa8d))
+* Add MinIO storage provider ([c1aaed3](https://github.com/GitHamza0206/simba/commit/c1aaed320244a2c336b67a3467bc3a0d78134ba0))
+* add react-hot-toast and refactor Knowledge Configuration routing ([e6aca32](https://github.com/GitHamza0206/simba/commit/e6aca32254e80a28fae4461cab6eb9071ab0284b))
+* add Redis caching for document management and browser-side caching ([4968d92](https://github.com/GitHamza0206/simba/commit/4968d92310561608edba6dd73dd59f443c4bb47b))
+* add settings management with general and members settings pages ([4602a1c](https://github.com/GitHamza0206/simba/commit/4602a1c545329ee1694425738c20094092921e47))
+* add text handling methods to PGVectorStore ([6ebb770](https://github.com/GitHamza0206/simba/commit/6ebb770fe8f06f3300e2bb794a709391e122f2ad))
+* added migrate as entrypoint to docker ([6462e8d](https://github.com/GitHamza0206/simba/commit/6462e8dfee7e0d754d1019a0a0558ae7e7d82905))
+* auth with supabase ([ea34ee6](https://github.com/GitHamza0206/simba/commit/ea34ee640df63fcc0ddde305168cef7ceb870e84))
+* CAG with custom graph flow with router and cot ([7e33cc1](https://github.com/GitHamza0206/simba/commit/7e33cc1ecaf9caa50a22b509f73efd7e63df5b0a))
+* ci/cd & images pushed to docker hub compatible with supabase external ([d41712e](https://github.com/GitHamza0206/simba/commit/d41712eadb201946e940eef5c6873dd84da28e6c))
+* enhance document ingestion and access control ([a3533a8](https://github.com/GitHamza0206/simba/commit/a3533a8c72ef5ef97e8e4439a4b10f5d17c2d7e7))
+* enhance document splitting and retrieval in embedding service ([6e127a1](https://github.com/GitHamza0206/simba/commit/6e127a136f6d6875d268034df50a7c42d13256fb))
+* enhance state management and message handling ([81bffa8](https://github.com/GitHamza0206/simba/commit/81bffa835b7f42243189a72d375fab69517e3e9d))
+* enhancement in UI summarization bulk actions ingestion and celery tasks ([#78](https://github.com/GitHamza0206/simba/issues/78)) ([47d81e1](https://github.com/GitHamza0206/simba/commit/47d81e1426495637714397f93a7e66f34b78f129))
+* implement API key management and authentication ([89ce8cc](https://github.com/GitHamza0206/simba/commit/89ce8cc634f816c330f8e82bf916e4709dae2946))
+* implement API key management features and enhance tenant support ([c32f7c6](https://github.com/GitHamza0206/simba/commit/c32f7c69a595650a21b367e6b06a9cfa8f13d263))
+* implement auth system with roles, permissions and organizations ([95b80a5](https://github.com/GitHamza0206/simba/commit/95b80a58d062538df38c3c29679c21ad14d0949b))
+* implement storage provider architecture (Local Only) ([b76f1c7](https://github.com/GitHamza0206/simba/commit/b76f1c78ec59e0cb2bd9539d131cf29d45c3fbcf))
+* implement user-specific document retrieval and access control ([a8e27c3](https://github.com/GitHamza0206/simba/commit/a8e27c3f5d6eead19cf02418022e547476de72fa))
+* improved RAG pipeline with hybrid search advacned ([15ec491](https://github.com/GitHamza0206/simba/commit/15ec491ec3819475a8b38cde0b573fb6732a3ec6))
+* migrate to PostgreSQL with pgvector support ([0ea9ffc](https://github.com/GitHamza0206/simba/commit/0ea9ffc7d5a17659efd3d710e4ac5c0406501753))
+* MinIO storage ([77a63b7](https://github.com/GitHamza0206/simba/commit/77a63b7cd82cb65d3478423b34047b9a6c84dbf2))
+* refactor front api services to use axios instead of request ([efc8cc9](https://github.com/GitHamza0206/simba/commit/efc8cc9238d3535fdd6f91a49882a36b0ca826ca))
+* refactor organization routes to use Supabase client and enhance error handling ([1a51e84](https://github.com/GitHamza0206/simba/commit/1a51e84536e531478fbc99a20c43b7c6857cd2df))
+* UI UX improvement ([07745c3](https://github.com/GitHamza0206/simba/commit/07745c3e91e1ade1d81e154c91147b29488cebb2))
+* update API key management and settings routes ([a92e67b](https://github.com/GitHamza0206/simba/commit/a92e67b78c7a31edb76b085882e6c4d882cea0cf))
+* update configuration for LLM and embedding providers, enhance KnowledgeConfigPage ([8559575](https://github.com/GitHamza0206/simba/commit/8559575634a441d52a6edc3e976c4afa30809f88))
+* update embedding service and splitter for improved document handling ([ded2ea3](https://github.com/GitHamza0206/simba/commit/ded2ea3a3ffa43e4309487016ba5a2946453b0ab))
+* update organization management and settings ([7d86c17](https://github.com/GitHamza0206/simba/commit/7d86c179127a5fe4527be9a3050ae3758e7d48c0))
+
+
+### 🐛 Bug Fixes
+
+* added .env in ci cd env variables ([95ccffa](https://github.com/GitHamza0206/simba/commit/95ccffa98604520e104d99d8832ec3602d4800ee))
+* commented e2e tests ([a2efe49](https://github.com/GitHamza0206/simba/commit/a2efe49a8bb5cebf6e71a2f00391e3df70d03e0e))
+* creds in ci ([d1169cf](https://github.com/GitHamza0206/simba/commit/d1169cfa1f9a2b560f2d9e6d97580ba026bc4d0e))
+* creds in ci for tests ([19daed9](https://github.com/GitHamza0206/simba/commit/19daed9dfb2e6d848a46a74539bca86d626c3a6f))
+* deleted temp file minio ([a868f37](https://github.com/GitHamza0206/simba/commit/a868f373363da35e1024cbbc6ddfce94fa32f724))
+* force deleting & markdown preview ([d9e5b69](https://github.com/GitHamza0206/simba/commit/d9e5b69be2c932bd352a033390852987dfc2f69d))
+* implement Row Level Security (RLS) policies for organizations and organization members ([75f2da5](https://github.com/GitHamza0206/simba/commit/75f2da5de00caca1997ec2fb23dae81930b70635))
+* improve document grading output in grade_node ([cd3101c](https://github.com/GitHamza0206/simba/commit/cd3101cab379ef64a2aa6d28a119c6d441caad2d))
+* remove e2e tests ci ([497725f](https://github.com/GitHamza0206/simba/commit/497725fe7c5c0d3f2bc266b28224935a4a94fce2))
+* remove notebook ([a69308d](https://github.com/GitHamza0206/simba/commit/a69308d732d91986f607fd884a4ca43631142324))
+* remove supabase cli in ci ([bf3a961](https://github.com/GitHamza0206/simba/commit/bf3a96164ec0bd3a8c4876e3cba9de18f2cd8359))
+* removed redis cache management from ingestion ([d71a8d5](https://github.com/GitHamza0206/simba/commit/d71a8d5c7081b6a635b3be68e57221fc4ccb7e91))
+* UI collection tab creation ([8bc6cfc](https://github.com/GitHamza0206/simba/commit/8bc6cfc014500b5b843c2309b24225d2c37fa2ab))
+* update embedding configuration and fix document deletion logic ([925d3e6](https://github.com/GitHamza0206/simba/commit/925d3e6c2f8c3ad3a6435d782b692a4449afd2b4))
+* update retrieval method and parameter naming for consistency ([43f0f22](https://github.com/GitHamza0206/simba/commit/43f0f227f6c7570e9c1132584977bf9ef96f3bf6))
+* update storage provider and enhance frontend dependencies ([4749723](https://github.com/GitHamza0206/simba/commit/47497231057630403ff9917239787df5749fe6c5))
+
+
+### 📚 Documentation
+
+* changed doc structure ([44238b0](https://github.com/GitHamza0206/simba/commit/44238b071c8e8287039610b60bc305a5ade82a53))
+* chore ([531e60b](https://github.com/GitHamza0206/simba/commit/531e60bb6b9540fa0aeeea9b20e200280c7955eb))
+* chore ([014cb0a](https://github.com/GitHamza0206/simba/commit/014cb0a10b4fe44d7ed0b6d57cd89eadb814dd7a))
+* cleaned installation ([111392e](https://github.com/GitHamza0206/simba/commit/111392e4e09641d14b2321829523189f2e2736a7))
+* fix mint.json structure ([df3f1de](https://github.com/GitHamza0206/simba/commit/df3f1de326d48668ebfff1e1173a7450a31eaa5a))
+* fix mint.json structure ([756d657](https://github.com/GitHamza0206/simba/commit/756d65761b23992266cb396e52273ce33846d25a))
+* fix mint.json structure ([ce2aea9](https://github.com/GitHamza0206/simba/commit/ce2aea92e552386bf455a3507727768a4974f228))
+* fix mint.json structure ([d77cefd](https://github.com/GitHamza0206/simba/commit/d77cefd948ba32534081dad98a239c608efea7f9))
+* fixed icons rendering ([5e8424e](https://github.com/GitHamza0206/simba/commit/5e8424ecfa01aa22a8f0cada33cb37f4118f00d2))
+* introduction & installation setup ([1ab8049](https://github.com/GitHamza0206/simba/commit/1ab8049555faae7bb7486b9c94baa2d93a01b049))
+* remove config ([c0700a0](https://github.com/GitHamza0206/simba/commit/c0700a0c9a859b743c4aea974756e777025495fa))
+* removed useless doc ([815dcec](https://github.com/GitHamza0206/simba/commit/815dcec83ce41a4a110cc33ef666e17288fc09dc))
+* update introduction ([2fb67cc](https://github.com/GitHamza0206/simba/commit/2fb67cc661d8b1efd7d5e0f24704fd8e361eb012))
+* update introduction & assets ([187c1a5](https://github.com/GitHamza0206/simba/commit/187c1a53c52a7f68608e8fc36be9b67bf770f817))
+* update structure and added getting started ([7e60063](https://github.com/GitHamza0206/simba/commit/7e600632c796f2f3fdcf75d272571b9bae262f73))
+
+
+### 🚦 Continuous Integration
+
+* added build phase ([977c6c8](https://github.com/GitHamza0206/simba/commit/977c6c880c9136594df0b8d4c97a5c4241535d4d))
+* added conftest to tests ([65065ea](https://github.com/GitHamza0206/simba/commit/65065ea65886c38710d5c6288db2542d93d53aa0))
+* improve CI pipeline with robust migration step, PostgreSQL service container, and updated documentation ([a79d016](https://github.com/GitHamza0206/simba/commit/a79d01620d8f7c9e4d637ade34be5891250a1a11))
+* removed tests ([d35c8c5](https://github.com/GitHamza0206/simba/commit/d35c8c5ea01e70d2d63063443de8fc25443d22eb))
+
+
+### 💎 Style
+
+* add copy button ([7f21cba](https://github.com/GitHamza0206/simba/commit/7f21cbaa1eb6354ee6068498530972bc241f6cb6))
+* improved chat frame ([33f4684](https://github.com/GitHamza0206/simba/commit/33f4684594667794da6f4644f0af8521b8a1748d))
+* improved chat layout ([afafdec](https://github.com/GitHamza0206/simba/commit/afafdec060733f54d7ca8701edd17ccde86fae61))
+
 ## [0.4.0](https://github.com/GitHamza0206/simba/compare/v0.3.0...v0.4.0) (2025-03-11)
 
 
