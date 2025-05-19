@@ -1,11 +1,13 @@
 import asyncio
+import io
 import logging
 import os
 import uuid
 from pathlib import Path
 from typing import List, Dict, Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+import aiofiles
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, Body
 from fastapi.responses import FileResponse
 
 from simba.core.config import settings
@@ -16,6 +18,7 @@ from simba.ingestion.document_ingestion import DocumentIngestionService
 from simba.ingestion.file_handling import save_file_locally
 from simba.models.simbadoc import SimbaDoc
 from simba.api.middleware.auth import get_current_user
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +57,136 @@ async def ingest_document(
 
     except Exception as e:
         logger.error(f"Error in ingest_document: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class BulkIngestionRequest(BaseModel):
+    folder_paths: List[str]
+
+
+@ingestion.post("/ingestion/bulk")
+async def ingest_bulk_folders(
+    request: BulkIngestionRequest,
+    destination_path: str = Query(default="/", description="Destination folder path to store the documents"),
+    recursive: bool = Query(default=True, description="Whether to process subfolders recursively"),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Ingest all documents from one or many folders into the vector store
+    
+    Args:
+        folder_paths: List of folder paths to process
+        destination_path: Destination folder path to store the documents
+        recursive: Whether to process subfolders recursively
+        current_user: Current authenticated user
+        
+    Returns:
+        Summary of the ingestion operation
+    """
+    try:
+        folder_paths = request.folder_paths
+        # Keep track of all processed documents
+        all_processed_docs = []
+        # Keep track of files that failed to process
+        failed_files = []
+        # Keep track of skipped files (unsupported extensions)
+        skipped_files = []
+        
+        # Get list of supported file extensions
+        supported_extensions = loader.SUPPORTED_EXTENSIONS.keys()
+        
+        # Process each folder path
+        for folder_path in folder_paths:
+            path = Path(folder_path)
+            
+            # Check if the folder exists
+            if not path.exists():
+                raise HTTPException(status_code=404, detail=f"Folder not found: {folder_path}")
+            
+            if not path.is_dir():
+                raise HTTPException(status_code=400, detail=f"Path is not a directory: {folder_path}")
+                
+            # Find all files in the folder (and subfolders with supported extensions)
+            files_to_process = []
+            
+            # Function to walk directory tree
+            if recursive:
+                # Process directories recursively
+                for root, _, files in os.walk(path):
+                    root_path = Path(root)
+                    for file in files:
+                        file_path = root_path / file
+                        extension = f".{file_path.suffix.lower().lstrip('.')}"
+                        if extension in supported_extensions:
+                            files_to_process.append(file_path)
+                        else:
+                            skipped_files.append(str(file_path))
+            else:
+                # Only process files in the top-level directory
+                for file in path.iterdir():
+                    if file.is_file():
+                        extension = f".{file.suffix.lower().lstrip('.')}"
+                        if extension in supported_extensions:
+                            files_to_process.append(file)
+                        else:
+                            skipped_files.append(str(file))
+                        
+            logger.info(f"Found {len(files_to_process)} supported files in {folder_path}")
+            
+            # Process each file in the folder
+            async def process_file_path(file_path):
+                try:
+                    # Open the file as an UploadFile
+                    async with aiofiles.open(file_path, "rb") as f:
+                        content = await f.read()
+                        
+                    # Skip empty files
+                    if len(content) == 0:
+                        logger.warning(f"Skipping empty file: {file_path}")
+                        skipped_files.append(str(file_path))
+                        return None
+                        
+                    file = UploadFile(
+                        filename=file_path.name,
+                        file=io.BytesIO(content)
+                    )
+                    
+                    # Process the file
+                    simba_doc = await ingestion_service.ingest_document(file, destination_path)
+                    logger.info(f"Successfully processed file: {file_path}")
+                    return simba_doc
+                except Exception as e:
+                    logger.error(f"Error processing file {file_path}: {str(e)}")
+                    failed_files.append({"path": str(file_path), "error": str(e)})
+                    return None
+            
+            # Process files in chunks to avoid overwhelming the system
+            chunk_size = 10  # Process 10 files at a time
+            for i in range(0, len(files_to_process), chunk_size):
+                chunk = files_to_process[i:i + chunk_size]
+                results = await asyncio.gather(*[process_file_path(file_path) for file_path in chunk])
+                # Filter out None results (failed processing)
+                valid_results = [doc for doc in results if doc is not None]
+                all_processed_docs.extend(valid_results)
+                
+                # Insert documents in batches
+                if valid_results:
+                    db.insert_documents(valid_results, user_id=current_user["id"])
+                    
+                # Log progress
+                logger.info(f"Processed {i + len(chunk)} of {len(files_to_process)} files from {folder_path}")
+        
+        # Return summary of the operation
+        return {
+            "message": f"Bulk ingestion completed from {len(folder_paths)} folders",
+            "processed_count": len(all_processed_docs),
+            "failed_count": len(failed_files),
+            "skipped_count": len(skipped_files),
+            "failed_files": failed_files,
+            "processed_docs": [doc.id for doc in all_processed_docs]
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in ingest_bulk_folders: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

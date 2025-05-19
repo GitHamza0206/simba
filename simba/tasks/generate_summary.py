@@ -85,8 +85,11 @@ def catchup_summaries_task(batch_size: int = 20):
         logger.info(f"Found {len(batch)} documents that need summaries. Processing...")
         
         for doc in batch:
-            # Call the summary task for each document
-            generate_summary_task.delay(doc.model_dump())
+            # Call the summary task for each document with low priority
+            # Priority 9 is typically the lowest for Celery with Redis
+            generate_summary_task.apply_async(args=[doc.model_dump()], priority=9)
+        
+        logger.info(f"Dispatched {len(batch)} low priority summary tasks from catchup job.")
         
         return {
             "status": "success",

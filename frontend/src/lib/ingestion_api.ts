@@ -81,6 +81,26 @@ class IngestionApi {
     const response = await httpClient.put<SimbaDoc>(`/ingestion/update_document?doc_id=${id}`, document);
     return response.data;
   }
+
+  async uploadFolders(folderPaths: string[], destinationPath: string = "/", recursive: boolean = true): Promise<void> {
+    // Send folder_paths as JSON body, not FormData
+    const body = { folder_paths: folderPaths };
+
+    await httpClient.post(
+      `/ingestion/bulk?destination_path=${encodeURIComponent(destinationPath)}&recursive=${recursive}`,
+      body,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  }
+
+  async getLoaders(): Promise<string[]> {
+    const response = await httpClient.get<{ loaders: string[] }>('/loaders');
+    return response.data.loaders;
+  }
 }
 
 // Export a single instance

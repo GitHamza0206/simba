@@ -44,9 +44,13 @@ export function ParserConfigModal({
     
     if (isOpen) {
       fetchParsers();
-      if (document?.metadata.parser) {
-        setSelectedParser(document.metadata.parser);
+      const currentParser = document?.metadata.parser;
+      if (currentParser && typeof currentParser === 'string') {
+        setSelectedParser(currentParser);
       } else {
+        if (document && currentParser !== undefined) { // Log if it exists but isn't a string
+          console.warn(`document.metadata.parser is not a string: ${JSON.stringify(currentParser)}. Defaulting parser.`);
+        }
         setSelectedParser("docling"); // Default parser
       }
     }

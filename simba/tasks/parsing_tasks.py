@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 @celery.task(name="parse_docling")
 def parse_docling_task(document_id: str):
+    logger.info(f"Starting Docling parsing for document ID: {document_id}")
     try:
         parser = DoclingParser()
         db = get_database()
