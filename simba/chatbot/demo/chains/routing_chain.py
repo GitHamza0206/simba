@@ -5,7 +5,7 @@ from simba.core.factories.llm_factory import get_llm
 llm = get_llm()
 
 class Route(BaseModel):
-    route: str = Field(description="The route to take, either 'transform_query' or 'fallback'")
+    route: str = Field(description="The route to take, either 'transform_query' or 'generate'")
 
 routing_prompt = ChatPromptTemplate.from_template(
     """
@@ -24,7 +24,8 @@ routing_prompt = ChatPromptTemplate.from_template(
         * Falls within the scope of topics that can be addressed by the system
         * Would benefit from additional processing or retrieval of information
 
-      - Choose 'fallback' if the message:
+      - Choose 'generate' if the message:
+        * The user is greeting and saying hello or hi or goodbye or thank you 
         * Is ambiguous or unclear in intent
         * Contains inappropriate content
         * Requests information beyond the system's capabilities
@@ -32,11 +33,10 @@ routing_prompt = ChatPromptTemplate.from_template(
         * Is too generic to be processed effectively
 
       ## Output Format
-      Respond with only 'transform_query' or 'fallback' as the route value.
+      Respond with only 'transform_query' or 'generate' as the route value.
 
       User message: {question}
       Route:
-    Route (respond with only 'transform_query' or 'fallback'):
     """
 )
 

@@ -133,8 +133,8 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
       
       // Show error toast
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        title: "错误",
+        description: error instanceof Error ? error.message : '发生意外错误',
         variant: "destructive",
         duration: 5000,
       });
@@ -142,7 +142,7 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
       setMessages(prev => [...prev, {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: 'Sorry, something went wrong. Please try again.',
+        content: '抱歉，出现了一些问题。请再试一次。',
       }]);
       setIsLoading(false);
       setIsThinking(false);
@@ -183,9 +183,9 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
                 <MessageSquare className="h-8 w-8 text-blue-500" />
               </motion.div>
               <div className="text-center max-w-md space-y-2">
-                <h3 className="text-lg font-medium">Welcome to {config.appName}</h3>
+                <h3 className="text-lg font-medium">欢迎使用{config.appName}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Ask questions, get insights, or upload documents to analyze.
+                  提问、获取见解或上传文档进行分析。
                 </p>
               </div>
             </div>
@@ -233,7 +233,7 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
                   ref={inputRef}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Poser une question"
+                  placeholder="提出一个问题"
                   disabled={isLoading}
                   className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-2 py-1 text-base placeholder:text-gray-400"
                 />
@@ -265,7 +265,7 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadCl
             className="h-full w-[300px] sm:w-[320px] md:w-[380px] border-l flex flex-col bg-white overflow-hidden shrink-0 shadow-md"
           >
             <div className="flex justify-between items-center p-3 border-b bg-gray-50">
-              <h3 className="font-medium text-sm truncate pr-2">Sources</h3>
+              <h3 className="font-medium text-sm truncate pr-2">来源</h3>
               <Button 
                 variant="ghost" 
                 size="icon" 
