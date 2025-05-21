@@ -145,16 +145,16 @@ export function FileUploadModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Upload {activeTab === "file" ? "File" : "Folder"} {currentFolderId ? `to ${folderName}` : ''}</DialogTitle>
+          <DialogTitle>{activeTab === "file" ? "上传文件" : "上传文件夹"}{currentFolderId ? `到${folderName}` : ''}</DialogTitle>
           <DialogDescription>
-            Choose files or folders to upload to your document collection.
+            选择要上传到您的文档集合的文件或文件夹。
           </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="file">File Upload</TabsTrigger>
-            <TabsTrigger value="directory">Folder Upload</TabsTrigger>
+            <TabsTrigger value="file">文件上传</TabsTrigger>
+            <TabsTrigger value="directory">文件夹上传</TabsTrigger>
           </TabsList>
 
           <TabsContent value="file" className="flex-1 flex flex-col min-h-0">
@@ -164,7 +164,7 @@ export function FileUploadModal({
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                   </svg>
-                  Uploading to: {folderName}
+                  上传到：{folderName}
                 </div>
               )}
               
@@ -181,10 +181,10 @@ export function FileUploadModal({
                 <div className="text-center">
                   <Upload className="w-10 h-10 mx-auto text-blue-500 mb-2" />
                   <p className="text-sm text-gray-600">
-                    Click or drag file to this area to upload
+                    点击或拖拽文件到此区域上传
                   </p>
                   <p className="text-xs text-gray-500 mt-2">
-                    Support for a single or bulk upload. Strictly prohibited from uploading company data or other banned files.
+                    支持单个或批量上传。严禁上传公司数据或其他受限文件。
                   </p>
                 </div>
               </div>

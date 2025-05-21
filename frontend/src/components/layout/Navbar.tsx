@@ -22,16 +22,16 @@ export function Navbar() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="flex items-center gap-2 mr-4 h-10">
-                Organization
+                组织
                 <Badge variant="outline" className="ml-2 text-xs bg-gray-100">
-                  Hobby
+                  爱好
                 </Badge>
                 <ChevronDown className="h-4 w-4 opacity-50" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
               <DropdownMenuItem onClick={() => navigate('/organizations')}>
-                Manage Organizations
+                管理组织
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

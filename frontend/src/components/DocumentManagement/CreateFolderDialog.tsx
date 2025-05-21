@@ -5,9 +5,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
 
 interface CreateFolderDialogProps {
   isOpen: boolean;
@@ -24,16 +27,22 @@ export const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
 }) => {
   const [folderName, setFolderName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!folderName.trim()) return;
-
+    if (!folderName.trim()) {
+      toast({ title: "错误", description: "文件夹名称不能为空。", variant: "destructive" });
+      return;
+    }
     setIsLoading(true);
     try {
       await onCreateFolder(folderName);
+      toast({ title: "成功", description: `文件夹 "${folderName}" 已创建。` });
       setFolderName('');
       onClose();
+    } catch (error) {
+      toast({ title: "错误", description: "创建文件夹失败。", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -41,38 +50,33 @@ export const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Folder</DialogTitle>
+          <DialogTitle>创建新文件夹</DialogTitle>
+          <DialogDescription>
+            在路径 "{currentPath}" 中创建一个新文件夹。
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Current Path: {currentPath}
-              </label>
-              <Input
-                placeholder="Folder name"
-                value={folderName}
-                onChange={(e) => setFolderName(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-          <DialogFooter className="mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
+        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">
+              名称
+            </Label>
+            <Input
+              id="name"
+              value={folderName}
+              onChange={(e) => setFolderName(e.target.value)}
+              className="col-span-3"
+              placeholder="文件夹名称"
               disabled={isLoading}
-            >
-              Cancel
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+              取消
             </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !folderName.trim()}
-            >
-              Create Folder
+            <Button type="submit" disabled={isLoading || !folderName.trim()}>
+              {isLoading ? "创建中..." : "创建"}
             </Button>
           </DialogFooter>
         </form>

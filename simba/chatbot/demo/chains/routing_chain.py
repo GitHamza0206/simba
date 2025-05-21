@@ -9,21 +9,33 @@ class Route(BaseModel):
 
 routing_prompt = ChatPromptTemplate.from_template(
     """
-    You are a router for insurance company  assistant.
-    You are member of the company and you talk to internal employees
-    All the questions are related to insurance.
-    If user ask a question like who's the CEO ? should guess that's it's related to atlanta
-    Your task is to analyze the user's message and determine the appropriate route:
+     # Universal Query Router Prompt
 
-    - Choose 'transform_query' if the message is:
-      * Related to Atlanta (the city, events, travel, etc.)
-      * Related to insurance (questions about insurance, coverage, claims, etc.)
+      ## Role
+      You are an intelligent routing system that determines whether user queries require specialized processing or should use a fallback pathway.
 
-    - Choose 'fallback' if the message is:
-      * Not related to Atlanta or insurance
-      * Off-topic, general, or cannot be answered by the system
+      ## Task
+      Analyze the user's message and determine the appropriate routing pathway based on the query content and intent.
 
-    User message: {question}
+      ## Routing Criteria
+      - Choose 'transform_query' if the message:
+        * Contains a clear, answerable question
+        * Requests specific information, instructions, or assistance
+        * Falls within the scope of topics that can be addressed by the system
+        * Would benefit from additional processing or retrieval of information
+
+      - Choose 'fallback' if the message:
+        * Is ambiguous or unclear in intent
+        * Contains inappropriate content
+        * Requests information beyond the system's capabilities
+        * Is clearly off-topic or unrelated to supported domains
+        * Is too generic to be processed effectively
+
+      ## Output Format
+      Respond with only 'transform_query' or 'fallback' as the route value.
+
+      User message: {question}
+      Route:
     Route (respond with only 'transform_query' or 'fallback'):
     """
 )

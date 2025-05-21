@@ -5,6 +5,15 @@ import DocumentList from './DocumentList';
 import { Button } from "@/components/ui/button";
 import { Plus, Folder, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
 
 interface CollectionTabsProps {
   collections: {
@@ -44,176 +53,154 @@ const CollectionTabs: React.FC<CollectionTabsProps> = ({
   onDisable,
   onEnable,
 }) => {
-  // Initial collections setup with a dummy collection if empty
-  const [customCollections, setCustomCollections] = useState<CustomCollection[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('default');
-  const [collectionCount, setCollectionCount] = useState<number>(0);
-  const [editingTabId, setEditingTabId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState<string>('');
-  const editInputRef = useRef<HTMLInputElement>(null);
+  const [activeTab, setActiveTab] = useState<string>("all");
+  const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
+  const [editedCollectionName, setEditedCollectionName] = useState<string>("");
+  const [showNewCollectionDialog, setShowNewCollectionDialog] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState("");
+  const { toast } = useToast();
 
-  // Initialize collections from props
-  useEffect(() => {
-    if (collections.length > 0) {
-      const mappedCollections = collections.map((collection, index) => ({
-        ...collection,
-        displayName: collection.name === 'Default Collection' ? `Collection ${index + 1}` : collection.name
-      }));
-      
-      setCustomCollections(mappedCollections);
-      setCollectionCount(mappedCollections.length);
-      
-      if (!mappedCollections.some(c => c.id === activeTab)) {
-        setActiveTab(mappedCollections[0]?.id || 'default');
-      }
-    } else if (customCollections.length === 0) {
-      // Create a default collection if none exist
-      const defaultCollection = { 
-        id: 'default', 
-        name: 'Default Collection', 
-        displayName: 'Collection 1', 
-        documents: [] 
-      };
-      setCustomCollections([defaultCollection]);
-      setActiveTab('default');
-      setCollectionCount(1);
-    }
-  }, [collections]);
+  const transformedCollections: CustomCollection[] = collections.map(collection => ({
+    ...collection,
+    displayName: collection.name === 'Default Collection' ? '默认合集' : collection.name
+  }));
 
-  // Focus input when editing starts
-  useEffect(() => {
-    if (editingTabId && editInputRef.current) {
-      editInputRef.current.focus();
-      editInputRef.current.select();
-    }
-  }, [editingTabId]);
+  const allDocumentsCollection: CustomCollection = {
+    id: 'all',
+    name: 'All Documents',
+    displayName: '所有文档',
+    documents: collections.reduce((acc, curr) => acc.concat(curr.documents), [] as SimbaDoc[])
+  };
+
+  const displayCollections = [allDocumentsCollection, ...transformedCollections];
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+  };
 
   const handleNewCollection = () => {
-    const newCount = collectionCount + 1;
-    setCollectionCount(newCount);
-    
-    // Create a new collection with a unique ID
-    const newCollectionId = `custom-collection-${Date.now()}`;
-    const newCollection: CustomCollection = {
-      id: newCollectionId,
-      name: `Collection ${newCount}`,
-      displayName: `Collection ${newCount}`,
-      documents: []
-    };
-    
-    // Add the new tab to the list but keep the existing ones
-    setCustomCollections(prev => [...prev, newCollection]);
-    // Make the new tab active immediately
-    setActiveTab(newCollectionId);
+    const newCount = displayCollections.length;
+    setActiveTab(`custom-collection-${Date.now()}`);
+    setNewCollectionName(`Collection ${newCount}`);
+    setShowNewCollectionDialog(true);
   };
 
   const startEditing = (collection: CustomCollection, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent tab switching when clicking edit
-    setEditingTabId(collection.id);
-    setEditingName(collection.displayName);
+    e.stopPropagation();
+    setEditingCollectionId(collection.id);
+    setEditedCollectionName(collection.displayName);
   };
 
   const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       finishEditing();
     } else if (e.key === 'Escape') {
-      setEditingTabId(null);
+      setEditingCollectionId(null);
     }
   };
 
   const finishEditing = () => {
-    if (editingTabId && editingName.trim()) {
-      setCustomCollections(prev =>
-        prev.map(collection =>
-          collection.id === editingTabId
-            ? { ...collection, displayName: editingName.trim(), name: editingName.trim() }
-            : collection
-        )
-      );
+    if (editingCollectionId && editedCollectionName.trim() !== "") {
+      const collectionToUpdate = collections.find(c => c.id === editingCollectionId);
+      if (collectionToUpdate) {
+        const updatedCollection = { ...collectionToUpdate, name: editedCollectionName };
+        setCollections(prevCollections => 
+          prevCollections.map(c => c.id === editingCollectionId ? updatedCollection : c)
+        );
+        toast({ title: "合集已更新", description: `合集 "${editedCollectionName}" 已成功更新。` });
+      }
+      setEditingCollectionId(null);
+      setEditedCollectionName("");
     }
-    setEditingTabId(null);
   };
 
-  // Return early if no collections
-  if (customCollections.length === 0) {
-    return <div className="p-8 text-center text-muted-foreground">Loading collections...</div>;
+  if (displayCollections.length === 0) {
+    return <div className="p-8 text-center text-muted-foreground">加载合集...</div>;
   }
   
-  // Get active collection
-  const activeCollection = customCollections.find(c => c.id === activeTab) || customCollections[0];
+  const activeCollection = displayCollections.find(c => c.id === activeTab) || displayCollections[0];
 
   return (
-    <div className="flex flex-col w-full h-full">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col w-full h-full">
       <div className="flex items-center bg-muted/20">
         <div className="h-12 flex-1 p-0 flex bg-transparent rounded-none justify-start">
-          {customCollections.map((collection) => (
-            <button
-              key={collection.id}
-              className={`relative px-6 h-12 rounded-t-lg rounded-b-none border-b-2 hover:bg-background/60 
-                group flex items-center gap-2 
-                ${activeTab === collection.id 
-                  ? 'border-primary bg-background shadow-none' 
-                  : 'border-transparent'}`}
-              onClick={() => {
-                if (editingTabId) finishEditing();
-                setActiveTab(collection.id);
-              }}
-            >
-              <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
-              
-              {editingTabId === collection.id ? (
-                <Input
-                  ref={editInputRef}
-                  value={editingName}
-                  onChange={(e) => setEditingName(e.target.value)}
-                  onKeyDown={handleEditKeyDown}
-                  onBlur={finishEditing}
-                  className="h-7 px-2 py-0 w-[140px] bg-transparent"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <>
-                  <span className="truncate max-w-[140px]">{collection.displayName}</span>
-                  <Button
+          <TabsList className="flex-1">
+            {displayCollections.map((collection) => (
+              <TabsTrigger
+                key={collection.id}
+                value={collection.id}
+                className="relative group data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+              >
+                {editingCollectionId === collection.id ? (
+                  <Input
+                    type="text"
+                    value={editedCollectionName}
+                    onChange={(e) => setEditedCollectionName(e.target.value)}
+                    onKeyDown={handleEditKeyDown}
+                    onBlur={finishEditing}
+                    autoFocus
+                    className="h-7 px-2 py-1 text-sm bg-white border-primary ring-primary"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  collection.displayName
+                )}
+                {collection.id !== 'all' && editingCollectionId !== collection.id && (
+                  <Button 
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100"
                     onClick={(e) => startEditing(collection, e)}
                   >
                     <Pencil className="h-3 w-3" />
                   </Button>
-                </>
-              )}
-            </button>
-          ))}
-          <Button 
-            size="sm" 
-            variant="ghost" 
-            className="h-12 px-3 text-muted-foreground rounded-none hover:bg-background/60"
-            onClick={handleNewCollection}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+                )}
+              </TabsTrigger>
+            ))}
+            <Button variant="outline" size="sm" className="ml-2 h-9" onClick={() => setShowNewCollectionDialog(true)}>
+              <Plus className="h-4 w-4 mr-1" /> 新建合集
+            </Button>
+          </TabsList>
         </div>
       </div>
-      
-      <div className="flex-1 py-6">
-        {/* Render only the active collection's documents */}
-        <DocumentList
-          documents={activeCollection.documents}
-          isLoading={isLoading}
-          onDelete={onDelete}
-          onSearch={onSearch}
-          onUpload={onUpload}
-          onPreview={onPreview}
-          fetchDocuments={fetchDocuments}
-          onDocumentUpdate={onDocumentUpdate}
-          onParse={onParse}
-          onDisable={onDisable}
-          onEnable={onEnable}
-        />
-      </div>
-    </div>
+      {displayCollections.map((collection) => (
+        <TabsContent key={collection.id} value={collection.id} className="flex-1 py-6">
+          <DocumentList
+            documents={collection.documents}
+            isLoading={isLoading}
+            onDelete={onDelete}
+            onSearch={onSearch}
+            onUpload={onUpload}
+            onPreview={onPreview}
+            fetchDocuments={fetchDocuments}
+            onDocumentUpdate={onDocumentUpdate}
+            onParse={onParse}
+            onDisable={onDisable}
+            onEnable={onEnable}
+          />
+        </TabsContent>
+      ))}
+      <Dialog open={showNewCollectionDialog} onOpenChange={setShowNewCollectionDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>创建新合集</DialogTitle>
+            <DialogDescription>
+              为您的文档输入一个名称。
+            </DialogDescription>
+          </DialogHeader>
+          <Input 
+            placeholder="合集名称"
+            value={newCollectionName}
+            onChange={(e) => setNewCollectionName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleNewCollection()}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewCollectionDialog(false)}>取消</Button>
+            <Button onClick={handleNewCollection} disabled={!newCollectionName.trim()}>创建</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Tabs>
   );
 };
 

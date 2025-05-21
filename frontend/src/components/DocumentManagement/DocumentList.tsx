@@ -166,8 +166,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
           //   }
           // }
         } catch (error) {
-          console.error(`Error checking task ${taskId}:`, error);
-          delete tasks[docId]; // Keep this part of error handling
+          console.error(`检查任务 ${taskId} 时出错:`, error);
+          delete tasks[docId];
           hasChanges = true;
         }
       }
@@ -178,7 +178,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
     };
 
     checkExistingTasks();
-  }, []); // Removed parsingTasks from dependencies as it's modified inside, causing potential loops
+  }, []);
 
   useEffect(() => {
     if (Object.keys(pendingUploads).length > 0 && documents.length > 0) {
@@ -189,7 +189,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
       
       documents.forEach(doc => {
         if (pendingUploads[doc.id]) {
-          console.log(`Associating document ${doc.id} with folder ${pendingUploads[doc.id]}`);
+          console.log(`将文档 ${doc.id} 与文件夹 ${pendingUploads[doc.id]}关联`);
           
           const updatedDoc = {
             ...doc,
@@ -208,7 +208,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
       
       if (hasChanges) {
         setPendingUploads(pendingCopy);
-        saveDocumentFolderAssociations(associations);
       }
     }
   }, [documents, pendingUploads, onDocumentUpdate]);
@@ -227,9 +226,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
   }, []);
 
   const formatDate = (dateString: string) => {
-    if (dateString === "Unknown") return dateString;
+    if (dateString === "未知") return dateString;
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
+    return date.toLocaleDateString('zh-CN', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -245,20 +244,20 @@ const DocumentList: React.FC<DocumentListProps> = ({
       // await ingestionApi.reindexDocument( // Problematic: reindexDocument
       //   selectedDocument.id, 
       //   selectedDocument.metadata.parser,
-      //   (status: any, progress: any) => { // Added any types for now
+      //   (status: any, progress: any) => { 
       //     setProgressStatus(status);
       //     setReindexProgress(progress);
       //   }
       // );
       toast({
-        title: "Success",
-        description: "Document reindexed successfully",
+        title: "成功",
+        description: "文档重新索引成功",
       });
       await fetchDocuments();
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to reindex document",
+        title: "错误",
+        description: error instanceof Error ? error.message : "文档重新索引失败",
         variant: "destructive",
       });
     } finally {
@@ -270,26 +269,26 @@ const DocumentList: React.FC<DocumentListProps> = ({
   };
 
   const getReindexWarningContent = (document: SimbaDoc | null) => {
-    if (!document) return { title: "Re-index", description: "No document selected" };
-    // if (document.metadata.loaderModified && document.metadata.parserModified) { // Problematic: loaderModified, parserModified
+    if (!document) return { title: "重新索引", description: "未选择文档" };
+    // if (document.metadata.loaderModified && document.metadata.parserModified) { 
     //   return {
     //     title: "Confirm Re-indexing",
     //     description: "This will update both the loader and parser. Changing the parser will create a new markdown file. Are you sure you want to proceed?"
     //   };
-    // } else if (document.metadata.parserModified) { // Problematic: parserModified
+    // } else if (document.metadata.parserModified) { 
     //   return {
     //     title: "Confirm Parser Change",
     //     description: "Changing the parser will create a new markdown file. Are you sure you want to proceed?"
     //   };
-    // } else if (document.metadata.loaderModified) { // Problematic: loaderModified
+    // } else if (document.metadata.loaderModified) { 
     //   return {
     //     title: "Confirm Loader Change",
     //     description: "Do you want to update the document loader?"
     //   };
     // }
-    return { // Fallback for now
-      title: "Re-index Document",
-      description: "Are you sure you want to re-index this document?"
+    return { 
+      title: "重新索引文档",
+      description: "您确定要重新索引此文档吗？"
     };
   };
 
@@ -362,7 +361,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
     setFolders([...folders, newFolder]);
     setNewFolderName("");
     setShowCreateFolderDialog(false);
-    toast({ title: "Success", description: "Folder created" });
+    toast({ title: "成功", description: "文件夹已创建" });
   };
 
   const handleRenameFolder = (folderId: string, newName: string) => {
@@ -370,7 +369,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
       folder.id === folderId ? { ...folder, name: newName } : folder
     ));
     setIsRenamingId(null);
-    toast({ title: "Success", description: "Folder renamed successfully" });
+    toast({ title: "成功", description: "文件夹重命名成功" });
   };
 
   const handleRenameDocument = (docId: string, newName: string) => {
@@ -380,7 +379,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
       return;
     }
     setIsRenamingId(null);
-    toast({ title: "Info", description: "Document renaming will be implemented with backend support" });
+    toast({ title: "信息", description: "文档重命名将在后端支持下实现" });
   };
 
   const internalHandleUpload = async (files: FileList): Promise<void> => {
@@ -391,8 +390,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
     if (currentFolderId) {
       const fileNames = Array.from(files).map(file => file.name);
       toast({
-        title: "Checking Folder Association",
-        description: `Looking for uploaded files to link with '${folders.find(f => f.id === currentFolderId)?.name || 'current folder'}'...`
+        title: "检查文件夹关联",
+        description: `正在查找已上传的文件以链接到 '${folders.find(f => f.id === currentFolderId)?.name || '当前文件夹'}'...`
       });
 
       let checkAttempts = 0;
@@ -406,16 +405,16 @@ const DocumentList: React.FC<DocumentListProps> = ({
         );
 
         if (newlyUploaded.length > 0) {
-          console.log(`Associating ${newlyUploaded.length} files with folder ${currentFolderId}`);
+          console.log(`将 ${newlyUploaded.length} 个文件与文件夹 ${currentFolderId} 关联`);
           const updates: Record<string, string> = { ...pendingUploads };
           newlyUploaded.forEach(doc => { updates[doc.id] = currentFolderId!; });
           setPendingUploads(updates);
-          toast({ title: "Association Found", description: `${newlyUploaded.length} file(s) will be linked.`});
+          toast({ title: "找到关联", description: `${newlyUploaded.length} 个文件将被链接。`});
         } else if (checkAttempts < maxAttempts) {
           checkAttempts++;
           setTimeout(checkForNewUploads, 2000);
         } else {
-          console.log(`Max folder association attempts reached for folder ${currentFolderId}. No unassociated new files found matching upload names.`);
+          console.log(`文件夹 ${currentFolderId} 的文件夹关联尝试已达最大次数。未找到与上传名称匹配的未关联新文件。`);
         }
       };
       setTimeout(checkForNewUploads, 1500);
@@ -488,18 +487,18 @@ const DocumentList: React.FC<DocumentListProps> = ({
 
       if (!checked) {
         await embeddingApi.delete_document(doc.id);
-        if (!silent) toast({ title: "Document removed", description: "Document removed from embeddings successfully" });
+        if (!silent) toast({ title: "文档已移除", description: "文档已成功从嵌入中移除" });
       } else {
         await embeddingApi.embedd_document(doc.id);
-        if (!silent) toast({ title: "Document embedded", description: `Document embedded successfully.` });
+        if (!silent) toast({ title: "文档已嵌入", description: `文档嵌入成功。` });
       }
     } catch (error) {
       const revertedDoc = { ...doc, metadata: { ...doc.metadata, enabled: !checked }};
       onDocumentUpdate(revertedDoc);
       if (!silent) {
         toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : `Failed to ${checked ? 'embed' : 'remove'} document`,
+          title: "错误",
+          description: error instanceof Error ? error.message : `未能${checked ? '嵌入' : '移除'}文档`,
           variant: "destructive"
         });
       }
@@ -531,16 +530,16 @@ const DocumentList: React.FC<DocumentListProps> = ({
 
       const result = await parsingApi.startParsing(document.id, parserToUse);
       if (result && 'id' in result && 'metadata' in result) {
-        onDocumentUpdate(result as SimbaDoc); // Cast to SimbaDoc
-        toast({ title: "Parsing Complete", description: `Document parsed successfully with ${parserToUse}` });
+        onDocumentUpdate(result as SimbaDoc);
+        toast({ title: "解析完成", description: `文档已成功使用 ${parserToUse} 解析` });
       } else if ('task_id' in result && result.task_id) {
         setParsingTasks(prev => ({ ...prev, [document.id]: result.task_id as string }));
-        toast({ title: document.metadata.parsing_status === 'SUCCESS' ? "Re-parsing Started" : "Parsing Started", description: `Document parsing with ${parserToUse} has been queued` });
+        toast({ title: document.metadata.parsing_status === 'SUCCESS' ? "重新解析已开始" : "解析已开始", description: `使用 ${parserToUse} 的文档解析已加入队列` });
       } else {
-        toast({ title: "Error", description: "Received unexpected response from parsing service", variant: "destructive" });
+        toast({ title: "错误", description: "从解析服务收到意外响应", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to start parsing", variant: "destructive" });
+      toast({ title: "错误", description: error instanceof Error ? error.message : "无法开始解析", variant: "destructive" });
       // Revert parsing status if API call failed
       const docToRevert = documents.find(d => d.id === document.id);
       if (docToRevert) {
@@ -563,7 +562,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
       if (folderId) { associations[docId] = folderId; saveDocumentFolderAssociations(associations); }
     }
     if (status === 'PARSED') {
-      toast({ title: "Success", description: "Document parsed successfully" });
+      toast({ title: "成功", description: "文档解析成功" });
       await fetchDocuments();
     }
   };
@@ -571,7 +570,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
   const handleParseCancel = async (documentId: string) => {
     setParsingTasks(prev => { const next = { ...prev }; delete next[documentId]; return next; });
     await fetchDocuments();
-    toast({ title: "Cancelled", description: "Parsing cancelled" });
+    toast({ title: "已取消", description: "解析已取消" });
   };
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -601,11 +600,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
     const hasDocuments = documents.some(doc => doc.metadata.folder_id === folderId);
     const hasSubfolders = folders.some(folder => folder.parentId === folderId);
     if (hasDocuments || hasSubfolders) {
-      toast({ title: "Cannot Delete Folder", description: "Folder is not empty. Please move or delete all items first.", variant: "destructive" });
+      toast({ title: "无法删除文件夹", description: "文件夹不为空。请先移动或删除所有项目。", variant: "destructive" });
       return;
     }
     setFolders(folders.filter(f => f.id !== folderId));
-    toast({ title: "Success", description: "Folder deleted successfully" });
+    toast({ title: "成功", description: "文件夹删除成功" });
   };
 
   const handleDragOver = (doc: SimbaDoc, e: React.DragEvent) => {
@@ -627,9 +626,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
       const associations = loadDocumentFolderAssociations();
       associations[docId] = targetFolderId;
       saveDocumentFolderAssociations(associations);
-      toast({ title: "Success", description: `Moved document to ${targetFolderId ? folders.find(f => f.id === targetFolderId)?.name : 'Home'}` });
+      toast({ title: "成功", description: `已将文档移至 ${targetFolderId ? folders.find(f => f.id === targetFolderId)?.name : '主页'}` });
     } else {
-      toast({ title: "Info", description: `Moved document to ${targetFolderId ? 'folder' : 'root'}` });
+      toast({ title: "信息", description: `已将文档移至 ${targetFolderId ? '文件夹' : '根目录'}` });
     }
   };
 
@@ -654,16 +653,16 @@ const DocumentList: React.FC<DocumentListProps> = ({
 
   const handleMultipleDelete = async () => {
     const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
-    if (!window.confirm(`Are you sure you want to delete ${selectedDocs.length} document(s)?`)) return;
+    if (!window.confirm(`您确定要删除 ${selectedDocs.length} 个文档吗？`)) return;
     setDeleteLoading(true);
-    toast({ title: "Deleting documents", description: `Deleting ${selectedDocs.length} document(s)...` });
+    toast({ title: "删除文档", description: `正在删除 ${selectedDocs.length} 个文档...` });
     let hasErrors = false;
     for (const doc of selectedDocs) {
       try { await ingestionApi.deleteDocumentWithoutConfirmation(doc.id); }
-      catch (error) { console.error(`Error deleting document ${doc.id}:`, error); hasErrors = true; }
+      catch (error) { console.error(`删除文档 ${doc.id} 时出错:`, error); hasErrors = true; }
     }
-    if (hasErrors) toast({ variant: "destructive", title: "Error", description: "Failed to delete one or more documents" });
-    else toast({ title: "Success", description: `Successfully deleted ${selectedDocs.length} document(s)` });
+    if (hasErrors) toast({ variant: "destructive", title: "错误", description: "未能删除一个或多个文档" });
+    else toast({ title: "成功", description: `已成功删除 ${selectedDocs.length} 个文档` });
     await fetchDocuments();
     setSelectedIds(new Set());
     setDeleteLoading(false);
@@ -674,7 +673,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
     const docsToUpdate = selectedDocs.filter(doc => doc.metadata.enabled !== enable);
     if (docsToUpdate.length === 0) return;
     setToggleLoading(true);
-    toast({ title: `${enable ? 'Enabling' : 'Disabling'} documents`, description: `${enable ? 'Enabling' : 'Disabling'} ${docsToUpdate.length} document(s)...` });
+    toast({ title: `${enable ? '启用' : '禁用'}文档`, description: `${enable ? '正在启用' : '正在禁用'} ${docsToUpdate.length} 个文档...` });
     docsToUpdate.forEach(doc => {
       const updatedDoc = { ...doc, metadata: { ...doc.metadata, enabled: enable }};
       onDocumentUpdate(updatedDoc);
@@ -682,7 +681,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
     let successCount = 0; let errorCount = 0; const failedDocs = [];
     for (const doc of docsToUpdate) {
       try { await enableDocument(doc, enable, true); successCount++; }
-      catch (error) { console.error(`Error ${enable ? 'enabling' : 'disabling'} document ${doc.id}:`, error); errorCount++; failedDocs.push(doc); }
+      catch (error) { console.error(` ${enable ? '启用' : '禁用'}文档 ${doc.id} 时出错:`, error); errorCount++; failedDocs.push(doc); }
     }
     if (failedDocs.length > 0) {
       failedDocs.forEach(doc => {
@@ -690,8 +689,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
         onDocumentUpdate(revertedDoc);
       });
     }
-    if (errorCount > 0) toast({ variant: "destructive", title: "Operation partially completed", description: `${successCount} document(s) updated, ${errorCount} failed` });
-    else if (successCount > 0) toast({ title: "Success", description: `Successfully ${enable ? 'enabled' : 'disabled'} ${successCount} document(s)` });
+    if (errorCount > 0) toast({ variant: "destructive", title: "操作部分完成", description: `${successCount} 个文档已更新，${errorCount} 个失败` });
+    else if (successCount > 0) toast({ title: "成功", description: `已成功${enable ? '启用' : '禁用'} ${successCount} 个文档` });
     setToggleLoading(false);
   };
 
@@ -699,14 +698,14 @@ const DocumentList: React.FC<DocumentListProps> = ({
     const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
     if (selectedDocs.length === 0) return;
     setParseLoading(true);
-    toast({ title: "Parsing documents", description: `Starting parsing for ${selectedDocs.length} document(s)...` });
+    toast({ title: "解析文档", description: `正在为 ${selectedDocs.length} 个文档开始解析...` });
     let successCount = 0; let errorCount = 0;
     for (const doc of selectedDocs) {
       try { await handleParseClick(doc); successCount++; }
-      catch (error) { console.error(`Error parsing document ${doc.id}:`, error); errorCount++; }
+      catch (error) { console.error(`解析文档 ${doc.id} 时出错:`, error); errorCount++; }
     }
-    if (errorCount > 0) toast({ variant: "destructive", title: "Operation partially completed", description: `${successCount} document(s) parsing started, ${errorCount} failed` });
-    else toast({ title: "Success", description: `Parsing started for ${successCount} document(s)` });
+    if (errorCount > 0) toast({ variant: "destructive", title: "操作部分完成", description: `${successCount} 个文档解析已开始，${errorCount} 个失败` });
+    else toast({ title: "成功", description: `${successCount} 个文档的解析已开始` });
     setParseLoading(false);
   };
 
@@ -719,19 +718,15 @@ const DocumentList: React.FC<DocumentListProps> = ({
         taskIdFromApi = result.task_id;
         setActiveSummaryTasks(prev => ({ ...prev, [docId]: taskIdFromApi! }));
         toast({
-          title: "Summary Generation Started",
-          description: result.message || `Task ID: ${result.task_id}`
+          title: "摘要生成已开始",
+          description: result.message || `任务 ID: ${result.task_id}`
         });
-        // Do NOT call fetchDocuments() here immediately.
-        // Polling effect will handle it.
       } else {
-        // Handle cases where task_id is not returned or there's an immediate error message
         toast({
-          title: "Error Starting Summary",
-          description: result.message || "Could not start summary generation task.",
+          title: "开始摘要时出错",
+          description: result.message || "无法开始摘要生成任务。",
           variant: "destructive"
         });
-        // If no task_id, remove from summarizingDocIds immediately
         setSummarizingDocIds(prev => {
           const next = new Set(prev);
           next.delete(docId);
@@ -739,27 +734,23 @@ const DocumentList: React.FC<DocumentListProps> = ({
         });
       }
     } catch (error) {
-      console.error("Failed to generate summary:", error);
+      console.error("生成摘要失败：", error);
       toast({
-        title: "Error Generating Summary",
-        description: error instanceof Error ? error.message : "Failed to start summary generation process.",
+        title: "生成摘要时出错",
+        description: error instanceof Error ? error.message : "无法开始摘要生成过程。",
         variant: "destructive"
       });
-      // On catch, remove from summarizingDocIds
       setSummarizingDocIds(prev => {
         const next = new Set(prev);
         next.delete(docId);
         return next;
       });
     }
-    // The finally block is removed from here as its logic is now conditional
-    // based on whether a taskIdFromApi was obtained and polling started.
-    // Cleanup of summarizingDocIds will happen in the polling effect or error handlers above.
   };
 
   const handleBulkSummarizeOpen = () => {
     if (selectedIds.size === 0) {
-      toast({ title: "No documents selected", description: "Please select documents to summarize.", variant: "destructive" });
+      toast({ title: "未选择文档", description: "请选择要摘要的文档。", variant: "destructive" });
       return;
     }
     setIsBulkSummarizeDialogOpen(true);
@@ -771,34 +762,29 @@ const DocumentList: React.FC<DocumentListProps> = ({
     const docsToSummarize = selectedDocs.filter(doc => !doc.metadata.summary || doc.metadata.summary.trim() === "");
 
     if (docsToSummarize.length === 0) {
-      toast({ title: "No documents need summarization", description: "All selected documents already have summaries or none were selected.", });
+      toast({ title: "无需摘要的文档", description: "所有选定文档均已有摘要或未选择任何文档。", });
       return;
     }
 
-    toast({ title: "Summarizing documents", description: `Starting summary generation for ${docsToSummarize.length} document(s)...` });
+    toast({ title: "摘要文档", description: `正在为 ${docsToSummarize.length} 个文档开始生成摘要...` });
     let successCount = 0; let errorCount = 0;
 
     for (const doc of docsToSummarize) {
       try {
-        await handleGenerateSummary(doc.id); // Assuming this function is suitable for bulk calls
+        await handleGenerateSummary(doc.id);
         successCount++;
       } catch (error) {
-        console.error(`Error summarizing document ${doc.id}:`, error);
-        errorCount++;
+        console.error(`摘要文档 ${doc.id} 时出错:`, error); errorCount++;
       }
     }
 
-    if (errorCount > 0) toast({ variant: "destructive", title: "Operation partially completed", description: `${successCount} document(s) summarization started, ${errorCount} failed` });
-    else if (successCount > 0) toast({ title: "Success", description: `Summary generation started for ${successCount} document(s)` });
-    
-    // Deselect after action
-    // setSelectedIds(new Set()); 
-    // User might want to perform another action on the same selection
+    if (errorCount > 0) toast({ variant: "destructive", title: "操作部分完成", description: `${successCount} 个文档的摘要已开始，${errorCount} 个失败` });
+    else if (successCount > 0) toast({ title: "成功", description: `${successCount} 个文档的摘要生成已开始` });
   };
 
   const handleBulkParseOpen = () => {
     if (selectedIds.size === 0) {
-      toast({ title: "No documents selected", description: "Please select documents to parse.", variant: "destructive" });
+      toast({ title: "未选择文档", description: "请选择要解析的文档。", variant: "destructive" });
       return;
     }
     setIsBulkParseParserSelectDialogOpen(true);
@@ -814,34 +800,26 @@ const DocumentList: React.FC<DocumentListProps> = ({
     const selectedDocs = documents.filter(doc => selectedIds.has(doc.id));
 
     if (selectedDocs.length === 0) {
-      toast({ title: "No documents selected", description: "Please select documents to parse.", });
+      toast({ title: "未选择文档", description: "请选择要解析的文档。", });
       return;
     }
 
-    toast({ title: "Parsing documents", description: `Starting parsing for ${selectedDocs.length} document(s) with ${selectedBulkParser}...` });
+    toast({ title: "解析文档", description: `正在使用 "${selectedBulkParser}" 解析器解析所有选定文档...` });
     let successCount = 0; let errorCount = 0;
 
     for (const doc of selectedDocs) {
       try {
-        // Update the document's parser setting locally before calling handleParseClick
-        // This ensures handleParseClick uses the bulk-selected parser if no override is given
-        // However, the modified handleParseClick now accepts parserOverride.
         await handleParseClick(doc, selectedBulkParser);
         successCount++;
       } catch (error) {
-        console.error(`Error parsing document ${doc.id}:`, error);
-        errorCount++;
+        console.error(`解析文档 ${doc.id} 时出错:`, error); errorCount++;
       }
     }
 
-    if (errorCount > 0) toast({ variant: "destructive", title: "Operation partially completed", description: `${successCount} document(s) parsing started with ${selectedBulkParser}, ${errorCount} failed` });
-    else if (successCount > 0) toast({ title: "Success", description: `Parsing started for ${successCount} document(s) with ${selectedBulkParser}` });
-    
-    // Deselect after action
-    // setSelectedIds(new Set());
+    if (errorCount > 0) toast({ variant: "destructive", title: "操作部分完成", description: `使用 "${selectedBulkParser}" 解析的 ${successCount} 个文档解析已开始，${errorCount} 个失败` });
+    else if (successCount > 0) toast({ title: "成功", description: `使用 "${selectedBulkParser}" 解析的 ${successCount} 个文档解析已开始` });
   };
 
-  // Effect for polling summary task statuses
   useEffect(() => {
     const intervalIds: Record<string, NodeJS.Timeout> = {};
 
@@ -851,20 +829,17 @@ const DocumentList: React.FC<DocumentListProps> = ({
       const pollStatus = async () => {
         try {
           const result = await parsingApi.getParseStatus(taskId);
-          console.log(`Polling summary task ${taskId} for doc ${docId}:`, result);
+          console.log(`轮询摘要任务 ${taskId} (文档 ${docId}):`, result);
 
-          // Check specific success/error conditions based on your API response structure
-          // Adjust these conditions as per the actual API response from getParseStatus
           const isSuccess = result.status === 'SUCCESS' || (result.result && result.result.status === 'success');
-          const isError = result.status === 'FAILED' || (result.result && result.result.status === 'error') || result.status === 'FAILURE'; // Add other failure stati if any
+          const isError = result.status === 'FAILED' || (result.result && result.result.status === 'error') || result.status === 'FAILURE';
 
           if (isSuccess) {
             toast({
-              title: "Summary Generated",
-              description: `Summary for document ${documents.find(d => d.id === docId)?.metadata.filename || docId} is ready.`,
+              title: "摘要已生成",
+              description: `文档 ${documents.find(d => d.id === docId)?.metadata.filename || docId} 的摘要已准备就绪。`,
             });
             fetchDocuments();
-            // Clean up for this task
             setActiveSummaryTasks(prev => {
               const next = { ...prev };
               delete next[docId];
@@ -878,11 +853,10 @@ const DocumentList: React.FC<DocumentListProps> = ({
             if (intervalIds[docId]) clearInterval(intervalIds[docId]);
           } else if (isError) {
             toast({
-              title: "Summary Generation Failed",
-              description: result.result?.error || `Failed to generate summary for document ${docId}.`,
+              title: "摘要生成失败",
+              description: result.result?.error || `未能为文档 ${docId} 生成摘要。`,
               variant: "destructive",
             });
-            // Clean up for this task
             setActiveSummaryTasks(prev => {
               const next = { ...prev };
               delete next[docId];
@@ -894,18 +868,14 @@ const DocumentList: React.FC<DocumentListProps> = ({
               return next;
             });
             if (intervalIds[docId]) clearInterval(intervalIds[docId]);
-          } else {
-            // Task is still pending, continue polling
-            // setTimeout will be set again if not cleared
           }
         } catch (error) {
-          console.error(`Error polling summary task ${taskId} for doc ${docId}:`, error);
+          console.error(`轮询摘要任务 ${taskId} (文档 ${docId}) 时出错:`, error);
           toast({
-            title: "Polling Error",
-            description: `Error checking summary status for document ${docId}.`,
+            title: "轮询错误",
+            description: `检查文档 ${docId} 的摘要状态时出错。`,
             variant: "destructive",
           });
-          // Clean up on error
           setActiveSummaryTasks(prev => {
             const next = { ...prev };
             delete next[docId];
@@ -920,16 +890,14 @@ const DocumentList: React.FC<DocumentListProps> = ({
         }
       };
 
-      // Initial check and then set interval
-      pollStatus(); // Check immediately
-      intervalIds[docId] = setInterval(pollStatus, 5000); // Poll every 5 seconds
+      pollStatus();
+      intervalIds[docId] = setInterval(pollStatus, 5000);
     });
 
-    // Cleanup function for the useEffect hook
     return () => {
       Object.values(intervalIds).forEach(clearInterval);
     };
-  }, [activeSummaryTasks, fetchDocuments, toast, documents]); // Added documents to deps for toast message
+  }, [activeSummaryTasks, fetchDocuments, toast, documents]);
 
   return (
     <div className="relative">
@@ -937,7 +905,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Input
-              placeholder="Search documents..."
+              placeholder="搜索文档..."
               className="h-9 w-[200px]"
               onChange={(e) => onSearch(e.target.value)}
             />
@@ -945,13 +913,13 @@ const DocumentList: React.FC<DocumentListProps> = ({
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9">
                   <Filter className="h-4 w-4 mr-2" />
-                  Filters
+                  筛选器
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-4" align="start">
                 <div className="space-y-4">
                   <div>
-                    <h4 className="font-medium leading-none mb-2">Visible Columns</h4>
+                    <h4 className="font-medium leading-none mb-2">可见列</h4>
                     <div className="space-y-2">
                       {(Object.keys(visibleColumns) as Array<keyof ColumnVisibility>).map((key) => (
                         <div key={key} className="flex items-center space-x-2">
@@ -970,39 +938,39 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     </div>
                   </div>
                   <div>
-                    <h4 className="font-medium leading-none mb-2">Filter By</h4>
+                    <h4 className="font-medium leading-none mb-2">筛选条件</h4>
                     <div className="space-y-3">
                       <div>
-                        <Label htmlFor="filter-parsing-status" className="text-sm">Parsing Status</Label>
+                        <Label htmlFor="filter-parsing-status" className="text-sm">解析状态</Label>
                         <Select
                           value={filterParsingStatus}
                           onValueChange={setFilterParsingStatus}
                         >
                           <SelectTrigger id="filter-parsing-status" className="h-9 mt-1">
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="选择状态" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            <SelectItem value="SUCCESS">Parsed</SelectItem>
-                            <SelectItem value="FAILED">Failed</SelectItem>
-                            <SelectItem value="PENDING">Pending</SelectItem>
-                            <SelectItem value="Unparsed">Unparsed</SelectItem>
+                            <SelectItem value="all">全部</SelectItem>
+                            <SelectItem value="SUCCESS">已解析</SelectItem>
+                            <SelectItem value="FAILED">失败</SelectItem>
+                            <SelectItem value="PENDING">待处理</SelectItem>
+                            <SelectItem value="Unparsed">未解析</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div>
-                        <Label htmlFor="filter-is-summarized" className="text-sm">Is Summarized</Label>
+                        <Label htmlFor="filter-is-summarized" className="text-sm">是否已摘要</Label>
                         <Select
                           value={filterIsSummarized}
                           onValueChange={setFilterIsSummarized}
                         >
                           <SelectTrigger id="filter-is-summarized" className="h-9 mt-1">
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="选择状态" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            <SelectItem value="yes">Yes</SelectItem>
-                            <SelectItem value="no">No</SelectItem>
+                            <SelectItem value="all">全部</SelectItem>
+                            <SelectItem value="yes">是</SelectItem>
+                            <SelectItem value="no">否</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1020,7 +988,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
               onClick={() => setShowCreateFolderDialog(true)}
             >
               <FolderPlus className="h-4 w-4 mr-2" />
-              New Folder
+              新建文件夹
             </Button>
             <TooltipProvider>
               <Tooltip>
@@ -1035,11 +1003,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
                       "h-4 w-4 mr-2",
                       isLoading && "animate-spin"
                     )} />
-                    Refresh
+                    刷新
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Refresh document list</p>
+                  <p>刷新文档列表</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -1047,7 +1015,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9" disabled={selectedIds.size === 0}>
                   <MoreVertical className="h-4 w-4 mr-2" />
-                  Bulk Actions
+                  批量操作
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-56 p-2">
@@ -1061,7 +1029,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                   disabled={selectedIds.size === 0}
                 >
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Summarize Selected
+                  摘要选中项
                 </Button>
                 <Button
                   variant="ghost"
@@ -1073,7 +1041,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                   disabled={selectedIds.size === 0}
                 >
                   <Play className="h-4 w-4 mr-2" />
-                  Parse Selected
+                  解析选中项
                 </Button>
               </PopoverContent>
             </Popover>
@@ -1084,7 +1052,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
               onClick={() => setIsUploadModalOpen(true)}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Upload
+              上传
             </Button>
           </div>
         </div>
@@ -1105,20 +1073,20 @@ const DocumentList: React.FC<DocumentListProps> = ({
                   disabled={getCurrentFolderDocuments().filter(d => !d.metadata.is_folder).length === 0}
                 />
               </TableHead>
-              <TableHead>Name</TableHead>
-              {visibleColumns.chunkNumber && <TableHead>Chunk Number</TableHead>}
-              {visibleColumns.uploadDate && <TableHead>Upload Date</TableHead>}
-              {visibleColumns.loader && <TableHead>Loader</TableHead>}
-              {visibleColumns.enable && <TableHead>Enable</TableHead>}
-              {visibleColumns.parsingStatus && <TableHead>Parsing Status</TableHead>}
-              {visibleColumns.isSummarized && <TableHead>Is Summarized</TableHead>}
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead>名称</TableHead>
+              {visibleColumns.chunkNumber && <TableHead>分块数量</TableHead>}
+              {visibleColumns.uploadDate && <TableHead>上传日期</TableHead>}
+              {visibleColumns.loader && <TableHead>加载器</TableHead>}
+              {visibleColumns.enable && <TableHead>启用</TableHead>}
+              {visibleColumns.parsingStatus && <TableHead>解析状态</TableHead>}
+              {visibleColumns.isSummarized && <TableHead>是否已摘要</TableHead>}
+              <TableHead className="w-[100px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow className="h-8 text-xs border-b border-muted">
               <TableCell colSpan={
-                3 + // Checkbox, Name, Actions
+                3 +
                 (visibleColumns.chunkNumber ? 1 : 0) +
                 (visibleColumns.uploadDate ? 1 : 0) +
                 (visibleColumns.loader ? 1 : 0) +
@@ -1153,7 +1121,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 key={doc.id} 
                 className={cn(
                   "hover:bg-gray-50",
-                  doc.metadata.is_folder && "cursor-pointer group" // Ensure 'group' class for folder rename hover
+                  doc.metadata.is_folder && "cursor-pointer group"
                 )}
                 draggable={!doc.metadata.is_folder}
                 onDragStart={(e) => {
@@ -1230,7 +1198,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 )}
                 {visibleColumns.uploadDate && (
                   <TableCell>
-                    {doc.metadata.is_folder ? '' : formatDate(doc.metadata.uploadedAt || "Unknown")}
+                    {doc.metadata.is_folder ? '' : formatDate(doc.metadata.uploadedAt || "未知")}
                   </TableCell>
                 )}
                 {visibleColumns.loader && (
@@ -1238,7 +1206,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                     {doc.metadata.loader && !doc.metadata.is_folder ? (
                       <Badge variant="outline">{doc.metadata.loader}</Badge>
                     ) : (
-                      !doc.metadata.is_folder ? <span className="text-xs text-muted-foreground">N/A</span> : ''
+                      !doc.metadata.is_folder ? <span className="text-xs text-muted-foreground">不适用</span> : ''
                     )}
                   </TableCell>
                 )}
@@ -1274,13 +1242,13 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             !doc.metadata.parsing_status && "bg-gray-100 text-gray-800 border-gray-200"
                           )}
                         >
-                          {doc.metadata.parsing_status || 'Unparsed'}
+                          {doc.metadata.parsing_status || '未解析'}
                         </Badge>
                         
                         {doc.metadata.parser ? (
                           <div className="relative">
                             <Select
-                              value={doc.metadata.parser || "docling"}
+                              value={doc.metadata.parser || ""}
                               onValueChange={(value) => {
                                 const updatedDoc = {
                                   ...doc,
@@ -1291,20 +1259,15 @@ const DocumentList: React.FC<DocumentListProps> = ({
                                 };
                                 onDocumentUpdate(updatedDoc);
                                 toast({
-                                  title: "Parser Updated",
-                                  description: `Parser changed to ${value}`,
+                                  title: "解析器已更新",
+                                  description: `解析器已更改为 ${value}`,
                                 });
                               }}
                             >
                               <SelectTrigger 
-                                className={cn(
-                                  "h-6 min-w-0 px-2.5 py-0 border rounded-md text-xs font-semibold gap-1 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:opacity-70",
-                                  doc.metadata.parser === 'docling' || !doc.metadata.parser
-                                    ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" 
-                                    : "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
-                                )}
+                                className="h-6 min-w-0 px-2.5 py-0 border rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 gap-1 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:opacity-70"
                               >
-                                <SelectValue>{doc.metadata.parser || "docling"}</SelectValue>
+                                <SelectValue placeholder="选择解析器" />
                               </SelectTrigger>
                               <SelectContent>
                                 {availableParsers.map((parserName) => (
@@ -1318,7 +1281,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                         ) : (
                           <div className="relative">
                             <Select
-                              value="docling" // Default to docling if no parser is set
+                              value={doc.metadata.parser || "docling"}
                               onValueChange={(value) => {
                                 const updatedDoc = {
                                   ...doc,
@@ -1329,15 +1292,15 @@ const DocumentList: React.FC<DocumentListProps> = ({
                                 };
                                 onDocumentUpdate(updatedDoc);
                                 toast({
-                                  title: "Parser Set",
-                                  description: `Parser set to ${value}`,
+                                  title: "解析器已设置",
+                                  description: `解析器已设置为 ${value}`,
                                 });
                               }}
                             >
                               <SelectTrigger 
                                 className="h-6 min-w-0 px-2.5 py-0 border rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 gap-1 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:opacity-70"
                               >
-                                <SelectValue>docling</SelectValue>
+                                <SelectValue placeholder="设置解析器">{doc.metadata.parser || "docling"}</SelectValue>
                               </SelectTrigger>
                               <SelectContent>
                                 {availableParsers.map((parserName) => (
@@ -1402,7 +1365,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="top">
-                                  <p>Generate Summary</p>
+                                  <p>生成摘要</p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -1421,7 +1384,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8"
                               onClick={(e) => { 
                                 e.stopPropagation(); 
                                 setIsRenamingId(doc.id);
@@ -1431,7 +1393,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Rename folder</p>
+                            <p>重命名文件夹</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1449,7 +1411,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Delete folder</p>
+                            <p>删除文件夹</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1475,7 +1437,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Parse document</p>
+                            <p>解析文档</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1493,7 +1455,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             </button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Configure parser</p>
+                            <p>配置解析器</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1512,7 +1474,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>View document</p>
+                            <p>查看文档</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1531,7 +1493,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Delete document</p>
+                            <p>删除文档</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1547,7 +1509,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
           <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white border rounded-lg shadow-lg flex items-center z-50">
             <div className="flex items-center py-2 px-4 border-r">
               <span className="font-medium">
-                {selectedIds.size} {selectedIds.size === 1 ? 'document' : 'documents'} selected
+                {selectedIds.size} {selectedIds.size === 1 ? '文档' : '文档'} 已选择
               </span>
             </div>
             
@@ -1560,11 +1522,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 disabled={parseLoading}
               >
                 {parseLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-                Parse Selected
+                解析选中项
               </Button>
               
               <div className="flex items-center">
-                <span className="mr-3">Enable/Disable</span>
+                <span className="mr-3">启用/禁用</span>
                 <Switch 
                   checked={selectedIds.size > 0 && documents.filter(doc => selectedIds.has(doc.id)).every(doc => doc.metadata.enabled)}
                   onCheckedChange={(checked) => {
@@ -1583,7 +1545,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 disabled={deleteLoading}
               >
                 {deleteLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
-                Delete Documents
+                删除文档
               </Button>
             </div>
           </div>
@@ -1592,11 +1554,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
         <Dialog open={showCreateFolderDialog} onOpenChange={setShowCreateFolderDialog}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Create New Folder</DialogTitle>
+              <DialogTitle>创建新文件夹</DialogTitle>
             </DialogHeader>
             <div className="py-4">
               <Input
-                placeholder="Folder name"
+                placeholder="文件夹名称"
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
                 onKeyDown={(e) => {
@@ -1608,10 +1570,10 @@ const DocumentList: React.FC<DocumentListProps> = ({
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowCreateFolderDialog(false)}>
-                Cancel
+                取消
               </Button>
               <Button onClick={handleCreateFolder}>
-                Create
+                创建
               </Button>
             </div>
           </DialogContent>
@@ -1622,7 +1584,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
           onClose={() => setIsUploadModalOpen(false)}
           onUpload={internalHandleUpload}
           currentFolderId={currentFolderId}
-          folderName={currentFolderId ? folders.find(f => f.id === currentFolderId)?.name : 'Home'}
+          folderName={currentFolderId ? folders.find(f => f.id === currentFolderId)?.name : '主页'}
         />
 
         <AlertDialog 
@@ -1653,14 +1615,14 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 onClick={() => setShowReindexDialog(false)}
                 disabled={isReindexing}
               >
-                Cancel
+                取消
               </AlertDialogCancel>
               <AlertDialogAction 
                 onClick={handleReindexConfirm}
                 className="bg-primary text-white hover:bg-primary/90"
                 disabled={isReindexing}
               >
-                {isReindexing ? "Processing..." : "Proceed"}
+                {isReindexing ? "处理中..." : "继续"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -1671,7 +1633,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
           onClose={() => setIsParserConfigModalOpen(false)}
           document={selectedDocumentForConfig}
           onUpdate={(updatedDoc) => {
-            console.log("Document updated with new parser:", updatedDoc.metadata.parser);
+            console.log("文档已使用新解析器更新:", updatedDoc.metadata.parser);
             onDocumentUpdate(updatedDoc);
           }}
         />
@@ -1680,15 +1642,15 @@ const DocumentList: React.FC<DocumentListProps> = ({
         <AlertDialog open={isBulkSummarizeDialogOpen} onOpenChange={setIsBulkSummarizeDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirm Summarize Missing</AlertDialogTitle>
+              <AlertDialogTitle>确认摘要缺失项</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to summarize all selected documents that don't already have a summary?
-                This will only affect documents without an existing summary.
+                您确定要为所有选定但尚无摘要的文档生成摘要吗？
+                此操作仅影响尚无摘要的文档。
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleBulkSummarizeConfirm}>Summarize</AlertDialogAction>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction onClick={handleBulkSummarizeConfirm}>摘要</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -1697,13 +1659,13 @@ const DocumentList: React.FC<DocumentListProps> = ({
         <Dialog open={isBulkParseParserSelectDialogOpen} onOpenChange={setIsBulkParseParserSelectDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Select Parser for Bulk Operation</DialogTitle>
+              <DialogTitle>选择批量操作的解析器</DialogTitle>
             </DialogHeader>
             <div className="py-4 space-y-2">
-              <Label htmlFor="bulk-parser-select">Choose a parser to use for all selected documents:</Label>
+              <Label htmlFor="bulk-parser-select">为所有选定文档选择一个解析器：</Label>
               <Select value={selectedBulkParser} onValueChange={setSelectedBulkParser}>
                 <SelectTrigger id="bulk-parser-select">
-                  <SelectValue placeholder="Select a parser" />
+                  <SelectValue placeholder="选择一个解析器" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableParsers.map((parserName) => (
@@ -1715,8 +1677,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
               </Select>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-               <Button variant="outline" onClick={() => setIsBulkParseParserSelectDialogOpen(false)}>Cancel</Button>
-               <Button onClick={handleBulkParseParserSelectConfirm}>Next</Button>
+               <Button variant="outline" onClick={() => setIsBulkParseParserSelectDialogOpen(false)}>取消</Button>
+               <Button onClick={handleBulkParseParserSelectConfirm}>下一步</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -1725,15 +1687,15 @@ const DocumentList: React.FC<DocumentListProps> = ({
         <AlertDialog open={isBulkParseDialogOpen} onOpenChange={setIsBulkParseDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirm Bulk Parse</AlertDialogTitle>
+              <AlertDialogTitle>确认批量解析</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to parse all selected documents using the '{selectedBulkParser}' parser?
-                This will re-parse documents even if they were already parsed.
+                您确定要使用"{selectedBulkParser}"解析器解析所有选定文档吗？
+                即使文档已经解析过，此操作也会重新解析。
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleBulkParseConfirm}>Parse with {selectedBulkParser}</AlertDialogAction>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction onClick={handleBulkParseConfirm}>使用 {selectedBulkParser} 解析</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

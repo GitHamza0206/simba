@@ -10,33 +10,33 @@ class DocumentSelectorChain(BaseModel):
 
 prompt = ChatPromptTemplate.from_template(
     """
-    # Prompt « Sélection Top 5 »
-        *(RAG – Documents Atlanta Sanad, liste de glossaires structurés)*
+    # Document Selection Expert Prompt
 
-        ## Contexte
-        Tu reçois :
-        1. **Question principale** de l'utilisateur ;
-        2. **Liste Q** : variantes reformulées (Q1…Qn) ;
-        3. **Corpus** : N documents déjà résumés sous forme de glossaires hiérarchiques Markdown (cf. prompt d'extraction).
+    ## Context
+    You receive:
+    1. A **Primary Question** from the user;
+    2. **Query List**: Reformulated variations (Q1...Qn) of the primary question;
+    3. **Corpus**: N documents already summarized in hierarchical Markdown format.
 
-        ## Rôle
-        Agir comme moteur de recherche expert : identifier **jusqu'à 5 documents** les plus pertinents pour répondre à la question, en tenant compte des variantes Q1…Qn.
+    ## Role
+    Act as an expert search engine: identify **up to 5 documents** most relevant to answering the question, considering all query variations Q1...Qn.
 
-        ## Critères de Pertinence (par ordre décroissant)
-        1. **Correspondance sémantique** avec concepts, garanties, exclusions, montants, dates, acteurs cités dans la question ou ses reformulations ;
-        2. **Chevauchement lexical** (mots exacts, synonymes, acronyms) ;
-        3. **Spécificité** : un document ciblant précisément le sujet > un document généraliste ;
-        4. **Hiérarchie interne** : si la section *Garanties Couvertures* ou *Conditions* traite directement d'un terme clé, bonus ;
-        5. **Actualité** : privilégier les versions ou avenants les plus récents si date disponible ;
-        6. **Type de doc** : Police avenant > Guide sinistre > FAQ > CGV > Note interne, sauf si la question appelle explicitement un autre type.
+    ## Relevance Criteria (in decreasing order of importance)
+    1. **Semantic Correspondence** with key concepts, terms, entities, figures, dates, or actors mentioned in the question or its reformulations;
+    2. **Lexical Overlap** (exact words, synonyms, acronyms, technical terms);
+    3. **Specificity**: documents directly addressing the topic > general documents;
+    4. **Internal Structure**: documents with sections specifically covering key terms receive higher priority;
+    5. **Recency**: prefer more recent versions or updates if date information is available;
+    6. **Document Type**: prioritize authoritative primary sources over secondary references, unless the question explicitly requires otherwise.
 
-        ## Directives d'Extraction
-        - **Ne lis que les glossaires fournis** ; n'invente rien.
-        - Lorsque plusieurs docs semblent équivalents, choisis celui qui couvre **le plus grand nombre d'entités** mentionnées dans Q & Qn.
-        - Si < 5 documents atteignent un seuil de pertinence raisonnable, retourne-en moins, jamais plus de 5.
+    ## Extraction Guidelines
+    - **Only read the provided summaries**; do not invent information.
+    - When multiple documents appear equally relevant, choose those covering the **greatest number of entities** mentioned in the primary question and variations.
+    - Return fewer than 5 documents if only those meet a reasonable relevance threshold, never more than 5.
 
-        ## Format de Sortie
-        Renvoie l'ID du document et le contenu du document.
+    ## Output Format
+    Return the document ID and document content for each selected document.
+    If the context provided is sufficient to answer the question, set is_summary_enough to True, otherwise False.
 
     Here is the question:
     {question}
@@ -44,9 +44,9 @@ prompt = ChatPromptTemplate.from_template(
     {sub_queries}
     Here is the context:
     {summaries}
-    If the context is enough to answer the question, is_summary_enough is True else False.
 
-
+    
+    YOUR MUST SPEAK IN CHINESE 
     """
 )
 

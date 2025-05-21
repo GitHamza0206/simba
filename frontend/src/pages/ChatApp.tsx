@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ChatFrame from '@/components/ChatFrame';
-import { MoreVertical, RotateCw, MessageSquare } from 'lucide-react';
+import { MoreVertical, RotateCw, MessageSquare, Cpu } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,11 +15,12 @@ import { ingestionApi } from '@/lib/ingestion_api';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from "@/components/ui/toaster";
 import { motion } from 'framer-motion';
+import { Badge } from "@/components/ui/badge";
+import { getAppSettings } from "@/lib/settings_api";
 
 const STORAGE_KEY = 'chat_messages';
 
 const ChatApp: React.FC = () => {
-  const [isMobile, setIsMobile] = useState(false);
   const [messages, setMessages] = useState<Message[]>(() => {
     // Load messages from localStorage on initial render
     const savedMessages = localStorage.getItem(STORAGE_KEY);
@@ -28,19 +29,38 @@ const ChatApp: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // LLM Info State
+  const [llmName, setLlmName] = useState<string | null>(null);
+  const [isLoadingLlm, setIsLoadingLlm] = useState<boolean>(true);
+  const [llmError, setLlmError] = useState<string | null>(null);
 
-  // Save messages to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
   }, [messages]);
+
+  // Fetch LLM Name Effect
+  useEffect(() => {
+    const fetchLlmInfo = async () => {
+      try {
+        setIsLoadingLlm(true);
+        setLlmError(null);
+        const settings = await getAppSettings();
+        if (settings && settings.llm && settings.llm.model_name) {
+          setLlmName(settings.llm.model_name);
+        } else {
+          setLlmError("LLM name not found in settings.");
+          console.warn("LLM model_name not found in settings:", settings);
+        }
+      } catch (error) {
+        console.error("Failed to fetch LLM name:", error);
+        setLlmError(error instanceof Error ? error.message : "Failed to load LLM info");
+        setLlmName(null);
+      } finally {
+        setIsLoadingLlm(false);
+      }
+    };
+    fetchLlmInfo();
+  }, []);
 
   const handleClearMessages = () => {
     setMessages([]);
@@ -98,6 +118,26 @@ const ChatApp: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-2">
+            {/* LLM Chip */} 
+            {isLoadingLlm && (
+              <Badge variant="outline" className="flex items-center gap-1 text-xs bg-white/20 text-white h-7 px-2">
+                <Cpu className="h-3 w-3 animate-pulse" />
+                ...
+              </Badge>
+            )}
+            {!isLoadingLlm && llmName && (
+              <Badge variant="outline" className="flex items-center gap-1 text-xs bg-white/20 text-white h-7 px-2" title={llmName}>
+                <Cpu className="h-3 w-3" />
+                {llmName.length > 15 ? `${llmName.substring(0, 15)}...` : llmName}              
+              </Badge>
+            )}
+            {!isLoadingLlm && llmError && (
+               <Badge variant="destructive" className="flex items-center gap-1 text-xs bg-red-300/50 text-white h-7 px-2" title={llmError}>
+                <Cpu className="h-3 w-3" />
+                Error
+              </Badge>
+            )}
+
             <motion.button 
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -130,8 +170,7 @@ const ChatApp: React.FC = () => {
         <div className="flex-1 overflow-hidden relative">
           <ChatFrame 
             messages={messages} 
-            setMessages={setMessages} 
-            onUploadClick={() => setIsUploadModalOpen(true)}
+            setMessages={setMessages}
           />
         </div>
       </motion.div>

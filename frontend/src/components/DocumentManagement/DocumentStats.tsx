@@ -22,7 +22,7 @@ const DocumentStats: React.FC<DocumentStatsProps> = ({
           <div className="flex items-center space-x-4">
             <Clock className="w-4 h-4 text-gray-500" />
             <div>
-              <p className="text-sm font-medium text-gray-500">Last queried</p>
+              <p className="text-sm font-medium text-gray-500">上次查询时间</p>
               <p className="text-lg font-semibold">{lastQueried}</p>
             </div>
           </div>
@@ -34,7 +34,7 @@ const DocumentStats: React.FC<DocumentStatsProps> = ({
           <div className="flex items-center space-x-4">
             <Search className="w-4 h-4 text-gray-500" />
             <div>
-              <p className="text-sm font-medium text-gray-500">Total queries</p>
+              <p className="text-sm font-medium text-gray-500">总查询次数</p>
               <p className="text-lg font-semibold">{totalQueries}</p>
             </div>
           </div>
@@ -46,7 +46,7 @@ const DocumentStats: React.FC<DocumentStatsProps> = ({
           <div className="flex items-center space-x-4">
             <Database className="w-4 h-4 text-gray-500" />
             <div>
-              <p className="text-sm font-medium text-gray-500">Items indexed</p>
+              <p className="text-sm font-medium text-gray-500">已索引条目</p>
               <p className="text-lg font-semibold">{itemsIndexed}</p>
             </div>
           </div>
@@ -57,7 +57,7 @@ const DocumentStats: React.FC<DocumentStatsProps> = ({
           <div className="flex items-center space-x-4">
             <Calendar className="w-4 h-4 text-gray-500" />
             <div>
-              <p className="text-sm font-medium text-gray-500">Created at</p>
+              <p className="text-sm font-medium text-gray-500">创建时间</p>
               <p className="text-lg font-semibold">{createdAt}</p>
             </div>
           </div>

@@ -36,17 +36,17 @@ import { useState } from "react"
 const APP_VERSION = "v1.0.0"
 
 const sidebarItems = [
-  { name: "Home", icon: Home, path: "/" },
-  { name: "Documents", icon: Terminal, path: "/documents" },
-  { name: "Knowledge", icon: Brain, path: "/knowledge" },
-  { name: "Plugins", icon: PlugZap, path: "/plugins" },
-  { name: "API Keys", icon: Key, path: "/api-keys" },
+  { name: "首页", icon: Home, path: "/" },
+  { name: "文档", icon: Terminal, path: "/documents" },
+  { name: "知识库", icon: Brain, path: "/knowledge" },
+  { name: "插件", icon: PlugZap, path: "/plugins" },
+  { name: "API密钥", icon: Key, path: "/api-keys" },
 ]
 
 const bottomItems = [
-  { name: "Settings", icon: Settings, path: "/settings" },
-  { name: "Help", icon: HelpCircle, path: "/help" },
-  { name: "Storage", icon: HardDrive, path: "/storage" },
+  { name: "设置", icon: Settings, path: "/settings" },
+  { name: "帮助", icon: HelpCircle, path: "/help" },
+  { name: "存储", icon: HardDrive, path: "/storage" },
 ]
 
 export function Sidebar() {
@@ -70,7 +70,7 @@ export function Sidebar() {
         {expanded ? (
           <>
             <div className="flex items-center">
-              <span className="text-xl font-semibold">Simba</span>
+              <span className="text-xl font-semibold">FlyBird</span>
               <span className="text-xs text-gray-500 ml-2">{APP_VERSION}</span>
             </div>
           </>
@@ -96,7 +96,7 @@ export function Sidebar() {
             <Search className="h-4 w-4 absolute left-3 text-gray-400" />
             <Input 
               className="pl-9 py-1 h-8 text-sm bg-white border-gray-200 text-gray-700 placeholder:text-gray-400"
-              placeholder="Go to..."
+              placeholder="跳转到..."
             />
             <div className="absolute right-3 text-xs text-gray-500">⌘K</div>
           </div>
@@ -161,20 +161,20 @@ export function Sidebar() {
               </Avatar>
               {expanded && (
                 <div className="flex flex-col items-start text-sm ml-2">
-                  <span className="font-medium">{user?.email ? user.email.split('@')[0] : 'User'}</span>
-                  <span className="text-xs text-gray-500">{user?.email || 'user@example.com'}</span>
+                  <span className="font-medium">{user?.email ? user.email.split('@')[0] : '用户'}</span>
+                  <span className="text-xs text-gray-500">{user?.email || '用户@example.com'}</span>
                 </div>
               )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel>我的账户</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuItem>个人资料</DropdownMenuItem>
+            <DropdownMenuItem>设置</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => signOut()}>
-              Logout
+              退出登录
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

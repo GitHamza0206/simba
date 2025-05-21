@@ -12,25 +12,28 @@ def cli():
 
 
 @cli.command("server")
-def run_server():
+@click.option('--reload', is_flag=True, default=False, help='Enable auto-reload for development.')
+def run_server(reload):
     """Run the Simba FastAPI server."""
-    click.echo("Starting Simba server...")
+    click.echo("Starting Simba server..." + (" (with reload)" if reload else ""))
     from dotenv import load_dotenv
 
-    from simba.__main__ import create_app
-
     load_dotenv()
-    app = create_app()
     import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=5005, workers=1)
+    if reload:
+        # Use import string for reload mode
+        uvicorn.run("simba.__main__:app", host="0.0.0.0", port=5005, workers=1, reload=True)
+    else:
+        from simba.__main__ import create_app
+        app = create_app()
+        uvicorn.run(app, host="0.0.0.0", port=5005, workers=1)
 
 
 @cli.command("worker")
 def run_worker():
     """Run the Celery worker for parsing tasks."""
     click.echo("Starting Celery worker for parsing tasks...")
-    os.system("celery -A simba.core.celery_config.celery_app worker --loglevel=debug")
+    os.system("celery -A simba.core.celery_config worker -Q parsing,summaries,ingestion --loglevel=info ")
 
 @cli.command("parsers")
 def run_parsers():

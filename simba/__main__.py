@@ -124,6 +124,8 @@ def create_app():
 
     return app
 
+# Expose app at module level for Uvicorn reload support
+app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
