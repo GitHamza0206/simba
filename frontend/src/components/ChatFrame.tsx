@@ -2,11 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, X, Loader2, MessageSquare } from 'lucide-react';
+import { Send, Paperclip, X, Smile, Plus, Loader2, MessageSquare, Globe, Megaphone, Image as ImageIcon, MoreHorizontal, Mic } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import { Message } from '@/types/chat';
 import Thinking from '@/components/Thinking';
 import { sendMessage, handleChatStream } from '@/lib/api';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import SourcePanel from './SourcePanel';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,9 +21,10 @@ import { config } from '@/config';
 interface ChatFrameProps {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  onUploadClick: () => void;
 }
 
-const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages }) => {
+const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages, onUploadClick }) => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -126,8 +133,8 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages }) => {
       
       // Show error toast
       toast({
-        title: "错误",
-        description: error instanceof Error ? error.message : '发生意外错误',
+        title: "Error",
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
         variant: "destructive",
         duration: 5000,
       });
@@ -135,7 +142,7 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages }) => {
       setMessages(prev => [...prev, {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: '抱歉，出现了一些问题。请再试一次。',
+        content: 'Sorry, something went wrong. Please try again.',
       }]);
       setIsLoading(false);
       setIsThinking(false);
@@ -149,7 +156,7 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages }) => {
   };
 
   const handleSourceClick = (message: Message) => {
-    if (message.role === 'assistant' && (message.state?.sources?.length ?? 0) > 0) {
+    if (message.role === 'assistant' && message.state?.sources?.length > 0) {
       setSelectedMessage(message);
       setSourcePanelOpen(true);
     }
@@ -176,50 +183,35 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages }) => {
                 <MessageSquare className="h-8 w-8 text-blue-500" />
               </motion.div>
               <div className="text-center max-w-md space-y-2">
-                <h3 className="text-lg font-medium">欢迎使用 {config.appName}</h3>
+                <h3 className="text-lg font-medium">Welcome to {config.appName}</h3>
                 <p className="text-sm text-muted-foreground">
-                  提问、获取见解或上传文档进行分析。
+                  Ask questions, get insights, or upload documents to analyze.
                 </p>
               </div>
             </div>
           ) : (
-            <CardContent className="flex-1 overflow-y-auto p-4 space-y-8 pt-6 flex flex-col items-center">
+            <CardContent className="flex-1 overflow-y-auto p-4 space-y-5 pt-6">
               <AnimatePresence initial={false}>
-                {messages.map((message, idx) => {
-                  // Determine margin based on previous message
-                  let marginClass = '';
-                  if (idx === 0) {
-                    marginClass = '';
-                  } else {
-                    const prevRole = messages[idx - 1].role;
-                    if (prevRole !== message.role) {
-                      marginClass = 'mt-6'; // Larger margin between different types
-                    } else {
-                      marginClass = 'mt-2'; // Standard margin between same types
-                    }
-                  }
-                  return (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className={marginClass}
-                    >
-                      <ChatMessage
-                        isAi={message.role === 'assistant'}
-                        message={message.content}
-                        streaming={message.streaming}
-                        followUpQuestions={message.followUpQuestions}
-                        onFollowUpClick={handleFollowUpClick}
-                        state={message.state}
-                        onSourceClick={() => handleSourceClick(message)}
-                        isSelected={selectedMessage?.id === message.id}
-                      />
-                    </motion.div>
-                  );
-                })}
+                {messages.map((message) => (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ChatMessage
+                      isAi={message.role === 'assistant'}
+                      message={message.content}
+                      streaming={message.streaming}
+                      followUpQuestions={message.followUpQuestions}
+                      onFollowUpClick={handleFollowUpClick}
+                      state={message.state}
+                      onSourceClick={() => handleSourceClick(message)}
+                      isSelected={selectedMessage?.id === message.id}
+                    />
+                  </motion.div>
+                ))}
               </AnimatePresence>
               {isThinking && (
                 <motion.div
@@ -241,7 +233,7 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages }) => {
                   ref={inputRef}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="提出一个问题"
+                  placeholder="Poser une question"
                   disabled={isLoading}
                   className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-2 py-1 text-base placeholder:text-gray-400"
                 />
@@ -273,7 +265,7 @@ const ChatFrame: React.FC<ChatFrameProps> = ({ messages, setMessages }) => {
             className="h-full w-[300px] sm:w-[320px] md:w-[380px] border-l flex flex-col bg-white overflow-hidden shrink-0 shadow-md"
           >
             <div className="flex justify-between items-center p-3 border-b bg-gray-50">
-              <h3 className="font-medium text-sm truncate pr-2">来源</h3>
+              <h3 className="font-medium text-sm truncate pr-2">Sources</h3>
               <Button 
                 variant="ghost" 
                 size="icon" 
