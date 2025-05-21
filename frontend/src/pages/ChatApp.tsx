@@ -92,7 +92,7 @@ const ChatApp: React.FC = () => {
             <h1 className="text-xl font-semibold">{config.appName}</h1>
             {messages.length > 0 && (
               <div className="ml-2 bg-white/20 text-white text-xs rounded-full px-2 py-0.5">
-                {messages.length} message{messages.length !== 1 ? 's' : ''}
+                {messages.length} 信息{messages.length !== 1 ? '' : ''}
               </div>
             )}
           </div>
@@ -116,11 +116,11 @@ const ChatApp: React.FC = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={handleClearMessages} className="cursor-pointer">
-                  Nouvelle discussion
+                  新的对话
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleEndDiscussion} className="cursor-pointer text-red-500">
-                  Terminer la discussion
+                  结束对话
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
