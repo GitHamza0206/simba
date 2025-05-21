@@ -9,7 +9,6 @@ import ResetPassword from '@/pages/auth/ResetPassword';
 import { AuthProvider, ProtectedRoute } from '@/context/AuthContext';
 import RolesPage from './pages/RolesPage';
 import SettingsPage from './pages/SettingsPage';
-import GeneralSettings from './pages/settings/GeneralSettings';
 import MembersSettings from './pages/settings/MembersSettings';
 import OrganizationsSettings from './pages/settings/OrganizationsSettings';
 import KnowledgeConfigPage from './pages/KnowledgeConfigPage';
@@ -50,7 +49,7 @@ function App() {
               <SettingsPage />
             </ProtectedRoute>
           }>
-            <Route index element={<GeneralSettings />} />
+            <Route index element={<Navigate to="organizations" replace />} />
             <Route path="organizations" element={<OrganizationsSettings />} />
             <Route path="members" element={<MembersSettings />} />
             <Route path="billing" element={<div className="p-8">Billing settings coming soon</div>} />

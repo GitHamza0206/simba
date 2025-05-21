@@ -225,11 +225,11 @@ const OrganizationPage: React.FC = () => {
     return (
       <div className="container mx-auto p-6 max-w-screen-xl">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">Organization Management</h1>
+          <h1 className="text-2xl font-bold">组织管理</h1>
         </div>
 
         <div className="mb-6">
-          <h2 className="text-lg font-medium mb-4">Your Organizations</h2>
+          <h2 className="text-lg font-medium mb-4">你的组织</h2>
           
           {error ? (
             <Alert variant="destructive" className="mb-4">
@@ -239,9 +239,9 @@ const OrganizationPage: React.FC = () => {
             <Card>
               <CardContent className="p-6">
                 <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <p className="mb-4 text-gray-500">You don't have any organizations yet. Create one to get started.</p>
+                  <p className="mb-4 text-gray-500">你还没有任何组织。请创建一个组织以开始使用。</p>
                   <Button onClick={() => setShowCreateForm(true)}>
-                    <PlusIcon className="h-4 w-4 mr-2" /> Create New Organization
+                    <PlusIcon className="h-4 w-4 mr-2" /> 创建新组织
                   </Button>
                 </div>
               </CardContent>
@@ -251,25 +251,25 @@ const OrganizationPage: React.FC = () => {
           {showCreateForm && (
             <Card className="mt-4">
               <CardHeader>
-                <CardTitle>Create New Organization</CardTitle>
-                <CardDescription>Enter a name for your new organization</CardDescription>
+                <CardTitle>创建新组织</CardTitle>
+                <CardDescription>为你的新组织输入一个名称</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="name">Organization Name</Label>
+                    <Label htmlFor="name">组织名称</Label>
                     <Input 
                       id="name" 
                       value={newOrgName} 
                       onChange={(e) => setNewOrgName(e.target.value)} 
-                      placeholder="Enter organization name"
+                      placeholder="请输入组织名称"
                     />
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button variant="outline" onClick={() => setShowCreateForm(false)}>Cancel</Button>
-                <Button onClick={createOrganization}>Create Organization</Button>
+                <Button variant="outline" onClick={() => setShowCreateForm(false)}>取消</Button>
+                <Button onClick={createOrganization}>创建组织</Button>
               </CardFooter>
             </Card>
           )}
@@ -281,26 +281,26 @@ const OrganizationPage: React.FC = () => {
   return (
     <div className="container mx-auto p-6 max-w-screen-xl">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">Organization Settings</h1>
+        <h1 className="text-2xl font-bold">组织设置</h1>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="border-b">
           <TabsList className="bg-transparent h-12">
             <TabsTrigger value="general" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12">
-              General
+              基本信息
             </TabsTrigger>
             <TabsTrigger value="members" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12">
-              Members
+              成员
             </TabsTrigger>
             <TabsTrigger value="billing" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12">
-              Billing
+              账单
             </TabsTrigger>
             <TabsTrigger value="sso" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12">
-              SSO
+              单点登录
             </TabsTrigger>
             <TabsTrigger value="projects" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12">
-              Projects
+              项目
             </TabsTrigger>
           </TabsList>
         </div>
@@ -308,17 +308,17 @@ const OrganizationPage: React.FC = () => {
         <TabsContent value="general" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Organization Details</CardTitle>
-              <CardDescription>Manage your organization information</CardDescription>
+              <CardTitle>组织详情</CardTitle>
+              <CardDescription>管理你的组织信息</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="org-name">Organization Name</Label>
+                  <Label htmlFor="org-name">组织名称</Label>
                   <Input id="org-name" value={selectedOrgName || ''} readOnly />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="org-id">Organization ID</Label>
+                  <Label htmlFor="org-id">组织ID</Label>
                   <Input id="org-id" value={selectedOrgId || ''} readOnly />
                 </div>
               </div>
@@ -327,12 +327,12 @@ const OrganizationPage: React.FC = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Danger Zone</CardTitle>
-              <CardDescription>Permanent actions that cannot be undone</CardDescription>
+              <CardTitle>危险操作</CardTitle>
+              <CardDescription>不可撤销的永久操作</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4">
-                <Button variant="destructive">Delete Organization</Button>
+                <Button variant="destructive">删除组织</Button>
               </div>
             </CardContent>
           </Card>
@@ -342,16 +342,16 @@ const OrganizationPage: React.FC = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
-                <CardTitle>Members</CardTitle>
-                <CardDescription>Manage your organization members</CardDescription>
+                <CardTitle>成员</CardTitle>
+                <CardDescription>管理你的组织成员</CardDescription>
               </div>
               <Button onClick={() => setShowInviteForm(true)} className="ml-auto">
-                <PlusIcon className="h-4 w-4 mr-2" /> Invite Member
+                <PlusIcon className="h-4 w-4 mr-2" /> 邀请成员
               </Button>
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="py-10 text-center">Loading members...</div>
+                <div className="py-10 text-center">正在加载成员...</div>
               ) : error ? (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
@@ -360,11 +360,11 @@ const OrganizationPage: React.FC = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>姓名</TableHead>
+                      <TableHead>邮箱</TableHead>
+                      <TableHead>角色</TableHead>
+                      <TableHead>加入时间</TableHead>
+                      <TableHead className="text-right">操作</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -381,10 +381,10 @@ const OrganizationPage: React.FC = () => {
                               <SelectValue placeholder={member.role} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="owner">Owner</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="member">Member</SelectItem>
-                              <SelectItem value="viewer">Viewer</SelectItem>
+                              <SelectItem value="owner">拥有者</SelectItem>
+                              <SelectItem value="admin">管理员</SelectItem>
+                              <SelectItem value="member">成员</SelectItem>
+                              <SelectItem value="viewer">访客</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -410,39 +410,39 @@ const OrganizationPage: React.FC = () => {
           {showInviteForm && (
             <Card>
               <CardHeader>
-                <CardTitle>Invite New Member</CardTitle>
-                <CardDescription>Send an invitation email to join this organization</CardDescription>
+                <CardTitle>邀请新成员</CardTitle>
+                <CardDescription>发送邀请邮件加入该组织</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Email Address</Label>
+                    <Label htmlFor="email">邮箱地址</Label>
                     <Input 
                       id="email" 
                       type="email" 
                       value={inviteEmail} 
                       onChange={(e) => setInviteEmail(e.target.value)} 
-                      placeholder="Enter email address"
+                      placeholder="请输入邮箱地址"
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="role">Role</Label>
+                    <Label htmlFor="role">角色</Label>
                     <Select value={inviteRole} onValueChange={(value: MemberRole) => setInviteRole(value)}>
                       <SelectTrigger id="role">
-                        <SelectValue placeholder="Select role" />
+                        <SelectValue placeholder="请选择角色" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="member">Member</SelectItem>
-                        <SelectItem value="viewer">Viewer</SelectItem>
+                        <SelectItem value="admin">管理员</SelectItem>
+                        <SelectItem value="member">成员</SelectItem>
+                        <SelectItem value="viewer">访客</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button variant="outline" onClick={() => setShowInviteForm(false)}>Cancel</Button>
-                <Button onClick={inviteMember}>Send Invitation</Button>
+                <Button variant="outline" onClick={() => setShowInviteForm(false)}>取消</Button>
+                <Button onClick={inviteMember}>发送邀请</Button>
               </CardFooter>
             </Card>
           )}
@@ -451,14 +451,14 @@ const OrganizationPage: React.FC = () => {
         <TabsContent value="billing" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Usage & Billing</CardTitle>
-              <CardDescription>Manage your subscription and billing details</CardDescription>
+              <CardTitle>用量与账单</CardTitle>
+              <CardDescription>管理你的订阅和账单信息</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
                 <div className="flex justify-between items-baseline mb-1">
-                  <h3 className="text-sm font-medium text-gray-500">Events / last 30d</h3>
-                  <span className="text-sm font-medium">Plan limit: 50K</span>
+                  <h3 className="text-sm font-medium text-gray-500">事件 / 近30天</h3>
+                  <span className="text-sm font-medium">套餐上限: 50K</span>
                 </div>
                 <h2 className="text-3xl font-bold mb-1">0</h2>
                 <div className="flex justify-between items-baseline mb-2">
@@ -468,10 +468,10 @@ const OrganizationPage: React.FC = () => {
               </div>
               
               <div>
-                <h3 className="text-sm font-medium mb-2">Current plan: Hobby</h3>
+                <h3 className="text-sm font-medium mb-2">当前套餐: 体验版</h3>
                 <div className="flex gap-2">
-                  <Button>Change plan</Button>
-                  <Button variant="outline">Compare plans</Button>
+                  <Button>更改套餐</Button>
+                  <Button variant="outline">对比套餐</Button>
                 </div>
               </div>
             </CardContent>
@@ -481,13 +481,13 @@ const OrganizationPage: React.FC = () => {
         <TabsContent value="sso" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Single Sign-On</CardTitle>
-              <CardDescription>Configure SSO for your organization</CardDescription>
+              <CardTitle>单点登录</CardTitle>
+              <CardDescription>为你的组织配置SSO</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="py-8 text-center text-gray-500">
-                <p>SSO is only available on Enterprise plans.</p>
-                <Button className="mt-4" variant="outline">Upgrade to Enterprise</Button>
+                <p>单点登录仅在企业版套餐中提供。</p>
+                <Button className="mt-4" variant="outline">升级到企业版</Button>
               </div>
             </CardContent>
           </Card>
@@ -496,19 +496,19 @@ const OrganizationPage: React.FC = () => {
         <TabsContent value="projects" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Projects</CardTitle>
-              <CardDescription>Manage the projects in your organization</CardDescription>
+              <CardTitle>项目</CardTitle>
+              <CardDescription>管理你组织中的项目</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center py-4 border-b">
                 <Button variant="outline" className="flex items-center">
-                  View Projects <ExternalLink className="ml-2 h-4 w-4" />
+                  查看项目 <ExternalLink className="ml-2 h-4 w-4" />
                 </Button>
               </div>
               
               <div className="py-4">
-                <h3 className="font-medium mb-2">Recent Projects</h3>
-                <p className="text-gray-500">No projects created yet.</p>
+                <h3 className="font-medium mb-2">最近的项目</h3>
+                <p className="text-gray-500">尚未创建任何项目。</p>
               </div>
             </CardContent>
           </Card>

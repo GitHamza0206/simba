@@ -3,86 +3,15 @@ import { Settings, Database, Brain, FileText, ChevronDown, ChevronRight, Info, S
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getAccessToken } from '@/lib/supabase';
+import { getAppSettings, AppConfig } from '@/lib/settings_api';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
-interface LLMConfig {
-  provider: string;
-  model_name: string;
-  api_key?: string;
-  base_url?: string;
-  temperature: number;
-  streaming: boolean;
-  max_tokens: number | null;
-  additional_params: Record<string, unknown>;
-}
-
-interface EmbeddingConfig {
-  provider: string;
-  model_name: string;
-  device: string;
-  additional_params: Record<string, unknown>;
-}
-
-interface VectorStoreConfig {
-  provider: string;
-  collection_name: string;
-  additional_params: Record<string, unknown>;
-}
-
-interface RetrievalParams {
-  score_threshold: number;
-  prioritize_semantic: boolean;
-  weights: number[];
-  reranker_model: string;
-  reranker_threshold: number;
-}
-
-interface RetrievalConfig {
-  method: string;
-  k: number;
-  params: RetrievalParams;
-}
-
-interface ProjectConfig {
-  name: string;
-  version: string;
-  api_version: string;
-}
-
-interface DatabaseConfig {
-  provider: string;
-  additional_params: Record<string, unknown>;
-}
-
-interface StorageConfig {
-  provider: string;
-  minio_endpoint?: string;
-  minio_access_key?: string;
-  minio_secret_key?: string;
-  minio_bucket?: string;
-  minio_secure?: boolean;
-}
-
-interface CeleryConfig {
-  broker_url: string;
-  result_backend: string;
-}
 
 interface ChunkingConfig {
   chunk_size: number;
   chunk_overlap: number;
 }
 
-interface Config {
-  llm?: LLMConfig;
-  embedding?: EmbeddingConfig;
-  vector_store?: VectorStoreConfig;
-  retrieval?: RetrievalConfig;
-  project?: ProjectConfig;
-  database?: DatabaseConfig;
-  storage?: StorageConfig;
-  celery?: CeleryConfig;
+interface ExtendedAppConfig extends AppConfig {
   chunking?: ChunkingConfig;
 }
 
@@ -99,7 +28,7 @@ interface ConfigSection {
 export default function KnowledgeConfigPage() {
   const { toast } = useToast();
   const { loading: authLoading } = useAuth();
-  const [config, setConfig] = useState<Config | null>(null);
+  const [config, setConfig] = useState<ExtendedAppConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
@@ -111,27 +40,21 @@ export default function KnowledgeConfigPage() {
 
   const fetchConfig = async () => {
     try {
-      const token = getAccessToken();
-      const response = await fetch('/config', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setConfig(data);
+      const data = await getAppSettings();
+      setConfig(data as ExtendedAppConfig); // Cast in case chunking is present
       setLoading(false);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching config:', error);
+      let message = 'Failed to load configuration';
+      if (error instanceof Error) {
+        message = error.message;
+      }
       toast({
-        title: 'Error',
-        description: 'Failed to load configuration',
+        title: '错误',
+        description: message,
         variant: 'destructive'
       });
+      setLoading(false);
     }
   };
 
@@ -278,7 +201,7 @@ export default function KnowledgeConfigPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading configuration...</p>
+          <p className="mt-2 text-gray-600">正在加载配置信息...</p>
         </div>
       </div>
     );
@@ -287,7 +210,7 @@ export default function KnowledgeConfigPage() {
   return (
     <div className="container max-w-4xl mx-auto py-8">
       <div className="flex items-center justify-between mb-8 border-b pb-4">
-        <h1 className="text-3xl font-bold text-gray-800">Knowledge Configuration</h1>
+        <h1 className="text-3xl font-bold text-gray-800">知识配置</h1>
       </div>
       
       <div className="space-y-4">
@@ -301,7 +224,7 @@ export default function KnowledgeConfigPage() {
                 <div className="p-2 rounded-md bg-gray-100">
                   {section.icon}
                 </div>
-                <span className="font-medium text-gray-800">{section.title}</span>
+                <span className="font-medium text-gray-800">{section.title.replace('Project Configuration', '项目配置').replace('LLM Configuration', '大语言模型配置').replace('Embedding Configuration', '嵌入模型配置').replace('Chunking Configuration', '分块配置').replace('Vector Store Configuration', '向量存储配置').replace('Retrieval Configuration', '检索配置').replace('Database Configuration', '数据库配置').replace('Storage Configuration', '存储配置').replace('Celery Configuration', 'Celery 配置')}</span>
               </div>
               <div className="text-gray-400">
                 {expandedSection === section.key ? (
@@ -317,13 +240,55 @@ export default function KnowledgeConfigPage() {
                 <div className="space-y-5">
                   {section.fields.length === 0 && (
                     <div className="text-gray-400 text-sm bg-gray-50 p-4 rounded-md">
-                      No configuration data available
+                      暂无配置信息
                     </div>
                   )}
                   
                   {section.fields.map((field) => {
                     const isDeprecated = isFieldDeprecated(section.key, field.name);
-                    const fieldTitle = field.name.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                    const fieldTitle = field.name
+                      .split('_')
+                      .map(word => {
+                        switch (word) {
+                          case 'name': return '名称';
+                          case 'version': return '版本';
+                          case 'api': return 'API';
+                          case 'provider': return '提供商';
+                          case 'model': return '模型';
+                          case 'key': return '密钥';
+                          case 'base': return '基础';
+                          case 'url': return 'URL';
+                          case 'temperature': return '温度';
+                          case 'streaming': return '流式';
+                          case 'max': return '最大';
+                          case 'tokens': return 'Token数';
+                          case 'additional': return '附加';
+                          case 'params': return '参数';
+                          case 'device': return '设备';
+                          case 'collection': return '集合';
+                          case 'method': return '方法';
+                          case 'k': return 'K值';
+                          case 'score': return '分数';
+                          case 'threshold': return '阈值';
+                          case 'prioritize': return '优先';
+                          case 'semantic': return '语义';
+                          case 'weights': return '权重';
+                          case 'reranker': return '重排序器';
+                          case 'bucket': return '桶';
+                          case 'secure': return '安全';
+                          case 'endpoint': return '端点';
+                          case 'access': return '访问';
+                          case 'secret': return '密钥';
+                          case 'broker': return '代理';
+                          case 'result': return '结果';
+                          case 'backend': return '后端';
+                          case 'chunk': return '分块';
+                          case 'size': return '大小';
+                          case 'overlap': return '重叠';
+                          default: return word.charAt(0).toUpperCase() + word.slice(1);
+                        }
+                      })
+                      .join(' ');
                     
                     return (
                       <div key={field.name} className="flex flex-col gap-2 pb-4 border-b border-gray-100 last:border-0">
@@ -339,7 +304,7 @@ export default function KnowledgeConfigPage() {
                                   <Info className="h-4 w-4 text-gray-400" />
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p className="text-xs">This setting is not applicable with the current configuration.</p>
+                                  <p className="text-xs">此设置在当前配置下不适用。</p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>

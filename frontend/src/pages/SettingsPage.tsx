@@ -10,13 +10,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { name: 'General', path: '/settings' },
   { name: 'Organizations', path: '/settings/organizations' },
-  { name: 'Members', path: '/settings/members' },
-  { name: 'Billing', path: '/settings/billing' },
-  { name: 'SSO', path: '/settings/sso' },
-  { name: 'Projects', path: '/settings/projects' },
-  { name: 'Roles', path: '/settings/roles' },
   { name: 'API Keys', path: '/settings/api-keys' },
 ];
 

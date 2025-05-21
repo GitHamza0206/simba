@@ -65,8 +65,8 @@ export default function ApiKeysPage() {
     } catch (error) {   
       console.error('Error fetching API keys:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load API keys',
+        title: '错误',
+        description: '加载 API 密钥失败',
         variant: 'destructive'
       });
     } finally {
@@ -77,8 +77,8 @@ export default function ApiKeysPage() {
   const handleCreateApiKey = async () => {
     if (!newKeyName.trim()) {
       toast({
-        title: 'Error',
-        description: 'Please provide a name for the API key',
+        title: '错误',
+        description: '请为 API 密钥提供名称',
         variant: 'destructive'
       });
       return;
@@ -98,8 +98,8 @@ export default function ApiKeysPage() {
       await fetchApiKeys();
       
       toast({
-        title: 'Success',
-        description: 'API key created successfully',
+        title: '成功',
+        description: 'API 密钥创建成功',
       });
       
       // Clear input field
@@ -107,8 +107,8 @@ export default function ApiKeysPage() {
     } catch (error) {
       console.error('Error creating API key:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to create API key',
+        title: '错误',
+        description: '创建 API 密钥失败',
         variant: 'destructive'
       });
     } finally {
@@ -131,14 +131,14 @@ export default function ApiKeysPage() {
       await fetchApiKeys();
       
       toast({
-        title: 'Success',
-        description: 'API key deleted successfully',
+        title: '成功',
+        description: 'API 密钥删除成功',
       });
     } catch (error) {
       console.error('Error deleting API key:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to delete API key',
+        title: '错误',
+        description: '删除 API 密钥失败',
         variant: 'destructive'
       });
     } finally {
@@ -151,53 +151,53 @@ export default function ApiKeysPage() {
     navigator.clipboard.writeText(text)
       .then(() => {
         toast({
-          title: 'Copied',
-          description: 'API key copied to clipboard',
+          title: '已复制',
+          description: 'API 密钥已复制到剪贴板',
         });
       })
       .catch((error) => {
         console.error('Failed to copy:', error);
         toast({
-          title: 'Error',
-          description: 'Failed to copy to clipboard',
+          title: '错误',
+          description: '复制到剪贴板失败',
           variant: 'destructive'
         });
       });
   };
 
   const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return '无';
     try {
-      return format(new Date(dateString), 'MMM d, yyyy HH:mm');
+      return format(new Date(dateString), 'yyyy年M月d日 HH:mm');
     } catch {
-      return 'Invalid date';
+      return '无效日期';
     }
   };
 
   return (
     <div className="container mx-auto p-6 max-w-screen-xl">
       <div className="flex flex-col mb-8">
-        <h1 className="text-2xl font-bold">API Keys</h1>
+        <h1 className="text-2xl font-bold">API 密钥</h1>
         <p className="text-gray-500 mt-1">
-          Create and manage API keys for programmatic access to your account.
+          创建和管理用于以编程方式访问您账户的 API 密钥。
         </p>
       </div>
 
       {/* New API Key Card */}
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Create New API Key</CardTitle>
+          <CardTitle>创建新的 API 密钥</CardTitle>
           <CardDescription>
-            Create a new API key to access the API programmatically. API keys are valid until revoked.
+            创建新的 API 密钥以通过编程方式访问 API。API 密钥在被撤销前一直有效。
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
             <div className="flex-grow">
-              <Label htmlFor="new-key-name">API Key Name</Label>
+              <Label htmlFor="new-key-name">API 密钥名称</Label>
               <Input
                 id="new-key-name"
-                placeholder="e.g., Development, Production, etc."
+                placeholder="例如：开发环境、生产环境等"
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
                 disabled={isCreatingKey}
@@ -208,7 +208,7 @@ export default function ApiKeysPage() {
                 onClick={handleCreateApiKey} 
                 disabled={isCreatingKey || !newKeyName.trim()}
               >
-                {isCreatingKey ? 'Creating...' : 'Create API Key'}
+                {isCreatingKey ? '正在创建...' : '创建 API 密钥'}
               </Button>
             </div>
           </div>
@@ -221,10 +221,10 @@ export default function ApiKeysPage() {
           <CardHeader className="bg-green-50">
             <CardTitle className="text-green-600 flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
-              API Key Created Successfully
+              API 密钥创建成功
             </CardTitle>
             <CardDescription>
-              Copy your API key now. You won't be able to see it again!
+              请立即复制您的 API 密钥。您将无法再次查看！
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -236,17 +236,17 @@ export default function ApiKeysPage() {
                 onClick={() => copyToClipboard(newApiKey.key)}
                 className="ml-2 flex gap-1"
               >
-                <Copy className="h-4 w-4" /> Copy
+                <Copy className="h-4 w-4" /> 复制
               </Button>
             </div>
             <p className="text-amber-600 text-sm mt-4 flex items-center gap-1">
               <Clock className="h-4 w-4" /> 
-              Make sure to copy this key now. For security reasons, it won't be displayed again.
+              请务必立即复制此密钥。出于安全原因，之后将无法再次显示。
             </p>
           </CardContent>
           <CardFooter className="border-t bg-gray-50 flex justify-end">
             <Button variant="outline" onClick={() => setNewApiKey(null)}>
-              Done
+              完成
             </Button>
           </CardFooter>
         </Card>
@@ -255,28 +255,28 @@ export default function ApiKeysPage() {
       {/* API Keys Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Your API Keys</CardTitle>
+          <CardTitle>您的 API 密钥</CardTitle>
           <CardDescription>
-            API keys provide full access to your account via the API. Keep them secure!
+            API 密钥可通过 API 完全访问您的账户。请妥善保管！
           </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-8 text-center text-gray-500">Loading API keys...</div>
+            <div className="py-8 text-center text-gray-500">正在加载 API 密钥...</div>
           ) : apiKeys.length === 0 ? (
             <div className="py-8 text-center text-gray-500">
-              No API keys found. Create a new API key above.
+              未找到 API 密钥。请在上方创建新的 API 密钥。
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Key Prefix</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Last Used</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>名称</TableHead>
+                  <TableHead>密钥前缀</TableHead>
+                  <TableHead>创建时间</TableHead>
+                  <TableHead>最近使用</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -287,18 +287,18 @@ export default function ApiKeysPage() {
                       <code className="text-xs bg-gray-100 p-1 rounded">{key.key_prefix}************</code>
                     </TableCell>
                     <TableCell>{formatDate(key.created_at)}</TableCell>
-                    <TableCell>{key.last_used ? formatDate(key.last_used) : 'Never'}</TableCell>
+                    <TableCell>{key.last_used ? formatDate(key.last_used) : '从未使用'}</TableCell>
                     <TableCell>
                       {key.is_active ? (
                         <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
                           <div className="flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" /> Active
+                            <CheckCircle className="h-3 w-3" /> 已激活
                           </div>
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
                           <div className="flex items-center gap-1">
-                            <XCircle className="h-3 w-3" /> Inactive
+                            <XCircle className="h-3 w-3" /> 未激活
                           </div>
                         </Badge>
                       )}
@@ -316,7 +316,7 @@ export default function ApiKeysPage() {
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Delete API key</p>
+                            <p>删除 API 密钥</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -333,19 +333,18 @@ export default function ApiKeysPage() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>您确定吗？</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the API key
-              and any applications using it will no longer be able to access the API.
+              此操作无法撤销。这将永久删除该 API 密钥，任何使用该密钥的应用将无法再访问 API。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction 
               onClick={confirmDeleteApiKey}
               className="bg-red-600 hover:bg-red-700"
             >
-              Delete
+              删除
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
