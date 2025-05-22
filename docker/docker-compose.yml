@@ -3,7 +3,7 @@ name: simba
 
 services:
   server:
-    image: ${IMAGE_NAME:-simba}:${IMAGE_TAG:-latest}
+    image: ${IMAGE_NAME:-simba-backend}:${IMAGE_TAG:-latest}
     env_file:
       - ../.env
     ports:
@@ -38,13 +38,13 @@ services:
     networks:
       - simba_network
     runtime: ${RUNTIME:+${RUNTIME}}
-    entrypoint: ["/app/docker-entrypoint.sh"]
+    
     command: ["python", "-m", "uvicorn", "simba.__main__:create_app", "--host", "0.0.0.0", "--port", "5005", "--factory"]
 
   celery_worker:
-    image: ${IMAGE_NAME:-simba}:${IMAGE_TAG:-latest}
+    image: ${IMAGE_NAME:-simba-backend}:${IMAGE_TAG:-latest}
     env_file:
-      - /Users/mac/Documents/simba/.env
+      - ../.env
     environment:
       - REDIS_HOST=redis
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -70,7 +70,6 @@ services:
     networks:
       - simba_network
     runtime: ${RUNTIME:+${RUNTIME}}
-    entrypoint: ["/app/docker-entrypoint.sh"]
     command: ["celery", "-A", "simba.core.celery_config.celery_app", "worker", "--loglevel=info", "-Q", "parsing"]
 
   redis:

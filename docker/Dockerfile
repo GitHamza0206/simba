@@ -52,6 +52,9 @@ RUN apt-get update && \
     ffmpeg \
     poppler-utils \
     tesseract-ocr \
+    make \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -81,6 +84,11 @@ RUN if [ "$USE_GPU" = "true" ] && [ "$TARGETARCH" = "amd64" ]; then \
       apt-get clean && \
       rm -rf /var/lib/apt/lists/*; \
     fi
+
+# Install Node.js and Supabase CLI
+RUN npm install supabase && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Expose port
 EXPOSE 5005
