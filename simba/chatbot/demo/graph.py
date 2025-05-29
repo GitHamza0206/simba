@@ -42,11 +42,12 @@ workflow.add_conditional_edges(
     routing, # gives either "generate" or "transform_query"
 )
 
-workflow.add_edge("transform_query", "cot")
-workflow.add_conditional_edges(
-    "cot",
-    lambda x: END if x["is_summary_enough"] else "retrieve"
-)
+# workflow.add_edge("transform_query", "cot")
+# workflow.add_conditional_edges(
+#     "cot",
+#     lambda x: END if x["is_summary_enough"] else "retrieve"
+# )
+workflow.add_edge("transform_query", "retrieve")
 workflow.add_edge("retrieve", "rerank")
 workflow.add_edge("rerank", "generate")
 #workflow.add_edge("compress", "generate")
