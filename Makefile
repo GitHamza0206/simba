@@ -1,4 +1,3 @@
-
 # Simplified Makefile for Simba Docker Build and Deployment
 
 # Variables with sensible defaults
@@ -121,5 +120,17 @@ migrate:
 	@chmod +x scripts/migrate_local.sh
 	@echo "Running Supabase migrations and seed..."
 	@cd simba && ../scripts/migrate_local.sh
+
+# Enhanced cache version (optional improvement)
+build-backend-with-cache:
+	@docker buildx build --builder simba-builder \
+		--platform ${DOCKER_PLATFORM} \
+		--cache-from type=local,src=/tmp/.buildx-cache \
+		--cache-to type=local,dest=/tmp/.buildx-cache \
+		--build-arg BUILDKIT_INLINE_CACHE=1 \
+		-t simba-backend:latest \
+		-f docker/Dockerfile \
+		--load \
+		.
 
 .PHONY: setup-network setup-builder build up down clean logs help docker-prune push-docker migrate
