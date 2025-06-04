@@ -19,11 +19,11 @@ services:
       - DEVICE=${DEVICE:-cpu}
       - OLLAMA_HOST=ollama:11434
       
-      - SUPABASE_URL=http://host.docker.internal:8000
+      - SUPABASE_URL
       - SUPABASE_JWT_SECRET
       - ANON_KEY
       - SUPABASE_PUBLIC_KEY
-      - POSTGRES_HOST=host.docker.internal
+      - POSTGRES_HOST
       - POSTGRES_PORT
       - POSTGRES_USER
       - POSTGRES_PASSWORD

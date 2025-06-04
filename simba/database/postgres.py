@@ -79,7 +79,7 @@ class PostgresDB(DatabaseService):
                     host=settings.postgres.host,
                     port=settings.postgres.port,
                     dbname=settings.postgres.db,
-                    sslmode='disable'
+                    sslmode='require'
                 )
                 logger.info("Created PostgreSQL connection pool")
             except Exception as e:
