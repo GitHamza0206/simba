@@ -6,7 +6,6 @@ import chatbotIcon from "../assets/chatbot-icon.svg";
 import FollowUpQuestions from './FollowUpQuestions';
 import { Button } from "@/components/ui/button";
 import { FileText, Copy, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
@@ -23,14 +22,13 @@ interface ChatMessageProps {
   onSourceClick?: () => void;
   isSelected?: boolean;
   state?: {
-    sources?: Array<{ file_name: string }>;
+    sources?: Array<{ file_name: string; chunk: string }>;
   };
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ 
   isAi, 
-  message, 
-  streaming,
+  message,
   followUpQuestions = [],
   onFollowUpClick,
   state,

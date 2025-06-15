@@ -16,7 +16,7 @@ interface GroupedSource {
   file_name: string;
   count: number;
   relevance?: number;
-  content?: string;
+  chunk?: string;
   page?: number;
 }
 
@@ -48,7 +48,7 @@ const SourcePanel: React.FC<SourcePanelProps> = ({ message }) => {
           file_name: source.file_name,
           count: 1,
           relevance: source.relevance,
-          content: source.content,
+          chunk: source.chunk,
           page: source.page
         });
       }
@@ -177,7 +177,7 @@ const SourcePanel: React.FC<SourcePanelProps> = ({ message }) => {
                   </div>
                   <Separator className="my-2" />
                   <div className="bg-gray-50 p-2 sm:p-3 rounded-md text-xs sm:text-sm border border-gray-200 whitespace-pre-wrap break-words max-h-[200px] sm:max-h-[300px] overflow-y-auto">
-                    {selectedSource.content || (
+                    {selectedSource.chunk || (
                       <div className="text-gray-500 italic">Content preview not available</div>
                     )}
                   </div>

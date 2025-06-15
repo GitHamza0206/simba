@@ -165,7 +165,6 @@ async def test_api_key(
     
     Args:
         current_user: Current authenticated user
-        
     Returns:
         Dict with user information
     """

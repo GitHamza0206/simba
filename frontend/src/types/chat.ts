@@ -6,9 +6,9 @@ export interface Message {
   state?: {
     sources?: Array<{
       file_name: string;
-      content?: string;
-      page?: number;
+      chunk: string;
       relevance?: number;
+      page?: number;
     }>;
     followUpQuestions?: string[];
   };

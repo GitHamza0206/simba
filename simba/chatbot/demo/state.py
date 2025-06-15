@@ -39,6 +39,7 @@ def for_client(state: State) -> dict:
             "sources": [
                 {
                     "file_name": doc.metadata.get("source"),
+                    "chunk" : doc.page_content, 
                 }
                 for doc in state["documents"]
             ]
