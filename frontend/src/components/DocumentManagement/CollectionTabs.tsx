@@ -54,13 +54,14 @@ const CollectionTabs: React.FC<CollectionTabsProps> = ({
   onEnable,
 }) => {
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [localCollections, setLocalCollections] = useState<CustomCollection[]>([]);
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
   const [editedCollectionName, setEditedCollectionName] = useState<string>("");
   const [showNewCollectionDialog, setShowNewCollectionDialog] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
   const { toast } = useToast();
 
-  const transformedCollections: CustomCollection[] = collections.map(collection => ({
+  const transformedCollections: CustomCollection[] = (localCollections.length>0?localCollections:collections).map(collection => ({
     ...collection,
     displayName: collection.name === 'Default Collection' ? '默认合集' : collection.name
   }));
@@ -78,11 +79,19 @@ const CollectionTabs: React.FC<CollectionTabsProps> = ({
     setActiveTab(tabId);
   };
 
-  const handleNewCollection = () => {
-    const newCount = displayCollections.length;
-    setActiveTab(`custom-collection-${Date.now()}`);
-    setNewCollectionName(`Collection ${newCount}`);
-    setShowNewCollectionDialog(true);
+  const createCollection = () => {
+    const id = `custom-${Date.now()}`;
+    const newCol: CustomCollection = {
+      id,
+      name: newCollectionName.trim() || `Collection ${displayCollections.length}`,
+      displayName: newCollectionName.trim() || `Collection ${displayCollections.length}`,
+      documents: []
+    };
+    setLocalCollections(prev=>[...prev,newCol]);
+    setActiveTab(id);
+    setShowNewCollectionDialog(false);
+    setNewCollectionName("");
+    toast({title:"新合集已创建",description:newCol.displayName});
   };
 
   const startEditing = (collection: CustomCollection, e: React.MouseEvent) => {
@@ -192,11 +201,11 @@ const CollectionTabs: React.FC<CollectionTabsProps> = ({
             placeholder="合集名称"
             value={newCollectionName}
             onChange={(e) => setNewCollectionName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleNewCollection()}
+            onKeyDown={(e) => e.key === 'Enter' && createCollection()}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewCollectionDialog(false)}>取消</Button>
-            <Button onClick={handleNewCollection} disabled={!newCollectionName.trim()}>创建</Button>
+            <Button onClick={createCollection} disabled={!newCollectionName.trim()}>创建</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
