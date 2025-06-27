@@ -7,21 +7,18 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css'; // Import KaTeX CSS
 import { useState, useEffect, useRef } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Wand2, Download, ExternalLink, RefreshCw, AlertTriangle } from 'lucide-react';
-import { ingestionApi, previewApi } from "@/lib/api_services";
+import { previewApi } from "@/lib/api_services";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { cn } from '@/lib/utils';
 import { SimbaDoc, Document } from "@/types/document"; // Ensure SimbaDoc and Document are imported
 
 interface PreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   document: SimbaDoc | null;
-  onUpdate: (document: SimbaDoc) => void;
 }
 
 // Add CSS styles at the component level
@@ -55,18 +52,16 @@ const mathStyles = `
 const PreviewModal: React.FC<PreviewModalProps> = ({ 
   isOpen, 
   onClose, 
-  document,
-  onUpdate
+  document
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(true);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [renderFailed, setRenderFailed] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [isFullyClosed, setIsFullyClosed] = useState(!isOpen);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [loaders, setLoaders] = useState<string[]>([]);
-  const [parsers, setParsers] = useState<string[]>([]);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
 
   // Track when modal is fully closed
   useEffect(() => {
@@ -118,22 +113,31 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
     }
   }, [document]);
 
-  // Fetch loaders and parsers for display only
+  // Fetch preview blob with auth when document changes
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchPreview = async () => {
+      if (!document) return;
       try {
-        const [loadersResponse, parsersResponse] = await Promise.all([
-          ingestionApi.getLoaders(),
-          ingestionApi.getParsers()
-        ]);
-        setLoaders(loadersResponse);
-        setParsers(parsersResponse);
-      } catch (error) {
-        console.error('Error fetching loaders and parsers:', error);
+        setPreviewLoading(true);
+        const blob = await previewApi.fetchPreviewBlob(document.id);
+        const url = URL.createObjectURL(blob);
+        setPreviewSrc(url);
+      } catch (err: unknown) {
+        console.error('Failed to fetch preview blob:', err);
+        const message = err instanceof Error ? err.message : 'Failed to load preview';
+        setPreviewError(message);
+        setRenderFailed(true);
+      } finally {
+        setPreviewLoading(false);
       }
     };
-    fetchData();
-  }, []);
+    fetchPreview();
+    // Revoke URL on cleanup
+    return () => {
+      if (previewSrc) URL.revokeObjectURL(previewSrc);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [document, retryCount]);
 
   // Document preview functions
   const handleRetry = () => {
@@ -152,12 +156,12 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   const downloadFile = () => {
     if (document) {
       const previewUrl = previewApi.getPreviewUrl(document.id);
-      const a = document.createElement('a');
-      a.href = previewUrl;
-      a.download = document.metadata.filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const anchor = window.document.createElement('a');
+      anchor.href = previewUrl;
+      anchor.download = document.metadata.filename;
+      window.document.body.appendChild(anchor);
+      anchor.click();
+      window.document.body.removeChild(anchor);
     }
   };
 
@@ -177,10 +181,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
     if (!document || isFullyClosed) return null;
 
     // Get the preview URL from the API
-    const previewUrl = previewApi.getPreviewUrl(document.id);
-    
-    // For URL with cache busting
-    const urlWithCacheBusting = `${previewUrl}?retry=${retryCount}`;
+    const urlWithCacheBusting = previewSrc ? `${previewSrc}#${retryCount}` : '';
     
     // Check if file is a PDF
     const isPdf = document.metadata.file_path.toLowerCase().endsWith('.pdf');
@@ -233,7 +234,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
       );
     }
 
-    if (isImage) {
+    if (isImage && previewSrc) {
       return (
         <div className="flex items-center justify-center p-1 h-full">
           <img 
@@ -248,7 +249,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
           />
         </div>
       );
-    } else if (isPdf) {
+    } else if (isPdf && previewSrc) {
       // For PDF rendering, use object tag with iframe fallback for better Chrome compatibility
       return (
         <div className="h-full w-full bg-white">
@@ -261,7 +262,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
           >
             <iframe
               ref={iframeRef}
-              src={`${urlWithCacheBusting}#toolbar=1&view=FitH`}
+              src={urlWithCacheBusting}
               className="w-full h-full border-0"
               onLoad={handleIframeLoad}
               onError={handleIframeError}
@@ -275,15 +276,17 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
       // For other document types
       return (
         <div className="h-full w-full">
-          <iframe
-            ref={iframeRef}
-            src={urlWithCacheBusting}
-            className="w-full h-full border-0"
-            onLoad={handleIframeLoad}
-            onError={handleIframeError}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
-            allow="fullscreen"
-          />
+          {previewSrc && (
+            <iframe
+              ref={iframeRef}
+              src={urlWithCacheBusting}
+              className="w-full h-full border-0"
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
+              allow="fullscreen"
+            />
+          )}
         </div>
       );
     }
@@ -376,7 +379,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                       </div>
                     </div>
                     <div className="prose prose-sm max-w-none">
-                      <ChunkContent content={chunk.page_content} />
+                      <ChunkContent content={(chunk.page_content ?? chunk.content) as string} />
                     </div>
                     <Separator className="my-2" />
                     <div className="text-xs text-muted-foreground break-all">

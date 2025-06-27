@@ -22,6 +22,17 @@ class PreviewApi {
   openDocumentInNewTab(docId: string): void {
     window.open(this.getPreviewUrl(docId), '_blank');
   }
+
+  /**
+   * Fetch the document blob with auth headers so that protected preview is possible
+   */
+  async fetchPreviewBlob(docId: string): Promise<Blob> {
+    const { default: httpClient } = await import('./http/client');
+    const response = await httpClient.get(`/preview/${docId}`, {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  }
 }
 
 // Export a single instance

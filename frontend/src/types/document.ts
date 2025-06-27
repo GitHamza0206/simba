@@ -28,7 +28,12 @@ export interface Metadata {
 
 export interface Document {
   id: string;
-  content: string;
+  /**
+   * Content of the chunk. Backend currently returns `page_content` (LangChain Document field).
+   * Keep both for compatibility.
+   */
+  content?: string;
+  page_content?: string;
   metadata: Partial<Metadata>;
 }
 
