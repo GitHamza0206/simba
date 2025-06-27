@@ -60,7 +60,6 @@ interface ColumnVisibility {
   uploadDate: boolean;
   enable: boolean;
   parsingStatus: boolean;
-  isSummarized: boolean;
   loader: boolean;
 }
 
@@ -117,7 +116,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
     const savedFolders = localStorage.getItem(FOLDERS_STORAGE_KEY);
     return savedFolders ? JSON.parse(savedFolders) : [];
   });
-  const [summarizingDocIds, setSummarizingDocIds] = useState<Set<string>>(new Set());
+  const [, setSummarizingDocIds] = useState<Set<string>>(new Set());
   const [activeSummaryTasks, setActiveSummaryTasks] = useState<Record<string, string>>({});
 
   const [visibleColumns, setVisibleColumns] = useState<ColumnVisibility>({
@@ -125,7 +124,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
     uploadDate: true,
     enable: true,
     parsingStatus: true,
-    isSummarized: true,
     loader: true,
   });
   const [filterParsingStatus, setFilterParsingStatus] = useState<string>("all");
@@ -710,7 +708,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
   };
 
   const handleGenerateSummary = async (docId: string) => {
-    setSummarizingDocIds(prev => new Set(prev).add(docId));
     let taskIdFromApi: string | undefined = undefined;
     try {
       const result = await parsingApi.generateSummary(docId);
@@ -1079,7 +1076,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
               {visibleColumns.loader && <TableHead>加载器</TableHead>}
               {visibleColumns.enable && <TableHead>启用</TableHead>}
               {visibleColumns.parsingStatus && <TableHead>解析状态</TableHead>}
-              {visibleColumns.isSummarized && <TableHead>是否已摘要</TableHead>}
               <TableHead className="w-[100px]">操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -1091,8 +1087,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 (visibleColumns.uploadDate ? 1 : 0) +
                 (visibleColumns.loader ? 1 : 0) +
                 (visibleColumns.enable ? 1 : 0) +
-                (visibleColumns.parsingStatus ? 1 : 0) +
-                (visibleColumns.isSummarized ? 1 : 0)
+                (visibleColumns.parsingStatus ? 1 : 0)
               }>
                 <div className="flex items-center text-muted-foreground">
                   <div className="flex items-center gap-1">
@@ -1319,57 +1314,6 @@ const DocumentList: React.FC<DocumentListProps> = ({
                             onComplete={(status) => handleParseComplete(doc.id, status)}
                             onCancel={() => handleParseCancel(doc.id)}
                           />
-                        )}
-                      </div>
-                    )}
-                  </TableCell>
-                )}
-                {visibleColumns.isSummarized && (
-                  <TableCell>
-                    {doc.metadata.is_folder ? '' : (
-                      <div className="flex items-center gap-1.5 group relative">
-                        <Badge
-                          variant={doc.metadata.summary && doc.metadata.summary.trim() !== "" ? "default" : "destructive"}
-                          className={cn(
-                            "text-xs px-2 py-0.5",
-                            doc.metadata.summary && doc.metadata.summary.trim() !== "" 
-                              ? "bg-green-100 text-green-800 border-green-200 hover:bg-green-200"
-                              : "bg-red-100 text-red-800 border-red-200 hover:bg-red-200"
-                          )}
-                        >
-                          {doc.metadata.summary && doc.metadata.summary.trim() !== "" ? 'Yes' : 'No'}
-                        </Badge>
-                        {(!doc.metadata.summary || doc.metadata.summary.trim() === "") && (
-                          <div 
-                            className={cn(
-                              "transition-all duration-200 ease-in-out",
-                              "opacity-0 group-hover:opacity-100",
-                              "transform group-hover:translate-x-0 translate-x-[-5px]"
-                            )}
-                          >
-                            <TooltipProvider delayDuration={300}> 
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={(e) => { e.stopPropagation(); handleGenerateSummary(doc.id); }}
-                                    disabled={summarizingDocIds.has(doc.id)}
-                                  >
-                                    {summarizingDocIds.has(doc.id) ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <Sparkles className="h-3 w-3" />
-                                    )}
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">
-                                  <p>生成摘要</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
                         )}
                       </div>
                     )}
