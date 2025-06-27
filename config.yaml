@@ -1,7 +1,7 @@
 # config.yaml
 
 project:
-  name: "Simba"
+  name: "FlyBird"
   version: "1.0.0"
   api_version: "/api/v1"
 

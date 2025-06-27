@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Message } from '@/types/chat';
-import { FileText, Book, AlertCircle, ExternalLink } from 'lucide-react';
+import { FileText, AlertCircle, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { previewApi } from '@/lib/api_services';
+import { SimbaDoc } from "@/types/document";
+import PreviewModal from "./DocumentManagement/PreviewModal";
+import { ingestionApi } from "@/lib/ingestion_api";
+import { useToast } from "@/hooks/use-toast";
 
 interface SourcePanelProps {
   message: Message;
@@ -23,7 +26,9 @@ interface GroupedSource {
 const SourcePanel: React.FC<SourcePanelProps> = ({ message }) => {
   const [groupedSources, setGroupedSources] = useState<GroupedSource[]>([]);
   const [selectedSource, setSelectedSource] = useState<GroupedSource | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<SimbaDoc | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const { toast } = useToast();
 
   // Group sources by file name and count them
   useEffect(() => {
@@ -83,7 +88,7 @@ const SourcePanel: React.FC<SourcePanelProps> = ({ message }) => {
   };
 
   // Open file in preview
-  const openFilePreview = (source: GroupedSource) => {
+  const openFilePreview = async (source: GroupedSource) => {
     // Extract document ID from the filename path pattern
     // This assumes your filenames contain the document ID in a predictable format
     // You may need to adjust this based on your actual filename format
@@ -94,10 +99,36 @@ const SourcePanel: React.FC<SourcePanelProps> = ({ message }) => {
     if (idMatch && idMatch[1]) {
       const documentId = idMatch[1];
       try {
-        window.open(previewApi.getPreviewUrl(documentId), '_blank');
+        const doc = await ingestionApi.getDocument(documentId);
+        setPreviewDoc(doc);
+        setPreviewOpen(true);
+        return;
       } catch (error) {
-        console.error('Failed to open preview:', error);
+        console.warn('Document fetch by ID failed, trying filename match');
       }
+    }
+
+    // Fallback: fetch all documents and match by filename
+    try {
+      const docs = await ingestionApi.getDocuments();
+      const doc = docs.find(d => d.metadata.filename === filename);
+      if (doc) {
+        setPreviewDoc(doc);
+        setPreviewOpen(true);
+      } else {
+        toast({
+          title: 'Document not found',
+          description: `Unable to locate document for ${filename}`,
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to search documents:', error);
+      toast({
+        title: 'Error',
+        description: 'Unable to open document preview',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -187,6 +218,14 @@ const SourcePanel: React.FC<SourcePanelProps> = ({ message }) => {
           )}
         </div>
       </ScrollArea>
+      {/* Preview Modal */}
+      {previewDoc && (
+        <PreviewModal
+          isOpen={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          document={previewDoc}
+        />
+      )}
     </div>
   );
 };

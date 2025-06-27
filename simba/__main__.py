@@ -64,7 +64,7 @@ def create_app():
     async def startup_event():
         logger = logging.getLogger(__name__)
         logger.info("=" * 50)
-        logger.info("Starting SIMBA Application")
+        logger.info("Starting FLYBIRD Application")
         logger.info("=" * 50)
         logger.info(f"Project Name: {settings.project.name}")
         logger.info(f"Version: {settings.project.version}")
@@ -76,11 +76,8 @@ def create_app():
         logger.info(f"Vector Store Provider: {settings.vector_store.provider}")
         logger.info(f"Database Provider: {settings.database.provider}")
         logger.info(f"Database URL: {settings.supabase.url}")
-        # Log Supabase settings if configured
-        if settings.supabase.url:
-            logger.info("Supabase Auth: Configured ✅")
-        else:
-            logger.info("Supabase Auth: Not configured ❌")
+        logger.info("Supabase Auth: Configured ✅")
+
 
         # Add retrieval strategy information
         if hasattr(settings, "retrieval") and hasattr(settings.retrieval, "method"):
