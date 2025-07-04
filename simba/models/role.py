@@ -50,6 +50,8 @@ class UserRole(BaseModel):
     """Model for a user-role relationship."""
     user_id: str = Field(..., description="User ID")
     role_id: int = Field(..., description="Role ID")
+    organization_id: str = Field(..., description="Organization ID")
+    created_at: Optional[datetime] = Field(None, description="Timestamp of role assignment")
     
     class Config:
         from_attributes = True
@@ -58,6 +60,7 @@ class UserRole(BaseModel):
 class UserRoleCreate(BaseModel):
     """Model for assigning a role to a user."""
     role_id: int = Field(..., description="Role ID")
+    organization_id: str = Field(..., description="Organization ID")
 
 
 class RoleWithPermissions(Role):

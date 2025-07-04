@@ -99,57 +99,55 @@ class OrganizationService:
             Organization: The created organization
         """
         try:
-            conn = PostgresDB.get_connection()
-            try:
-                # Generate a new UUID for the organization
-                org_id = str(uuid4())
-                created_at = datetime.now()
-                
-                # Insert the organization
-                with conn.cursor() as cursor:
+            with PostgresDB.get_connection() as conn:
+                try:
+                    # Generate a new UUID for the organization
+                    org_id = str(uuid4())
+                    created_at = datetime.now()
+                    
                     # Insert the organization
-                    cursor.execute("""
-                        INSERT INTO organizations (id, name, created_at, created_by)
-                        VALUES (%s, %s, %s, %s)
-                    """, (org_id, name, created_at, created_by))
+                    with conn.cursor() as cursor:
+                        # Insert the organization
+                        cursor.execute("""
+                            INSERT INTO organizations (id, name, created_at, created_by)
+                            VALUES (%s, %s, %s, %s)
+                        """, (org_id, name, created_at, created_by))
+                        
+                        # Get user email
+                        cursor.execute("""
+                            SELECT email FROM auth.users WHERE id = %s
+                        """, (str(created_by),))  # Ensure created_by is a string
+                        user_row = cursor.fetchone()
+                        
+                        if not user_row:
+                            raise HTTPException(
+                                status_code=status.HTTP_404_NOT_FOUND,
+                                detail="User not found"
+                            )
+                        
+                        email = user_row[0]  # Access by index
+                        
+                        # Generate a new UUID for the member
+                        member_id = str(uuid4())
+                        
+                        # Add the creator as an owner
+                        cursor.execute("""
+                            INSERT INTO organization_members (id, organization_id, user_id, email, role, joined_at)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                        """, (member_id, org_id, created_by, email, "owner", created_at))
                     
-                    # Get user email
-                    cursor.execute("""
-                        SELECT email FROM auth.users WHERE id = %s
-                    """, (created_by,))
-                    user_row = cursor.fetchone()
+                    # Commit the transaction
+                    conn.commit()
                     
-                    if not user_row:
-                        raise HTTPException(
-                            status_code=status.HTTP_404_NOT_FOUND,
-                            detail="User not found"
-                        )
-                    
-                    email = user_row["email"]
-                    
-                    # Generate a new UUID for the member
-                    member_id = str(uuid4())
-                    
-                    # Add the creator as an owner
-                    cursor.execute("""
-                        INSERT INTO organization_members (id, organization_id, user_id, email, role, joined_at)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                    """, (member_id, org_id, created_by, email, "owner", created_at))
-                
-                # Commit the transaction
-                conn.commit()
-                
-                return Organization(
-                    id=org_id,
-                    name=name,
-                    created_at=created_at,
-                    created_by=created_by
-                )
-            except Exception as e:
-                conn.rollback()
-                raise e
-            finally:
-                conn.close()
+                    return Organization(
+                        id=org_id,
+                        name=name,
+                        created_at=created_at,
+                        created_by=created_by
+                    )
+                except Exception as e:
+                    conn.rollback()
+                    raise e
         except Exception as e:
             logger.error(f"Failed to create organization: {str(e)}")
             raise HTTPException(

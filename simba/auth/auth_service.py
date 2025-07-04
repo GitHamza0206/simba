@@ -5,6 +5,7 @@ from pydantic import EmailStr
 
 from simba.auth.supabase_client import get_supabase_client
 from simba.auth.role_service import RoleService
+from simba.auth.organization_service import OrganizationService
 from simba.database.postgres import PostgresDB
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,17 @@ class AuthService:
                 "metadata": response.user.user_metadata,
             }
             
+            # Create a default organization for the new user
+            try:
+                org_service = OrganizationService()
+                org_name = f"{email}'s Organization"
+                organization = org_service.create_organization(name=org_name, created_by=user_data["id"])
+                logger.info(f"Created default organization '{organization.name}' for user {email}")
+            except Exception as e:
+                logger.error(f"Failed to create default organization for user {email}: {str(e)}")
+                # Decide if signup should fail if org creation fails. For now, let's make it fail.
+                raise ValueError(f"Failed to create default organization: {str(e)}")
+            
             # Assign default role to user
             try:
                 # First try to get 'user' role ID
@@ -63,7 +75,8 @@ class AuthService:
                     # Assign role to user
                     role_service.assign_role_to_user(
                         user_id=user_data["id"],
-                        role_id=role.id
+                        role_id=role.id,
+                        organization_id=organization.id
                     )
                     
                     # Now get the role and permissions

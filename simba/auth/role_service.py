@@ -288,44 +288,31 @@ class RoleService:
             )
     
     @staticmethod
-    def assign_role_to_user(user_id: str, role_id: int) -> UserRole:
-        """Assign a role to a user.
+    def assign_role_to_user(user_id: str, role_id: int, organization_id: str) -> UserRole:
+        """Assign a role to a user within an organization.
         
         Args:
             user_id: User ID
             role_id: Role ID
-        
+            organization_id: Organization ID
+            
         Returns:
-            UserRole: Created user role
+            UserRole: The user-role assignment
         """
         try:
-            # Check if role exists using PostgresDB
-            role = PostgresDB.fetch_one("SELECT id FROM roles WHERE id = %s", (role_id,))
-            if not role:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Role with ID {role_id} not found"
-                )
+            # Insert the user-role assignment
+            row = PostgresDB.fetch_one("""
+                INSERT INTO user_roles (user_id, role_id, organization_id)
+                VALUES (%s, %s, %s)
+                RETURNING user_id, role_id, organization_id, created_at
+            """, (user_id, role_id, organization_id))
             
-            # Check if user already has this role using PostgresDB
-            existing = PostgresDB.fetch_one(
-                "SELECT user_id, role_id FROM user_roles WHERE user_id = %s AND role_id = %s",
-                (user_id, role_id)
+            return UserRole(
+                user_id=row['user_id'],
+                role_id=row['role_id'],
+                organization_id=row['organization_id'],
+                created_at=row['created_at']
             )
-            
-            if existing:
-                # User already has this role
-                return UserRole(user_id=user_id, role_id=role_id)
-            
-            # Assign role to user using PostgresDB
-            PostgresDB.execute_query(
-                "INSERT INTO user_roles (user_id, role_id) VALUES (%s, %s)",
-                (user_id, role_id)
-            )
-            
-            return UserRole(user_id=user_id, role_id=role_id)
-        except HTTPException:
-            raise
         except Exception as e:
             logger.error(f"Failed to assign role to user: {str(e)}")
             raise HTTPException(
@@ -334,21 +321,22 @@ class RoleService:
             )
     
     @staticmethod
-    def remove_role_from_user(user_id: str, role_id: int) -> bool:
-        """Remove a role from a user.
+    def remove_role_from_user(user_id: str, role_id: int, organization_id: str) -> bool:
+        """Remove a role from a user within an organization.
         
         Args:
             user_id: User ID
             role_id: Role ID
-        
+            organization_id: Organization ID
+            
         Returns:
             bool: True if role was removed, False otherwise
         """
         try:
-            # Remove role from user using PostgresDB
+            # Delete the user-role assignment using PostgresDB
             result = PostgresDB.execute_query(
-                "DELETE FROM user_roles WHERE user_id = %s AND role_id = %s",
-                (user_id, role_id)
+                "DELETE FROM user_roles WHERE user_id = %s AND role_id = %s AND organization_id = %s",
+                (user_id, role_id, organization_id)
             )
             
             return result > 0

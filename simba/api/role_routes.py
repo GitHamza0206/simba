@@ -317,7 +317,8 @@ async def assign_role_to_user(
     try:
         user_role = RoleService.assign_role_to_user(
             user_id=user_id,
-            role_id=role_data.role_id
+            role_id=role_data.role_id,
+            organization_id=role_data.organization_id
         )
         return user_role
     except HTTPException:
@@ -333,6 +334,7 @@ async def assign_role_to_user(
 async def remove_role_from_user(
     user_id: str,
     role_id: int,
+    organization_id: str,
     current_user: dict = Depends(require_permission("roles:write"))
 ):
     """Remove a role from a user.
@@ -343,20 +345,20 @@ async def remove_role_from_user(
         current_user: Current user with 'roles:write' permission
     """
     try:
-        # Check if role exists
-        role = await RoleService.get_role_by_id(role_id)
-        if not role:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Role with ID {role_id} not found"
-            )
-        
-        # Remove role from user
-        removed = await RoleService.remove_role_from_user(user_id, role_id)
-        if not removed:
+        # Check if user has role
+        user_roles = RoleService.get_user_roles(user_id)
+        if not any(role.id == role_id for role in user_roles):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"User does not have role with ID {role_id}"
+            )
+        
+        removed = RoleService.remove_role_from_user(user_id, role_id, organization_id)
+        
+        if not removed:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User role not found or could not be removed"
             )
     except HTTPException:
         raise
