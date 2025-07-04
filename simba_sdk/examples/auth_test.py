@@ -6,8 +6,8 @@ def main():
     # Initialize SimbaClient from environment variables
     # For auth operations, you don't need an API key to start
 
-    api_url = os.environ.get("SIMBA_API_URL", "http://0.0.0.0:5005")
-    api_key = os.environ.get("SIMBA_API_KEY", "eafa78131d8690d53041f55ab10d61c8003e56fcfdbc8897ab2bb958994beaf8")
+    api_url = os.environ.get("SIMBA_API_URL")
+    api_key = os.environ.get("SIMBA_API_KEY")
     
     client = SimbaClient(api_url=api_url, api_key=api_key)
 
