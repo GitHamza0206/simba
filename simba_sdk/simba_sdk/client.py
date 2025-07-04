@@ -5,6 +5,7 @@ from .chat import ChatManager
 from .parser import ParserManager
 from .embed import EmbeddingManager
 from .retrieve import RetrieveManager
+from .auth import AuthManager
 
 class SimbaClient:
     """
@@ -21,6 +22,7 @@ class SimbaClient:
         """
         self.api_url = api_url.rstrip("/")
         self.api_key = api_key
+        self.session = None
         self.headers = {"Content-Type": "application/json"}
         if self.api_key:
             self.headers["Authorization"] = f"Bearer {self.api_key}"
@@ -31,6 +33,7 @@ class SimbaClient:
         self.parser = ParserManager(self)
         self.embedding = EmbeddingManager(self)
         self.retriever = RetrieveManager(self)
+        self.auth = AuthManager(self)
 
     def _make_request(self, method: str, endpoint: str, 
                      params: Optional[Dict] = None, 
