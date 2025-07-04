@@ -315,31 +315,26 @@ class APIKeyService:
         Deactivate an API key.
         
         Args:
-            user_id: User ID
-            key_id: API key ID
-            tenant_id: Optional tenant ID for additional validation
+            user_id: User ID that owns the key
+            key_id: ID of the key to deactivate
+            tenant_id: Optional tenant ID for authorization
             
         Returns:
-            bool: True if key was deactivated, False otherwise
+            bool: True if deactivated, False otherwise
         """
         try:
-            # Build the query with potential tenant filter
-            query = """
-                UPDATE api_keys
-                SET is_active = FALSE
-                WHERE id = %s AND user_id = %s
-            """
-            params = [str(key_id), str(user_id)]
+            # Build query to update key
+            query = supabase.table('api_keys').update({'is_active': False}).eq('id', str(key_id)).eq('user_id', str(user_id))
             
-            # Add tenant filter if provided
+            # Add tenant scope if needed
             if tenant_id:
-                query += " AND tenant_id = %s"
-                params.append(str(tenant_id))
+                query = query.eq('tenant_id', str(tenant_id))
                 
-            # Deactivate API key
-            result = PostgresDB.execute_query(query, tuple(params))
+            result = query.execute()
             
-            return result > 0
+            # Check if any row was updated
+            return len(result.data) > 0
+            
         except Exception as e:
             logger.error(f"Failed to deactivate API key: {str(e)}")
             raise HTTPException(
@@ -350,75 +345,72 @@ class APIKeyService:
     @staticmethod
     def validate_key(api_key: str, tenant_id: Optional[UUID] = None) -> Optional[Dict[str, Any]]:
         """
-        Validate an API key and return user information.
+        Validate an API key and return user information if valid.
         
         Args:
-            api_key: Raw API key
-            tenant_id: Optional tenant ID for tenant-specific validation
+            api_key: The API key to validate
+            tenant_id: Optional tenant ID to scope the validation
             
         Returns:
-            Optional[Dict[str, Any]]: User data if key is valid, None otherwise
+            Optional[Dict[str, Any]]: User data if key is valid, else None
         """
         try:
-            # Hash the key before comparing
+            logger.info("--- Starting API Key Validation ---")
             key_hash = APIKeyService._hash_key(api_key)
+            logger.info(f"Hashed incoming API key to: {key_hash}")
             
-            # Build the query with potential tenant filter
-            query = """
-                SELECT id, user_id, tenant_id, roles, is_active, expires_at
-                FROM api_keys
-                WHERE key = %s
-            """
-            params = [key_hash]
+            query = supabase.table('api_keys').select('*').eq('key', key_hash)
             
-            # Add tenant filter if provided
             if tenant_id:
-                query += " AND tenant_id = %s"
-                params.append(str(tenant_id))
-                
-            # Find the key in the database
-            row = PostgresDB.fetch_one(query, tuple(params))
-            
-            if not row:
-                logger.warning("API key not found")
+                logger.info(f"Scoping query to tenant_id: {tenant_id}")
+                query = query.eq('tenant_id', str(tenant_id))
+
+            result = query.execute()
+            logger.info(f"Supabase query result: {result.data}")
+
+            if not result.data:
+                logger.warning(f"API key with hash {key_hash} not found in database.")
                 return None
             
-            # Check if key is active
-            if not row['is_active']:
-                logger.warning("API key is inactive")
+            key_data = result.data[0]
+            logger.info(f"Found key data: {key_data}")
+
+            if not key_data.get('is_active', True):
+                logger.warning(f"API key {key_data['id']} is inactive.")
+                return None
+
+            if key_data.get('expires_at'):
+                expires_at = datetime.fromisoformat(key_data['expires_at'])
+                if expires_at < datetime.utcnow():
+                    logger.warning(f"API key {key_data['id']} has expired.")
+                    return None
+
+            user_id = key_data.get('user_id')
+            if not user_id:
+                logger.error("Key data found but no user_id associated.")
                 return None
             
-            # Check if key is expired
-            if row['expires_at'] and row['expires_at'] < datetime.now():
-                logger.warning("API key is expired")
+            try:
+                # Use the admin client to fetch user details by ID
+                logger.info(f"Fetching user details for user_id: {user_id}")
+                user_response = supabase.auth.admin.get_user_by_id(user_id)
+                user = user_response.user
+                logger.info(f"Successfully fetched user: {user.email}")
+            except Exception as e:
+                logger.error(f"Failed to fetch user by id {user_id}: {str(e)}")
                 return None
-            
-            # Update last used timestamp
-            PostgresDB.execute_query("""
-                UPDATE api_keys
-                SET last_used = NOW()
-                WHERE id = %s
-            """, (row['id'],))
-            
-            # Parse the roles JSON if it's a string
-            roles = row['roles']
-            if isinstance(roles, str):
-                try:
-                    roles = json.loads(roles)
-                except json.JSONDecodeError:
-                    logger.error(f"Failed to parse roles JSON: {roles}")
-                    roles = []
-            
-            # Return user data
+
+            # Update last used timestamp (can be done in the background)
+            # supabase.table('api_keys').update({'last_used': datetime.utcnow().isoformat()}).eq('id', key_data['id']).execute()
+
             return {
-                "id": row['user_id'],
-                "tenant_id": row['tenant_id'],
-                "roles": roles,
-                "metadata": {
-                    "is_api_key": True,
-                    "api_key_id": row['id']
-                }
+                "id": user.id,
+                "email": user.email,
+                "created_at": user.created_at.isoformat(),
+                "metadata": user.user_metadata or {},
+                "roles": key_data.get("roles", []),
+                "tenant_id": key_data.get("tenant_id"),
             }
         except Exception as e:
-            logger.error(f"Failed to validate API key: {str(e)}")
+            logger.error(f"API key validation failed unexpectedly: {str(e)}")
             return None 

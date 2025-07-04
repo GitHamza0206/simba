@@ -59,6 +59,9 @@ class AuthManager:
             self.client.session = response["session"]
             access_token = response["session"]["access_token"]
             self.client.headers["Authorization"] = f"Bearer {access_token}"
+            # Prioritize JWT, so remove API key from headers if it exists
+            if "X-API-Key" in self.client.headers:
+                del self.client.headers["X-API-Key"]
             
         return response
 
@@ -74,11 +77,10 @@ class AuthManager:
         self.client.session = None
         if "Authorization" in self.client.headers:
             del self.client.headers["Authorization"]
-        
-        # If an API key was originally provided, we might want to revert to it.
-        # For now, we just clear the auth header. A new client might be needed.
+
+        # Restore API key if it was originally provided
         if self.client.api_key:
-            self.client.headers["Authorization"] = f"Bearer {self.client.api_key}"
+            self.client.headers["X-API-Key"] = self.client.api_key
             
         return response
 

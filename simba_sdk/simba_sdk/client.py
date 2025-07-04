@@ -21,11 +21,11 @@ class SimbaClient:
             api_key (Optional[str]): Optional API key for authorization.
         """
         self.api_url = api_url.rstrip("/")
-        self.api_key = api_key
+        self.api_key = api_key.strip() if api_key else None
         self.session = None
         self.headers = {"Content-Type": "application/json"}
         if self.api_key:
-            self.headers["Authorization"] = f"Bearer {self.api_key}"
+            self.headers["X-API-Key"] = self.api_key
             
         # Initialize managers
         self.documents = DocumentManager(self)
