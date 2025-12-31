@@ -1,3 +1,3 @@
-from simba.core.celery_config import celery_app as celery
+"""Simba - Customer Service Assistant."""
 
-__all__ = ["celery"]
+__version__ = "0.5.0"

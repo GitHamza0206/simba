@@ -1,107 +1,96 @@
-[tool.poetry]
+[project]
 name = "simba-core"
-version = "0.4.0"
-description = "Knowledge Management System that connects to your RAG system"
-authors = ["GitHamza0206 <zeroualihamza0206@gmail.com>"]
+version = "0.5.0"
+description = "Customer Service Assistant - AI-powered support that answers fast and accurately"
+authors = [{name = "GitHamza0206", email = "zeroualihamza0206@gmail.com"}]
 readme = "README.md"
-license = "LICENCE.md"
-packages = [
-    {include = "simba"},
-    {include = "simba_sdk"}
-]
-repository = "https://github.com/GitHamza0206/simba"
-keywords = ["rag", "knowledge-management", "vector-store", "llm"]
+license = {text = "Apache-2.0"}
+requires-python = ">=3.11,<3.13"
+keywords = ["customer-service", "ai", "langchain", "rag", "chatbot"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.11,<3.13"
-langchain = "^0.3.13"
-langgraph = "^0.2.60"
-python-dotenv = "^1.0.1"
-faiss-cpu = "^1.9.0.post1"
-langchain-community = "^0.3.13"
-langchain-openai = "^0.2.14"
-uvicorn = "^0.34.0"
-fastapi = "^0.115.6"
-markdown = "^3.7"
-unstructured = {extras = ["local-inference"], version = "^0.16.12"}
-langchain-chroma = "^0.1.4"
-markitdown = "^0.0.1a3"
-litellm = "^1.56.6"
-python-multipart = "^0.0.20"
-pytest = "^8.3.4"
-pytest-asyncio = "^0.25.2"
-pillow-heif = "^0.21.0"
-pdf2image = "^1.17.0"
-pdfminer-six = "^20240706"
-docling = "^2.15.1"
-langchain-docling = "^0.2.0"
-ipykernel = "^6.29.5"
-ollama = "^0.4.6"
-langchain-ollama = "^0.2.2"
-rq = "^2.1.0"
-pymupdf = "^1.25.2"
-rank-bm25 = "^0.2.2"
-langchain-experimental = "^0.3.4"
-sentence-transformers = "^3.4.1"
-langchain-huggingface = "^0.1.2"
-pydantic-settings = "^2.7.1"
-torch = "^2.6.0"
-torchvision = "^0.21.0"
-torchaudio = "^2.6.0"
-celery = "^5.4.0"
-mistralai = "^1.5.1"
-minio = "^7.2.15"
-supabase = "^2.15.0"
-sqlalchemy = "^2.0.40"
-psycopg2-binary = "^2.9.10"
-redis = "^5.2.1"
-pgvector = "^0.4.1"
-email-validator = "^2.2.0"
+dependencies = [
+    # Web framework
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "python-multipart>=0.0.20",
 
+    # LangChain ecosystem (latest)
+    "langchain>=0.3.14",
+    "langchain-core>=0.3.29",
+    "langchain-community>=0.3.14",
+    "langchain-openai>=0.3.0",
+    "langgraph>=0.2.60",
 
-[tool.poetry.group.dev.dependencies]
-nox = "^2025.2.9"
-isort = "^6.0.0"
-autoflake = "^2.3.1"
-pre-commit = "^4.1.0"
-flake8 = "^7.1.2"
-black = "^25.1.0"
-uv = "^0.6.3"
-pytest = "^8.3.4"
-pytest-cov = "^6.0.0"
-mypy = "^1.15.0"
-bandit = "^1.8.3"
-safety = "^3.3.1"
-sphinx = "^8.2.1"
-sphinx-rtd-theme = "^3.0.2"
-twine = "^6.1.0"
-build = "^1.2.2.post1"
-python-semantic-release = "^9.21.0"
+    # Database
+    "sqlalchemy>=2.0.40",
+    "psycopg2-binary>=2.9.10",
 
+    # Utilities
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "python-dotenv>=1.0.1",
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-line_length = 100
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-skip = [".git", "venv", ".venv", "env", ".env", "__pycache__", "dist", "build"]
+    # Vector store (simple start)
+    "faiss-cpu>=1.9.0",
+]
 
-[tool.black]
-line-length = 100
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.15.0",
+    "pre-commit>=4.1.0",
+]
+
+# Future additions (not installed by default)
+full = [
+    "redis>=5.2.0",
+    "celery>=5.4.0",
+    "langchain-huggingface>=0.1.2",
+    "sentence-transformers>=3.4.0",
+    "pgvector>=0.4.0",
+]
+
+[project.scripts]
+simba = "simba.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/GitHamza0206/simba"
+Repository = "https://github.com/GitHamza0206/simba"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry.scripts]
-simba = "simba.cli:main"
+[tool.hatch.build.targets.wheel]
+packages = ["simba"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["simba"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

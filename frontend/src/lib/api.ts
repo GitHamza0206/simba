@@ -1,96 +1,62 @@
-import { config } from '@/config'
+import { API_URL } from "./constants";
 
-export async function sendMessage(message: string): Promise<Response> {
-  try {
-    const response = await fetch(`${config.apiUrl}/chat`, {
-      method: 'POST',
+type RequestOptions = {
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+  body?: unknown;
+  headers?: Record<string, string>;
+};
+
+class ApiClient {
+  private baseUrl: string;
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
+  }
+
+  private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+    const { method = "GET", body, headers = {} } = options;
+
+    const config: RequestInit = {
+      method,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
+        ...headers,
       },
-      body: JSON.stringify({
-        message
-      }),
-    });
+    };
+
+    if (body) {
+      config.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(`${this.baseUrl}${endpoint}`, config);
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      if (errorData.detail?.includes('API key')) {
-        throw new Error('Missing or invalid API key. Please check your configuration.');
-      }
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `HTTP error! status: ${response.status}`);
     }
 
-    return response;
-  } catch (error) {
-    console.error('API Error:', error);
-    throw error;
+    return response.json();
+  }
+
+  get<T>(endpoint: string, headers?: Record<string, string>) {
+    return this.request<T>(endpoint, { headers });
+  }
+
+  post<T>(endpoint: string, body?: unknown, headers?: Record<string, string>) {
+    return this.request<T>(endpoint, { method: "POST", body, headers });
+  }
+
+  put<T>(endpoint: string, body?: unknown, headers?: Record<string, string>) {
+    return this.request<T>(endpoint, { method: "PUT", body, headers });
+  }
+
+  delete<T>(endpoint: string, headers?: Record<string, string>) {
+    return this.request<T>(endpoint, { method: "DELETE", headers });
+  }
+
+  patch<T>(endpoint: string, body?: unknown, headers?: Record<string, string>) {
+    return this.request<T>(endpoint, { method: "PATCH", body, headers });
   }
 }
 
-export async function handleChatStream(
-  response: Response,
-  onChunk: (content: string, state: any) => void,
-  onComplete: () => void
-): Promise<void> {
-  const reader = response.body?.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  console.log('🔄 Starting stream handling...');
-
-  try {
-    if (!reader) {
-      throw new Error('Connection error: Failed to establish stream');
-    }
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      
-      const chunk = decoder.decode(value);
-      buffer += chunk;
-
-      // Split buffer by double newlines and process complete messages
-      const messages = buffer.split('\n\n');
-      buffer = messages.pop() || ''; // Keep the last incomplete chunk in buffer
-
-      for (const message of messages) {
-        if (!message.trim()) continue;
-
-        try {
-          // Remove 'data: ' prefix if it exists
-          const jsonStr = message.replace(/^data: /, '');
-          console.log('📦 Raw chunk:', jsonStr);
-          
-          const data = JSON.parse(jsonStr);
-          console.log('🔍 Parsed data:', data);
-
-          if (data.error) {
-            console.error('❌ Stream error:', data.error);
-            throw new Error(data.error);
-          }
-
-          // Pass both content and state to the callback
-          if (data.content !== undefined) {
-            console.log('📝 Content update:', { content: data.content, state: data.state });
-            onChunk(data.content, data.state);
-          } else if (data.state) {
-            console.log('🔄 State-only update:', data.state);
-            onChunk('', data.state);
-          }
-        } catch (e) {
-          console.error('❌ Error parsing stream chunk:', e);
-          throw new Error('Connection error: Failed to parse stream data');
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Stream error:', error);
-    throw error;
-  } finally {
-    console.log('✅ Stream handling complete');
-    reader?.releaseLock();
-    onComplete();
-  }
-}
-
+export const api = new ApiClient(API_URL);
