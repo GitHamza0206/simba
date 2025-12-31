@@ -46,6 +46,16 @@ class DocumentUploadResponse(BaseModel):
     message: str
 
 
+class DocumentStatusItem(BaseModel):
+    id: str
+    status: str
+
+
+class DocumentStatusResponse(BaseModel):
+    items: list[DocumentStatusItem]
+    has_processing: bool
+
+
 # --- Routes ---
 
 
@@ -86,6 +96,25 @@ async def list_documents(
     ]
 
     return DocumentListResponse(items=items, total=total)
+
+
+@router.get("/status", response_model=DocumentStatusResponse)
+async def get_documents_status(
+    collection_id: str | None = Query(None, description="Filter by collection ID"),
+    db: Session = Depends(get_db),
+):
+    """Lightweight endpoint to check document statuses (for polling)."""
+    query = db.query(Document.id, Document.status)
+
+    if collection_id:
+        query = query.filter(Document.collection_id == collection_id)
+
+    results = query.all()
+
+    items = [DocumentStatusItem(id=r.id, status=r.status) for r in results]
+    has_processing = any(r.status in ("pending", "processing") for r in results)
+
+    return DocumentStatusResponse(items=items, has_processing=has_processing)
 
 
 @router.post("", response_model=DocumentUploadResponse)
@@ -236,3 +265,27 @@ async def get_document_download_url(document_id: str, db: Session = Depends(get_
     url = storage_service.get_presigned_url(document.object_key)
 
     return {"download_url": url, "filename": document.name}
+
+
+@router.get("/{document_id}/chunks")
+async def get_document_chunks(document_id: str, db: Session = Depends(get_db)):
+    """Get all chunks for a document."""
+    document = db.query(Document).filter(Document.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if document.status != "ready":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Document is not ready (status: {document.status})",
+        )
+
+    collection_name = document.collection.name
+    chunks = qdrant_service.get_document_chunks(collection_name, document_id)
+
+    return {
+        "document_id": document_id,
+        "document_name": document.name,
+        "chunk_count": len(chunks),
+        "chunks": chunks,
+    }

@@ -190,3 +190,50 @@ def get_collection_info(collection_name: str) -> dict[str, Any]:
         "vectors_count": info.vectors_count,
         "status": info.status.value,
     }
+
+
+def get_document_chunks(
+    collection_name: str,
+    document_id: str,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    """Get all chunks for a specific document.
+
+    Args:
+        collection_name: Name of the collection.
+        document_id: Document ID to get chunks for.
+        limit: Maximum number of chunks to return.
+
+    Returns:
+        List of chunks with their payload (text, position, etc.).
+    """
+    client = get_qdrant_client()
+
+    # Use scroll to get all points matching the document_id
+    results, _ = client.scroll(
+        collection_name=collection_name,
+        scroll_filter=Filter(
+            must=[
+                FieldCondition(
+                    key="document_id",
+                    match=MatchValue(value=document_id),
+                )
+            ]
+        ),
+        limit=limit,
+        with_payload=True,
+        with_vectors=False,
+    )
+
+    # Sort by chunk_position and return
+    chunks = [
+        {
+            "id": str(point.id),
+            "text": point.payload.get("chunk_text", ""),
+            "position": point.payload.get("chunk_position", 0),
+            "document_name": point.payload.get("document_name", ""),
+        }
+        for point in results
+    ]
+
+    return sorted(chunks, key=lambda x: x["position"])

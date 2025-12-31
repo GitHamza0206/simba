@@ -26,6 +26,14 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
       if (!response.ok) throw new Error("Failed to fetch documents");
       return response.json() as Promise<ListResponse<Document>>;
     },
+    // Auto-refresh every 3s when documents are processing
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const hasProcessing = data?.items?.some(
+        (doc) => doc.status === "pending" || doc.status === "processing"
+      );
+      return hasProcessing ? 3000 : false;
+    },
   });
 }
 
@@ -119,6 +127,37 @@ export function useDocumentDownloadUrl(documentId: string) {
       );
       if (!response.ok) throw new Error("Failed to get download URL");
       return response.json() as Promise<{ download_url: string; filename: string }>;
+    },
+    enabled: !!documentId,
+  });
+}
+
+export interface Chunk {
+  id: string;
+  text: string;
+  position: number;
+  document_name: string;
+}
+
+export interface ChunksResponse {
+  document_id: string;
+  document_name: string;
+  chunk_count: number;
+  chunks: Chunk[];
+}
+
+export function useDocumentChunks(documentId: string | null) {
+  return useQuery({
+    queryKey: [...DOCUMENTS_KEY, documentId, "chunks"],
+    queryFn: async () => {
+      const response = await fetch(
+        `${API_URL}/api/v1/documents/${documentId}/chunks`
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || "Failed to get chunks");
+      }
+      return response.json() as Promise<ChunksResponse>;
     },
     enabled: !!documentId,
   });

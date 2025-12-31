@@ -10,9 +10,11 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDocuments, useDeleteDocument, useReprocessDocument } from "@/hooks";
+import { ChunksViewer } from "./chunks-viewer";
 import type { Document, DocumentStatus } from "@/types/api";
 import { API_URL } from "@/lib/constants";
 
@@ -77,8 +79,9 @@ function formatDate(dateString: string): string {
 export function DocumentsTable({ collectionId }: DocumentsTableProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reprocessingId, setReprocessingId] = useState<string | null>(null);
+  const [viewingChunks, setViewingChunks] = useState<Document | null>(null);
 
-  const { data, isLoading, refetch } = useDocuments({ collectionId: collectionId ?? undefined });
+  const { data, isLoading } = useDocuments({ collectionId: collectionId ?? undefined });
   const deleteMutation = useDeleteDocument();
   const reprocessMutation = useReprocessDocument();
 
@@ -186,6 +189,16 @@ export function DocumentsTable({ collectionId }: DocumentsTableProps) {
                 </td>
                 <td className="p-3">
                   <div className="flex items-center gap-1">
+                    {doc.status === "ready" && doc.chunk_count > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setViewingChunks(doc)}
+                        title="View Chunks"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -234,6 +247,15 @@ export function DocumentsTable({ collectionId }: DocumentsTableProps) {
       <div className="text-right text-sm text-muted-foreground">
         {data?.total ?? 0} document(s)
       </div>
+
+      {/* Chunks Viewer Modal */}
+      {viewingChunks && (
+        <ChunksViewer
+          documentId={viewingChunks.id}
+          documentName={viewingChunks.name}
+          onClose={() => setViewingChunks(null)}
+        />
+      )}
     </div>
   );
 }
