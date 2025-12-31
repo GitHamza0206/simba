@@ -33,13 +33,24 @@ dependencies = [
     "sqlalchemy>=2.0.40",
     "psycopg2-binary>=2.9.10",
 
+    # Vector store & embeddings
+    "qdrant-client>=1.9.0",
+    "fastembed>=0.4.0",
+
+    # Object storage
+    "minio>=7.2.0",
+
+    # Document parsing
+    "unstructured[all-docs]>=0.16.0",
+
+    # Task queue
+    "celery>=5.4.0",
+    "redis>=5.2.0",
+
     # Utilities
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
     "python-dotenv>=1.0.1",
-
-    # Vector store (simple start)
-    "faiss-cpu>=1.9.0",
 ]
 
 [project.optional-dependencies]
@@ -52,13 +63,10 @@ dev = [
     "pre-commit>=4.1.0",
 ]
 
-# Future additions (not installed by default)
-full = [
-    "redis>=5.2.0",
-    "celery>=5.4.0",
+# Optional: Additional embedding models
+ml = [
     "langchain-huggingface>=0.1.2",
     "sentence-transformers>=3.4.0",
-    "pgvector>=0.4.0",
 ]
 
 [project.scripts]

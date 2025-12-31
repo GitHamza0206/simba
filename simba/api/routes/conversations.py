@@ -1,10 +1,13 @@
 """Conversation and chat routes."""
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 from datetime import datetime
 from uuid import uuid4
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+
+from simba.services.chat_service import chat as chat_service, get_agent
 
 router = APIRouter(prefix="/conversations")
 
@@ -59,17 +62,20 @@ async def list_conversations():
 @router.post("/chat", response_model=MessageResponse)
 async def chat(request: MessageRequest):
     """Send a message and get a response."""
-    # TODO: Implement actual chat with LangChain
     conversation_id = request.conversation_id or str(uuid4())
-    now = datetime.utcnow()
+
+    response_content = await chat_service(
+        message=request.content,
+        thread_id=conversation_id,
+    )
 
     return MessageResponse(
         id=str(uuid4()),
         conversation_id=conversation_id,
         role="assistant",
-        content="This is a placeholder response. Chat functionality coming soon!",
-        sources=[],
-        created_at=now,
+        content=response_content,
+        sources=[],  # TODO: Extract sources from RAG tool calls
+        created_at=datetime.utcnow(),
     )
 
 

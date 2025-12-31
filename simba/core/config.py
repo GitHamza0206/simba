@@ -2,7 +2,11 @@
 
 from functools import lru_cache
 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Load .env into actual environment variables (required for init_chat_model)
+load_dotenv()
 
 
 class Settings(BaseSettings):
@@ -27,13 +31,29 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql://postgres:postgres@localhost:5432/simba"
 
-    # LLM
-    openai_api_key: str = ""
-    llm_model: str = "gpt-4o-mini"
+    # LLM (provider-agnostic via init_chat_model)
+    # Format: "provider/model" e.g. "openai/gpt-4o-mini", "anthropic/claude-3-opus"
+    llm_model: str = "openai:gpt-4o-mini"
     llm_temperature: float = 0.1
 
-    # Embedding
-    embedding_model: str = "text-embedding-3-small"
+    # Embedding (FastEmbed - local, free, fast)
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_dimensions: int = 384
+
+    # Qdrant
+    qdrant_host: str = "localhost"
+    qdrant_port: int = 6333
+
+    # MinIO (S3-compatible storage)
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minioadmin"
+    minio_bucket: str = "simba-documents"
+    minio_secure: bool = False
+
+    # Celery
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/1"
 
 
 @lru_cache

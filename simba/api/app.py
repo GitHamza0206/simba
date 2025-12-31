@@ -1,10 +1,22 @@
 """FastAPI application."""
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from simba.api.routes import analytics, collections, conversations, documents, health
 from simba.core.config import settings
-from simba.api.routes import conversations, documents, analytics, health
+from simba.models import init_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler."""
+    # Startup
+    init_db()
+    yield
+    # Shutdown
 
 
 def create_app() -> FastAPI:
@@ -16,6 +28,7 @@ def create_app() -> FastAPI:
         docs_url=f"{settings.api_prefix}/docs",
         redoc_url=f"{settings.api_prefix}/redoc",
         openapi_url=f"{settings.api_prefix}/openapi.json",
+        lifespan=lifespan,
     )
 
     # CORS
@@ -29,6 +42,7 @@ def create_app() -> FastAPI:
 
     # Routes
     app.include_router(health.router, prefix=settings.api_prefix, tags=["health"])
+    app.include_router(collections.router, prefix=settings.api_prefix, tags=["collections"])
     app.include_router(documents.router, prefix=settings.api_prefix, tags=["documents"])
     app.include_router(conversations.router, prefix=settings.api_prefix, tags=["conversations"])
     app.include_router(analytics.router, prefix=settings.api_prefix, tags=["analytics"])
