@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from simba.services.chat_service import chat as chat_service, get_agent
+from simba.services.chat_service import chat as chat_service, chat_stream as chat_stream_service
 
 router = APIRouter(prefix="/conversations")
 
@@ -81,16 +81,18 @@ async def chat(request: MessageRequest):
 
 @router.post("/chat/stream")
 async def chat_stream(request: MessageRequest):
-    """Send a message and get a streaming response."""
+    """Send a message and get a streaming SSE response."""
+    conversation_id = request.conversation_id or str(uuid4())
 
-    async def generate():
-        # TODO: Implement actual streaming with LangChain
-        words = "This is a placeholder streaming response. Chat functionality coming soon!".split()
-        for word in words:
-            yield f"data: {word} \n\n"
-        yield "data: [DONE]\n\n"
-
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(
+        chat_stream_service(message=request.content, thread_id=conversation_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
+    )
 
 
 @router.get("/{conversation_id}", response_model=ConversationResponse)
