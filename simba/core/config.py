@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000"]
 
     # Database
-    database_url: str = "postgresql://postgres:postgres@localhost:5432/simba"
+    database_url: str = "postgresql://simba:simba@localhost:5432/simba"
 
     # LLM (provider-agnostic via init_chat_model)
     # Format: "provider/model" e.g. "openai/gpt-4o-mini", "anthropic/claude-3-opus"

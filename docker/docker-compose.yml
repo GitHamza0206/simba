@@ -48,6 +48,24 @@ services:
     networks:
       - simba_network
 
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-simba}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-simba}
+      POSTGRES_DB: ${POSTGRES_DB:-simba}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-simba}"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - simba_network
+
   redis:
     image: redis:7-alpine
     ports:
@@ -101,6 +119,7 @@ networks:
     driver: bridge
 
 volumes:
+  postgres_data:
   redis_data:
   qdrant_data:
   minio_data:
