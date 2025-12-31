@@ -18,6 +18,7 @@ router = APIRouter(prefix="/conversations")
 class MessageRequest(BaseModel):
     content: str
     conversation_id: str | None = None
+    collection: str | None = None
 
 
 class SourceReference(BaseModel):
@@ -67,6 +68,7 @@ async def chat(request: MessageRequest):
     response_content = await chat_service(
         message=request.content,
         thread_id=conversation_id,
+        collection=request.collection,
     )
 
     return MessageResponse(
@@ -85,7 +87,11 @@ async def chat_stream(request: MessageRequest):
     conversation_id = request.conversation_id or str(uuid4())
 
     return StreamingResponse(
-        chat_stream_service(message=request.content, thread_id=conversation_id),
+        chat_stream_service(
+            message=request.content,
+            thread_id=conversation_id,
+            collection=request.collection,
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

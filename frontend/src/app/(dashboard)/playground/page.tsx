@@ -1,9 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { Bot, Trash2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Bot, Trash2, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useChat, type ChatMessage } from "@/hooks";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useChat, useCollections, type ChatMessage } from "@/hooks";
 import { API_URL } from "@/lib/constants";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 
@@ -25,6 +32,7 @@ import {
   PromptInputTextarea,
   PromptInputFooter,
   PromptInputSubmit,
+  PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import {
   Reasoning,
@@ -134,14 +142,40 @@ function ThinkingIndicator() {
 export default function PlaygroundPage() {
   const [text, setText] = useState("");
 
-  const { messages, status, isThinking, sendMessage, clear } = useChat({
+  // Fetch available collections
+  const { data: collectionsData, isLoading: collectionsLoading } = useCollections();
+  const collections = useMemo(
+    () => collectionsData?.items ?? [],
+    [collectionsData?.items]
+  );
+
+  const {
+    messages,
+    status,
+    collection,
+    setCollection,
+    isThinking,
+    sendMessage,
+    clear,
+  } = useChat({
     onError: (error) => {
       console.error("Chat error:", error);
     },
   });
 
+  // Auto-select first collection when loaded
+  useEffect(() => {
+    if (!collection && collections.length > 0) {
+      setCollection(collections[0].name);
+    }
+  }, [collection, collections, setCollection]);
+
   const handleSubmit = (message: PromptInputMessage) => {
     if (!message.text?.trim()) return;
+    if (!collection) {
+      console.error("No collection selected");
+      return;
+    }
     sendMessage(message.text);
     setText("");
   };
@@ -160,14 +194,40 @@ export default function PlaygroundPage() {
             Test the chat experience with streaming responses.
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={clear}
-          disabled={messages.length === 0 || isLoading}
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
-          Clear Chat
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Collection Selector */}
+          <Select
+            value={collection || ""}
+            onValueChange={setCollection}
+            disabled={isLoading || collectionsLoading}
+          >
+            <SelectTrigger className="w-[200px]">
+              <Database className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Select collection" />
+            </SelectTrigger>
+            <SelectContent>
+              {collections.length === 0 ? (
+                <SelectItem value="_none" disabled>
+                  No collections available
+                </SelectItem>
+              ) : (
+                collections.map((col) => (
+                  <SelectItem key={col.id} value={col.name}>
+                    {col.name}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            onClick={clear}
+            disabled={messages.length === 0 || isLoading}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Clear Chat
+          </Button>
+        </div>
       </div>
 
       {/* Chat Container */}
@@ -175,7 +235,11 @@ export default function PlaygroundPage() {
         {messages.length === 0 ? (
           <ConversationEmptyState
             title="Start a conversation"
-            description="This playground simulates the widget experience with streaming responses. Messages are sent to your backend for processing."
+            description={
+              collection
+                ? `Ask questions about documents in the "${collection}" collection.`
+                : "Select a collection to start chatting."
+            }
             icon={<Bot className="h-8 w-8" />}
           />
         ) : (
@@ -197,16 +261,26 @@ export default function PlaygroundPage() {
           <PromptInput onSubmit={handleSubmit}>
             <PromptInputBody>
               <PromptInputTextarea
-                placeholder="Type your message..."
+                placeholder={
+                  collection
+                    ? "Type your message..."
+                    : "Select a collection first..."
+                }
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                disabled={isLoading}
+                disabled={isLoading || !collection}
               />
             </PromptInputBody>
             <PromptInputFooter>
-              <div />
+              <PromptInputTools>
+                {collection && (
+                  <span className="text-xs text-muted-foreground">
+                    Collection: {collection}
+                  </span>
+                )}
+              </PromptInputTools>
               <PromptInputSubmit
-                disabled={!text.trim() || isLoading}
+                disabled={!text.trim() || isLoading || !collection}
                 status={
                   isSubmitted
                     ? "submitted"

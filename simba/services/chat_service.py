@@ -1,7 +1,7 @@
 """Chat service with LangChain agent."""
 
 import json
-from functools import lru_cache
+from functools import lru_cache, partial
 from typing import AsyncGenerator
 
 from langchain.agents import create_agent
@@ -28,56 +28,73 @@ couldn't find specific information but offer to help in other ways.
 """
 
 
-@tool
-def rag(query: str, collection: str = "default") -> str:
-    """Search the knowledge base for relevant information.
+def create_rag_tool(collection_name: str):
+    """Create a RAG tool bound to a specific collection."""
 
-    Args:
-        query: The search query to find relevant documents.
-        collection: The collection name to search in. Default is "default".
+    @tool
+    def rag(query: str) -> str:
+        """Search the knowledge base for relevant information.
 
-    Returns:
-        Retrieved context from the knowledge base.
-    """
-    return retrieval_service.retrieve_formatted(
-        query=query,
-        collection_name=collection,
-        limit=5,
-    )
+        Args:
+            query: The search query to find relevant documents.
+
+        Returns:
+            Retrieved context from the knowledge base.
+        """
+        return retrieval_service.retrieve_formatted(
+            query=query,
+            collection_name=collection_name,
+            limit=5,
+        )
+
+    return rag
 
 
 @lru_cache
-def get_agent():
-    """Create and return the cached chat agent with checkpointer for conversation memory."""
-    llm = init_chat_model(
+def get_llm():
+    """Get cached LLM instance."""
+    return init_chat_model(
         model=settings.llm_model,
         temperature=settings.llm_temperature,
     )
 
-    # MemorySaver for dev; use PostgresSaver for production
-    checkpointer = MemorySaver()
+
+# Global checkpointer for conversation memory
+_checkpointer = MemorySaver()
+
+
+def get_agent(collection: str | None = None):
+    """Create agent with the specified collection.
+
+    Args:
+        collection: Collection name for RAG searches. Defaults to "default".
+    """
+    collection_name = collection or "default"
+    llm = get_llm()
+    rag_tool = create_rag_tool(collection_name)
 
     agent = create_agent(
         model=llm,
-        tools=[rag],
+        tools=[rag_tool],
         system_prompt=SYSTEM_PROMPT,
-        checkpointer=checkpointer,
+        checkpointer=_checkpointer,
     )
 
     return agent
 
 
-async def chat(message: str, thread_id: str) -> str:
+async def chat(message: str, thread_id: str, collection: str | None = None) -> str:
     """Process a chat message and return the response.
 
     Args:
         message: The user's message.
         thread_id: Thread ID for conversation isolation.
+        collection: Collection name for RAG searches.
 
     Returns:
         The agent's response.
     """
-    agent = get_agent()
+    agent = get_agent(collection)
 
     config = {"configurable": {"thread_id": thread_id}}
 
@@ -94,12 +111,15 @@ async def chat(message: str, thread_id: str) -> str:
     return "I apologize, but I couldn't generate a response."
 
 
-async def chat_stream(message: str, thread_id: str) -> AsyncGenerator[str, None]:
+async def chat_stream(
+    message: str, thread_id: str, collection: str | None = None
+) -> AsyncGenerator[str, None]:
     """Stream chat responses using SSE format with all event types.
 
     Args:
         message: The user's message.
         thread_id: Thread ID for conversation isolation.
+        collection: Collection name for RAG searches.
 
     Yields:
         SSE-formatted events including:
@@ -109,82 +129,89 @@ async def chat_stream(message: str, thread_id: str) -> AsyncGenerator[str, None]
         - type: "content" - AI response text chunks
         - type: "done" - Stream complete
     """
-    agent = get_agent()
+    agent = get_agent(collection)
     config = {"configurable": {"thread_id": thread_id}}
 
-    async for event in agent.astream_events(
-        {"messages": [HumanMessage(content=message)]},
-        config=config,
-        version="v2",
-    ):
-        event_type = event.get("event")
-        event_data = event.get("data", {})
+    try:
+        async for event in agent.astream_events(
+            {"messages": [HumanMessage(content=message)]},
+            config=config,
+            version="v2",
+        ):
+            event_type = event.get("event")
+            event_data = event.get("data", {})
 
-        # Tool invocation started
-        if event_type == "on_tool_start":
-            data = {
-                "type": "tool_start",
-                "name": event.get("name"),
-                "input": event_data.get("input"),
-            }
-            yield f"data: {json.dumps(data)}\n\n"
+            # Tool invocation started
+            if event_type == "on_tool_start":
+                data = {
+                    "type": "tool_start",
+                    "name": event.get("name"),
+                    "input": event_data.get("input"),
+                }
+                yield f"data: {json.dumps(data)}\n\n"
 
-        # Tool finished - includes RAG sources
-        elif event_type == "on_tool_end":
-            # Extract output - may be a ToolMessage object or string
-            output = event_data.get("output")
-            if hasattr(output, "content"):
-                output = output.content
-            elif not isinstance(output, (str, type(None))):
-                output = str(output)
-            data = {
-                "type": "tool_end",
-                "name": event.get("name"),
-                "output": output,
-            }
-            yield f"data: {json.dumps(data)}\n\n"
+            # Tool finished - includes RAG sources
+            elif event_type == "on_tool_end":
+                # Extract output - may be a ToolMessage object or string
+                output = event_data.get("output")
+                if hasattr(output, "content"):
+                    output = output.content
+                elif not isinstance(output, (str, type(None))):
+                    output = str(output)
+                data = {
+                    "type": "tool_end",
+                    "name": event.get("name"),
+                    "output": output,
+                }
+                yield f"data: {json.dumps(data)}\n\n"
 
-        # Chat model streaming chunks
-        elif event_type == "on_chat_model_stream":
-            chunk = event_data.get("chunk")
-            if chunk:
-                content = chunk.content
+            # Chat model streaming chunks
+            elif event_type == "on_chat_model_stream":
+                chunk = event_data.get("chunk")
+                if chunk:
+                    content = chunk.content
 
-                # Handle content as list (for thinking blocks, etc.)
-                if isinstance(content, list):
-                    for block in content:
-                        if isinstance(block, dict):
-                            block_type = block.get("type")
-                            if block_type == "thinking":
-                                data = {
-                                    "type": "thinking",
-                                    "content": block.get("thinking", ""),
-                                }
-                                yield f"data: {json.dumps(data)}\n\n"
-                            elif block_type == "text":
-                                text = block.get("text", "")
-                                if text:
-                                    data = {"type": "content", "content": text}
+                    # Handle content as list (for thinking blocks, etc.)
+                    if isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict):
+                                block_type = block.get("type")
+                                if block_type == "thinking":
+                                    data = {
+                                        "type": "thinking",
+                                        "content": block.get("thinking", ""),
+                                    }
                                     yield f"data: {json.dumps(data)}\n\n"
-                        elif isinstance(block, str) and block:
-                            data = {"type": "content", "content": block}
-                            yield f"data: {json.dumps(data)}\n\n"
+                                elif block_type == "text":
+                                    text = block.get("text", "")
+                                    if text:
+                                        data = {"type": "content", "content": text}
+                                        yield f"data: {json.dumps(data)}\n\n"
+                            elif isinstance(block, str) and block:
+                                data = {"type": "content", "content": block}
+                                yield f"data: {json.dumps(data)}\n\n"
 
-                # Handle content as string
-                elif isinstance(content, str) and content:
-                    data = {"type": "content", "content": content}
-                    yield f"data: {json.dumps(data)}\n\n"
-
-                # Handle tool call chunks (model deciding to call a tool)
-                tool_call_chunks = getattr(chunk, "tool_call_chunks", None)
-                if tool_call_chunks:
-                    for tool_chunk in tool_call_chunks:
-                        data = {
-                            "type": "tool_call",
-                            "id": tool_chunk.get("id"),
-                            "name": tool_chunk.get("name"),
-                            "args": tool_chunk.get("args"),
-                        }
+                    # Handle content as string
+                    elif isinstance(content, str) and content:
+                        data = {"type": "content", "content": content}
                         yield f"data: {json.dumps(data)}\n\n"
 
-    yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                    # Handle tool call chunks (model deciding to call a tool)
+                    tool_call_chunks = getattr(chunk, "tool_call_chunks", None)
+                    if tool_call_chunks:
+                        for tool_chunk in tool_call_chunks:
+                            data = {
+                                "type": "tool_call",
+                                "id": tool_chunk.get("id"),
+                                "name": tool_chunk.get("name"),
+                                "args": tool_chunk.get("args"),
+                            }
+                            yield f"data: {json.dumps(data)}\n\n"
+
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    except Exception as e:
+        # Send error event and done
+        error_data = {"type": "error", "message": str(e)}
+        yield f"data: {json.dumps(error_data)}\n\n"
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"

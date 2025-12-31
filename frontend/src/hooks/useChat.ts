@@ -8,11 +8,13 @@ export type SSEEventType =
   | "tool_end"
   | "tool_call"
   | "content"
+  | "error"
   | "done";
 
 export interface SSEEvent {
   type: SSEEventType;
   content?: string;
+  message?: string; // For error events
   name?: string;
   input?: Record<string, unknown>;
   output?: string;
@@ -52,6 +54,7 @@ export function useChat(options: UseChatOptions = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<ChatStatus>("ready");
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [collection, setCollection] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -155,6 +158,7 @@ export function useChat(options: UseChatOptions = {}) {
             body: JSON.stringify({
               content: userMessage.content,
               conversation_id: conversationId,
+              collection: collection,
             }),
             signal: abortControllerRef.current.signal,
           }
@@ -267,6 +271,19 @@ export function useChat(options: UseChatOptions = {}) {
                 );
                 break;
 
+              case "error":
+                // Handle error from backend
+                const errorMsg = event.message || "An error occurred";
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantMessageId
+                      ? { ...msg, content: errorMsg }
+                      : msg
+                  )
+                );
+                options.onError?.(new Error(errorMsg));
+                break;
+
               case "done":
                 setStatus("ready");
                 setIsThinking(false);
@@ -313,7 +330,7 @@ export function useChat(options: UseChatOptions = {}) {
         );
       }
     },
-    [conversationId, status, options]
+    [conversationId, collection, status, options]
   );
 
   const stop = useCallback(() => {
@@ -336,6 +353,8 @@ export function useChat(options: UseChatOptions = {}) {
     messages,
     status,
     conversationId,
+    collection,
+    setCollection,
     isThinking,
     sendMessage,
     stop,
