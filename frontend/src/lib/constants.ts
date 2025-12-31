@@ -14,9 +14,11 @@ export const ROUTES = {
 } as const;
 
 export const API_ROUTES = {
+  COLLECTIONS: "/api/v1/collections",
   DOCUMENTS: "/api/v1/documents",
   CONVERSATIONS: "/api/v1/conversations",
   CHAT: "/api/v1/chat",
   RETRIEVAL: "/api/v1/retrieval",
   HEALTH: "/api/v1/health",
+  ANALYTICS: "/api/v1/analytics",
 } as const;

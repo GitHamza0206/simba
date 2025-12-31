@@ -26,19 +26,48 @@ export interface PaginatedResponse<T> {
   has_more: boolean;
 }
 
+export interface ListResponse<T> {
+  items: T[];
+  total: number;
+}
+
+// Collection Types
+export interface Collection {
+  id: string;
+  name: string;
+  description: string | null;
+  document_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CollectionCreate {
+  name: string;
+  description?: string;
+}
+
 // Document Types
-export type DocumentStatus = "pending" | "parsing" | "ready" | "failed";
+export type DocumentStatus = "pending" | "processing" | "ready" | "failed";
 
 export interface Document {
   id: string;
   name: string;
-  file_path: string;
-  mime_type: string;
-  size_bytes: number;
+  collection_id: string;
+  collection_name: string;
   status: DocumentStatus;
-  metadata: Record<string, unknown>;
+  size_bytes: number;
+  mime_type: string;
+  chunk_count: number;
+  error_message: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface DocumentUploadResponse {
+  id: string;
+  name: string;
+  status: string;
+  message: string;
 }
 
 export interface Chunk {
@@ -113,4 +142,41 @@ export interface SearchResult {
   documents: ChunkReference[];
   query: string;
   latency_ms: number;
+}
+
+// Analytics Types
+export interface MetricValue {
+  value: number;
+  change: number;
+  period: string;
+}
+
+export interface AnalyticsOverview {
+  total_conversations: MetricValue;
+  total_messages: MetricValue;
+  avg_response_time_ms: MetricValue;
+  resolution_rate: MetricValue;
+  user_satisfaction: MetricValue;
+}
+
+export interface EvalMetrics {
+  relevance_score: number;
+  accuracy_score: number;
+  completeness_score: number;
+  citation_score: number;
+}
+
+export interface DailyStats {
+  date: string;
+  conversations: number;
+  messages: number;
+  avg_response_time_ms: number;
+}
+
+// Conversation List Types (from backend)
+export interface ConversationListItem {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
 }

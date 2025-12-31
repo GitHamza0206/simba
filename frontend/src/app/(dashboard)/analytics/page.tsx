@@ -1,7 +1,13 @@
-import { BarChart3, TrendingUp, Clock, ThumbsUp } from "lucide-react";
+"use client";
+
+import { BarChart3, TrendingUp, Clock, ThumbsUp, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAnalyticsOverview, useEvalMetrics } from "@/hooks";
 
 export default function AnalyticsPage() {
+  const { data: overview, isLoading: overviewLoading } = useAnalyticsOverview();
+  const { data: evalMetrics, isLoading: evalsLoading } = useEvalMetrics();
+
   return (
     <div className="space-y-6">
       <div>
@@ -13,38 +19,49 @@ export default function AnalyticsPage() {
 
       {/* Key Metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="Avg. Response Time"
-          value="1.2s"
-          description="Target: < 2s"
-          icon={Clock}
-          trend="+5%"
-          trendUp={false}
-        />
-        <MetricCard
-          title="Resolution Rate"
-          value="87%"
-          description="Without human escalation"
-          icon={TrendingUp}
-          trend="+3%"
-          trendUp={true}
-        />
-        <MetricCard
-          title="User Satisfaction"
-          value="4.6/5"
-          description="Based on feedback"
-          icon={ThumbsUp}
-          trend="+0.2"
-          trendUp={true}
-        />
-        <MetricCard
-          title="Total Queries"
-          value="2,847"
-          description="This month"
-          icon={BarChart3}
-          trend="+12%"
-          trendUp={true}
-        />
+        {overviewLoading ? (
+          <>
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+          </>
+        ) : (
+          <>
+            <MetricCard
+              title="Avg. Response Time"
+              value={formatResponseTime(overview?.avg_response_time_ms.value ?? 0)}
+              description="Target: < 2s"
+              icon={Clock}
+              trend={formatChange(overview?.avg_response_time_ms.change ?? 0)}
+              trendUp={false}
+            />
+            <MetricCard
+              title="Resolution Rate"
+              value={formatPercent(overview?.resolution_rate.value ?? 0)}
+              description="Without human escalation"
+              icon={TrendingUp}
+              trend={formatChange(overview?.resolution_rate.change ?? 0)}
+              trendUp={(overview?.resolution_rate.change ?? 0) > 0}
+            />
+            <MetricCard
+              title="User Satisfaction"
+              value={formatSatisfaction(overview?.user_satisfaction.value ?? 0)}
+              description="Based on feedback"
+              icon={ThumbsUp}
+              trend={formatChange(overview?.user_satisfaction.change ?? 0)}
+              trendUp={(overview?.user_satisfaction.change ?? 0) > 0}
+            />
+            <MetricCard
+              title="Total Conversations"
+              value={formatNumber(overview?.total_conversations.value ?? 0)}
+              description={`This ${overview?.total_conversations.period ?? "week"}`}
+              icon={BarChart3}
+              trend={formatChange(overview?.total_conversations.change ?? 0)}
+              trendUp={(overview?.total_conversations.change ?? 0) > 0}
+            />
+          </>
+        )}
       </div>
 
       {/* Charts placeholder */}
@@ -81,15 +98,62 @@ export default function AnalyticsPage() {
           <CardDescription>AI response quality breakdown</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <EvalMetric label="Relevance Score" value={0.94} />
-            <EvalMetric label="Accuracy Score" value={0.91} />
-            <EvalMetric label="Completeness Score" value={0.88} />
-            <EvalMetric label="Citation Score" value={0.85} />
-          </div>
+          {evalsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <EvalMetric label="Relevance Score" value={evalMetrics?.relevance_score ?? 0} />
+              <EvalMetric label="Accuracy Score" value={evalMetrics?.accuracy_score ?? 0} />
+              <EvalMetric label="Completeness Score" value={evalMetrics?.completeness_score ?? 0} />
+              <EvalMetric label="Citation Score" value={evalMetrics?.citation_score ?? 0} />
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function formatResponseTime(ms: number): string {
+  if (ms === 0) return "—";
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatPercent(value: number): string {
+  if (value === 0) return "—";
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatSatisfaction(value: number): string {
+  if (value === 0) return "—";
+  return `${value.toFixed(1)}/5`;
+}
+
+function formatNumber(value: number): string {
+  if (value === 0) return "—";
+  return value.toLocaleString();
+}
+
+function formatChange(change: number): string {
+  if (change === 0) return "—";
+  const prefix = change > 0 ? "+" : "";
+  return `${prefix}${Math.round(change)}%`;
+}
+
+function MetricCardSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-4 animate-pulse rounded bg-muted" />
+      </CardHeader>
+      <CardContent>
+        <div className="h-8 w-16 animate-pulse rounded bg-muted" />
+        <div className="mt-2 h-4 w-32 animate-pulse rounded bg-muted" />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -117,7 +181,9 @@ function MetricCard({
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
         <div className="flex items-center gap-2 text-xs">
-          <span className={trendUp ? "text-green-600" : "text-red-600"}>{trend}</span>
+          <span className={trend === "—" ? "text-muted-foreground" : trendUp ? "text-green-600" : "text-red-600"}>
+            {trend}
+          </span>
           <span className="text-muted-foreground">{description}</span>
         </div>
       </CardContent>
@@ -127,11 +193,13 @@ function MetricCard({
 
 function EvalMetric({ label, value }: { label: string; value: number }) {
   const percentage = Math.round(value * 100);
+  const displayValue = value === 0 ? "—" : `${percentage}%`;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
         <span>{label}</span>
-        <span className="font-medium">{percentage}%</span>
+        <span className="font-medium">{displayValue}</span>
       </div>
       <div className="h-2 rounded-full bg-muted">
         <div
