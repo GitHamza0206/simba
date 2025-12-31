@@ -60,7 +60,7 @@ def get_agent():
     agent = create_agent(
         model=llm,
         tools=[rag],
-        prompt=SYSTEM_PROMPT,
+        system_prompt=SYSTEM_PROMPT,
         checkpointer=checkpointer,
     )
 
@@ -122,19 +122,27 @@ async def chat_stream(message: str, thread_id: str) -> AsyncGenerator[str, None]
 
         # Tool invocation started
         if event_type == "on_tool_start":
-            yield f"data: {json.dumps({
-                'type': 'tool_start',
-                'name': event.get('name'),
-                'input': event_data.get('input'),
-            })}\n\n"
+            data = {
+                "type": "tool_start",
+                "name": event.get("name"),
+                "input": event_data.get("input"),
+            }
+            yield f"data: {json.dumps(data)}\n\n"
 
         # Tool finished - includes RAG sources
         elif event_type == "on_tool_end":
-            yield f"data: {json.dumps({
-                'type': 'tool_end',
-                'name': event.get('name'),
-                'output': event_data.get('output'),
-            })}\n\n"
+            # Extract output - may be a ToolMessage object or string
+            output = event_data.get("output")
+            if hasattr(output, "content"):
+                output = output.content
+            elif not isinstance(output, (str, type(None))):
+                output = str(output)
+            data = {
+                "type": "tool_end",
+                "name": event.get("name"),
+                "output": output,
+            }
+            yield f"data: {json.dumps(data)}\n\n"
 
         # Chat model streaming chunks
         elif event_type == "on_chat_model_stream":
@@ -148,39 +156,35 @@ async def chat_stream(message: str, thread_id: str) -> AsyncGenerator[str, None]
                         if isinstance(block, dict):
                             block_type = block.get("type")
                             if block_type == "thinking":
-                                yield f"data: {json.dumps({
-                                    'type': 'thinking',
-                                    'content': block.get('thinking', ''),
-                                })}\n\n"
+                                data = {
+                                    "type": "thinking",
+                                    "content": block.get("thinking", ""),
+                                }
+                                yield f"data: {json.dumps(data)}\n\n"
                             elif block_type == "text":
                                 text = block.get("text", "")
                                 if text:
-                                    yield f"data: {json.dumps({
-                                        'type': 'content',
-                                        'content': text,
-                                    })}\n\n"
+                                    data = {"type": "content", "content": text}
+                                    yield f"data: {json.dumps(data)}\n\n"
                         elif isinstance(block, str) and block:
-                            yield f"data: {json.dumps({
-                                'type': 'content',
-                                'content': block,
-                            })}\n\n"
+                            data = {"type": "content", "content": block}
+                            yield f"data: {json.dumps(data)}\n\n"
 
                 # Handle content as string
                 elif isinstance(content, str) and content:
-                    yield f"data: {json.dumps({
-                        'type': 'content',
-                        'content': content,
-                    })}\n\n"
+                    data = {"type": "content", "content": content}
+                    yield f"data: {json.dumps(data)}\n\n"
 
                 # Handle tool call chunks (model deciding to call a tool)
                 tool_call_chunks = getattr(chunk, "tool_call_chunks", None)
                 if tool_call_chunks:
                     for tool_chunk in tool_call_chunks:
-                        yield f"data: {json.dumps({
-                            'type': 'tool_call',
-                            'id': tool_chunk.get('id'),
-                            'name': tool_chunk.get('name'),
-                            'args': tool_chunk.get('args'),
-                        })}\n\n"
+                        data = {
+                            "type": "tool_call",
+                            "id": tool_chunk.get("id"),
+                            "name": tool_chunk.get("name"),
+                            "args": tool_chunk.get("args"),
+                        }
+                        yield f"data: {json.dumps(data)}\n\n"
 
     yield f"data: {json.dumps({'type': 'done'})}\n\n"

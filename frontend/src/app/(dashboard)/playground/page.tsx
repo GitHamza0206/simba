@@ -1,99 +1,154 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Loader2, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Bot, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { useChat, type ChatMessage } from "@/hooks";
 import { API_URL } from "@/lib/constants";
+import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  sources?: Array<{
-    document_name: string;
-    content: string;
-    score: number;
-  }>;
-  createdAt: Date;
+// ai-elements components
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+  ConversationEmptyState,
+} from "@/components/ai-elements/conversation";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
+import {
+  PromptInput,
+  PromptInputBody,
+  PromptInputTextarea,
+  PromptInputFooter,
+  PromptInputSubmit,
+} from "@/components/ai-elements/prompt-input";
+import {
+  Reasoning,
+  ReasoningTrigger,
+  ReasoningContent,
+} from "@/components/ai-elements/reasoning";
+import {
+  Sources,
+  SourcesTrigger,
+  SourcesContent,
+  Source,
+} from "@/components/ai-elements/sources";
+import {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
+
+function ChatMessageItem({ message }: { message: ChatMessage }) {
+  const isUser = message.role === "user";
+
+  return (
+    <Message from={message.role}>
+      <div>
+        {/* Sources - only for assistant messages */}
+        {!isUser && message.sources && message.sources.length > 0 && (
+          <Sources>
+            <SourcesTrigger count={message.sources.length} />
+            <SourcesContent>
+              {message.sources.map((source, idx) => (
+                <Source key={idx} title={source.document_name}>
+                  <span className="truncate max-w-[200px]">
+                    {source.document_name}
+                  </span>
+                </Source>
+              ))}
+            </SourcesContent>
+          </Sources>
+        )}
+
+        {/* Reasoning/Thinking - only for assistant messages */}
+        {!isUser && message.thinking && (
+          <Reasoning>
+            <ReasoningTrigger />
+            <ReasoningContent>{message.thinking}</ReasoningContent>
+          </Reasoning>
+        )}
+
+        {/* Tool calls - only for assistant messages */}
+        {!isUser &&
+          message.tools &&
+          message.tools.map((tool, idx) => (
+            <Tool key={idx} defaultOpen={false}>
+              <ToolHeader
+                title={tool.name}
+                type="tool-invocation"
+                state={
+                  tool.status === "running"
+                    ? "input-available"
+                    : tool.status === "error"
+                      ? "output-error"
+                      : "output-available"
+                }
+              />
+              <ToolContent>
+                {tool.input && <ToolInput input={tool.input} />}
+                {(tool.output || tool.status === "error") && (
+                  <ToolOutput
+                    output={tool.output}
+                    errorText={
+                      tool.status === "error" ? "Tool execution failed" : undefined
+                    }
+                  />
+                )}
+              </ToolContent>
+            </Tool>
+          ))}
+
+        {/* Message content */}
+        <MessageContent>
+          {isUser ? (
+            <p className="whitespace-pre-wrap">{message.content}</p>
+          ) : (
+            <MessageResponse>{message.content}</MessageResponse>
+          )}
+        </MessageContent>
+      </div>
+    </Message>
+  );
+}
+
+function ThinkingIndicator() {
+  return (
+    <Message from="assistant">
+      <div>
+        <Reasoning isStreaming>
+          <ReasoningTrigger />
+          <ReasoningContent>{""}</ReasoningContent>
+        </Reasoning>
+      </div>
+    </Message>
+  );
 }
 
 export default function PlaygroundPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [text, setText] = useState("");
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: input.trim(),
-      createdAt: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(`${API_URL}/api/v1/conversations/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: userMessage.content,
-          conversation_id: conversationId,
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to send message");
-
-      const data = await response.json();
-
-      if (!conversationId) {
-        setConversationId(data.conversation_id);
-      }
-
-      const assistantMessage: Message = {
-        id: data.id,
-        role: "assistant",
-        content: data.content,
-        sources: data.sources,
-        createdAt: new Date(data.created_at),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
+  const { messages, status, isThinking, sendMessage, clear } = useChat({
+    onError: (error) => {
       console.error("Chat error:", error);
-      const errorMessage: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: "Sorry, I encountered an error. Please make sure the backend is running.",
-        createdAt: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
+    },
+  });
+
+  const handleSubmit = (message: PromptInputMessage) => {
+    if (!message.text?.trim()) return;
+    sendMessage(message.text);
+    setText("");
   };
 
-  const handleClear = () => {
-    setMessages([]);
-    setConversationId(null);
-  };
+  const isStreaming = status === "streaming";
+  const isSubmitted = status === "submitted";
+  const isLoading = isStreaming || isSubmitted;
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col">
@@ -102,106 +157,73 @@ export default function PlaygroundPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Playground</h1>
           <p className="text-muted-foreground">
-            Test the chat experience as a customer would see it.
+            Test the chat experience with streaming responses.
           </p>
         </div>
-        <Button variant="outline" onClick={handleClear} disabled={messages.length === 0}>
+        <Button
+          variant="outline"
+          onClick={clear}
+          disabled={messages.length === 0 || isLoading}
+        >
           <Trash2 className="mr-2 h-4 w-4" />
           Clear Chat
         </Button>
       </div>
 
       {/* Chat Container */}
-      <Card className="flex flex-1 flex-col overflow-hidden">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {messages.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                <Bot className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold">Start a conversation</h3>
-              <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                This playground simulates the widget experience. Messages are sent to your backend
-                for processing.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
+      <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-background">
+        {messages.length === 0 ? (
+          <ConversationEmptyState
+            title="Start a conversation"
+            description="This playground simulates the widget experience with streaming responses. Messages are sent to your backend for processing."
+            icon={<Bot className="h-8 w-8" />}
+          />
+        ) : (
+          <Conversation className="flex-1">
+            <ConversationContent>
               {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn("flex gap-3", message.role === "user" && "flex-row-reverse")}
-                >
-                  <div
-                    className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                      message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
-                    )}
-                  >
-                    {message.role === "user" ? (
-                      <User className="h-4 w-4" />
-                    ) : (
-                      <Bot className="h-4 w-4" />
-                    )}
-                  </div>
-                  <div
-                    className={cn(
-                      "max-w-[80%] rounded-lg px-4 py-2",
-                      message.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    )}
-                  >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    {message.sources && message.sources.length > 0 && (
-                      <div className="mt-2 border-t border-border/50 pt-2">
-                        <p className="text-xs font-medium opacity-70">Sources:</p>
-                        {message.sources.map((source, idx) => (
-                          <p key={idx} className="text-xs opacity-60">
-                            [{idx + 1}] {source.document_name}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ChatMessageItem key={message.id} message={message} />
               ))}
-              {isLoading && (
-                <div className="flex gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                    <Bot className="h-4 w-4" />
-                  </div>
-                  <div className="rounded-lg bg-muted px-4 py-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
+              {isThinking &&
+                !messages[messages.length - 1]?.thinking &&
+                status === "streaming" && <ThinkingIndicator />}
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
+        )}
 
         {/* Input */}
         <div className="border-t p-4">
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your message..."
-              className="flex-1 rounded-md border bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              disabled={isLoading}
-            />
-            <Button type="submit" disabled={!input.trim() || isLoading}>
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-          </form>
+          <PromptInput onSubmit={handleSubmit}>
+            <PromptInputBody>
+              <PromptInputTextarea
+                placeholder="Type your message..."
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                disabled={isLoading}
+              />
+            </PromptInputBody>
+            <PromptInputFooter>
+              <div />
+              <PromptInputSubmit
+                disabled={!text.trim() || isLoading}
+                status={
+                  isSubmitted
+                    ? "submitted"
+                    : isStreaming
+                      ? "streaming"
+                      : status === "error"
+                        ? "error"
+                        : "ready"
+                }
+              />
+            </PromptInputFooter>
+          </PromptInput>
           <p className="mt-2 text-xs text-muted-foreground">
             Press Enter to send. Connected to: {API_URL}
           </p>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
