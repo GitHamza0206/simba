@@ -10,134 +10,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useChat, useCollections, type ChatMessage } from "@/hooks";
+import { useChat, useCollections } from "@/hooks";
 import { API_URL } from "@/lib/constants";
-import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 
-// ai-elements components
+// Chat components
 import {
-  Conversation,
-  ConversationContent,
-  ConversationScrollButton,
-  ConversationEmptyState,
-} from "@/components/ai-elements/conversation";
-import {
-  Message,
-  MessageContent,
-  MessageResponse,
-} from "@/components/ai-elements/message";
-import {
-  PromptInput,
-  PromptInputBody,
-  PromptInputTextarea,
-  PromptInputFooter,
-  PromptInputSubmit,
-  PromptInputTools,
-} from "@/components/ai-elements/prompt-input";
-import {
-  Reasoning,
-  ReasoningTrigger,
-  ReasoningContent,
-} from "@/components/ai-elements/reasoning";
-import {
-  Sources,
-  SourcesTrigger,
-  SourcesContent,
-  Source,
-} from "@/components/ai-elements/sources";
-import {
-  Tool,
-  ToolHeader,
-  ToolContent,
-  ToolInput,
-  ToolOutput,
-} from "@/components/ai-elements/tool";
-
-function ChatMessageItem({ message }: { message: ChatMessage }) {
-  const isUser = message.role === "user";
-
-  return (
-    <Message from={message.role}>
-      <div>
-        {/* Sources - only for assistant messages */}
-        {!isUser && message.sources && message.sources.length > 0 && (
-          <Sources>
-            <SourcesTrigger count={message.sources.length} />
-            <SourcesContent>
-              {message.sources.map((source, idx) => (
-                <Source key={idx} title={source.document_name}>
-                  <span className="truncate max-w-[200px]">
-                    {source.document_name}
-                  </span>
-                </Source>
-              ))}
-            </SourcesContent>
-          </Sources>
-        )}
-
-        {/* Reasoning/Thinking - only for assistant messages */}
-        {!isUser && message.thinking && (
-          <Reasoning>
-            <ReasoningTrigger />
-            <ReasoningContent>{message.thinking}</ReasoningContent>
-          </Reasoning>
-        )}
-
-        {/* Tool calls - only for assistant messages */}
-        {!isUser &&
-          message.tools &&
-          message.tools.map((tool, idx) => (
-            <Tool key={idx} defaultOpen={false}>
-              <ToolHeader
-                title={tool.name}
-                type="tool-invocation"
-                state={
-                  tool.status === "running"
-                    ? "input-available"
-                    : tool.status === "error"
-                      ? "output-error"
-                      : "output-available"
-                }
-              />
-              <ToolContent>
-                {tool.input && <ToolInput input={tool.input} />}
-                {(tool.output || tool.status === "error") && (
-                  <ToolOutput
-                    output={tool.output}
-                    errorText={
-                      tool.status === "error" ? "Tool execution failed" : undefined
-                    }
-                  />
-                )}
-              </ToolContent>
-            </Tool>
-          ))}
-
-        {/* Message content */}
-        <MessageContent>
-          {isUser ? (
-            <p className="whitespace-pre-wrap">{message.content}</p>
-          ) : (
-            <MessageResponse>{message.content}</MessageResponse>
-          )}
-        </MessageContent>
-      </div>
-    </Message>
-  );
-}
-
-function ThinkingIndicator() {
-  return (
-    <Message from="assistant">
-      <div>
-        <Reasoning isStreaming>
-          <ReasoningTrigger />
-          <ReasoningContent>{""}</ReasoningContent>
-        </Reasoning>
-      </div>
-    </Message>
-  );
-}
+  ChatContainer,
+  ChatEmptyState,
+  ChatMessage,
+  ChatInput,
+  ChatStatus,
+} from "@/components/chat";
 
 export default function PlaygroundPage() {
   const [text, setText] = useState("");
@@ -156,6 +39,7 @@ export default function PlaygroundPage() {
     setCollection,
     isThinking,
     sendMessage,
+    stop,
     clear,
   } = useChat({
     onError: (error) => {
@@ -170,13 +54,13 @@ export default function PlaygroundPage() {
     }
   }, [collection, collections, setCollection]);
 
-  const handleSubmit = (message: PromptInputMessage) => {
-    if (!message.text?.trim()) return;
+  const handleSubmit = () => {
+    if (!text.trim()) return;
     if (!collection) {
       console.error("No collection selected");
       return;
     }
-    sendMessage(message.text);
+    sendMessage(text);
     setText("");
   };
 
@@ -233,7 +117,7 @@ export default function PlaygroundPage() {
       {/* Chat Container */}
       <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-background">
         {messages.length === 0 ? (
-          <ConversationEmptyState
+          <ChatEmptyState
             title="Start a conversation"
             description={
               collection
@@ -243,58 +127,48 @@ export default function PlaygroundPage() {
             icon={<Bot className="h-8 w-8" />}
           />
         ) : (
-          <Conversation className="flex-1">
-            <ConversationContent>
-              {messages.map((message) => (
-                <ChatMessageItem key={message.id} message={message} />
-              ))}
-              {isThinking &&
-                !messages[messages.length - 1]?.thinking &&
-                status === "streaming" && <ThinkingIndicator />}
-            </ConversationContent>
-            <ConversationScrollButton />
-          </Conversation>
+          <ChatContainer>
+            {messages.map((message, idx) => (
+              <ChatMessage
+                key={message.id}
+                message={message}
+                isStreaming={isStreaming && idx === messages.length - 1}
+              />
+            ))}
+            {/* Show status when waiting for first content */}
+            {isStreaming &&
+              messages.length > 0 &&
+              !messages[messages.length - 1]?.content &&
+              !messages[messages.length - 1]?.tools?.some(t => t.status === "running") && (
+                <div className="flex gap-3 py-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <Bot className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1">
+                    <ChatStatus isThinking />
+                  </div>
+                </div>
+              )}
+          </ChatContainer>
         )}
 
         {/* Input */}
         <div className="border-t p-4">
-          <PromptInput onSubmit={handleSubmit}>
-            <PromptInputBody>
-              <PromptInputTextarea
-                placeholder={
-                  collection
-                    ? "Type your message..."
-                    : "Select a collection first..."
-                }
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                disabled={isLoading || !collection}
-              />
-            </PromptInputBody>
-            <PromptInputFooter>
-              <PromptInputTools>
-                {collection && (
-                  <span className="text-xs text-muted-foreground">
-                    Collection: {collection}
-                  </span>
-                )}
-              </PromptInputTools>
-              <PromptInputSubmit
-                disabled={!text.trim() || isLoading || !collection}
-                status={
-                  isSubmitted
-                    ? "submitted"
-                    : isStreaming
-                      ? "streaming"
-                      : status === "error"
-                        ? "error"
-                        : "ready"
-                }
-              />
-            </PromptInputFooter>
-          </PromptInput>
+          <ChatInput
+            value={text}
+            onChange={setText}
+            onSubmit={handleSubmit}
+            onStop={stop}
+            status={status}
+            placeholder={
+              collection
+                ? "Type your message..."
+                : "Select a collection first..."
+            }
+            disabled={!collection}
+          />
           <p className="mt-2 text-xs text-muted-foreground">
-            Press Enter to send. Connected to: {API_URL}
+            Press Enter to send, Shift+Enter for new line. Connected to: {API_URL}
           </p>
         </div>
       </div>

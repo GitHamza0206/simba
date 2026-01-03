@@ -66,26 +66,33 @@ def ingest_document(document_id: str, db: Session) -> None:
         chunks = chunker_service.chunk_text(text)
         logger.info(f"Created {len(chunks)} chunks")
 
-        # Step 4: Generate embeddings
-        logger.info("Generating embeddings")
+        # Step 4: Generate embeddings (dense + sparse)
+        logger.info("Generating dense embeddings")
         chunk_texts = [chunk.content for chunk in chunks]
         embeddings = embedding_service.get_embeddings(chunk_texts)
 
+        logger.info("Generating sparse embeddings")
+        sparse_embeddings = embedding_service.get_sparse_embeddings(chunk_texts)
+
         # Step 5: Store in Qdrant
-        logger.info(f"Storing {len(embeddings)} vectors in Qdrant")
+        logger.info(f"Storing {len(embeddings)} vectors (dense + sparse) in Qdrant")
 
         # Ensure collection exists
         collection_name = document.collection.name
         qdrant_service.create_collection(collection_name)
 
-        # Prepare points for Qdrant
+        # Prepare points for Qdrant (dense + sparse vectors)
         points = []
-        for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+        for i, (chunk, embedding, sparse) in enumerate(
+            zip(chunks, embeddings, sparse_embeddings)
+        ):
             point_id = str(uuid4())
             points.append(
                 {
                     "id": point_id,
                     "vector": embedding,
+                    "sparse_indices": sparse[0],
+                    "sparse_values": sparse[1],
                     "payload": {
                         "document_id": document_id,
                         "document_name": document.name,

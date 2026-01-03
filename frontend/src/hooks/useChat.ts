@@ -11,6 +11,21 @@ export type SSEEventType =
   | "error"
   | "done";
 
+export interface LatencyBreakdown {
+  // Retrieval latency
+  embedding_ms?: number;
+  search_ms?: number;
+  rerank_ms?: number;
+  // Response latency
+  ttft_ms?: number; // Time to first token
+  generation_ms?: number; // LLM generation time
+  total_ms?: number;
+  // Token counts
+  input_tokens?: number;
+  output_tokens?: number;
+  reasoning_tokens?: number;
+}
+
 export interface SSEEvent {
   type: SSEEventType;
   content?: string;
@@ -18,6 +33,8 @@ export interface SSEEvent {
   name?: string;
   input?: Record<string, unknown>;
   output?: string;
+  latency?: LatencyBreakdown; // Tool latency breakdown
+  response_latency?: LatencyBreakdown; // Response latency (in done event)
   id?: string;
   args?: string;
 }
@@ -27,6 +44,7 @@ export interface ToolCall {
   input?: Record<string, unknown>;
   output?: string;
   status: "running" | "completed" | "error";
+  latency?: LatencyBreakdown;
 }
 
 export interface ChatMessage {
@@ -40,6 +58,10 @@ export interface ChatMessage {
     content: string;
     score?: number;
   }>;
+  latency?: {
+    retrieval?: LatencyBreakdown;
+    response?: LatencyBreakdown;
+  };
   createdAt: Date;
 }
 
@@ -185,6 +207,8 @@ export function useChat(options: UseChatOptions = {}) {
         let currentContent = "";
         const currentTools: ToolCall[] = [];
         let sources: ChatMessage["sources"] = undefined;
+        let retrievalLatency: LatencyBreakdown | undefined = undefined;
+        let responseLatency: LatencyBreakdown | undefined = undefined;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -237,6 +261,7 @@ export function useChat(options: UseChatOptions = {}) {
                     ...currentTools[toolIndex],
                     output: event.output,
                     status: "completed",
+                    latency: event.latency,
                   };
 
                   // Parse sources from RAG tool output
@@ -246,6 +271,10 @@ export function useChat(options: UseChatOptions = {}) {
                     );
                     if (parsedSources) {
                       sources = parsedSources;
+                    }
+                    // Capture retrieval latency from RAG tool
+                    if (event.latency) {
+                      retrievalLatency = event.latency;
                     }
                   }
 
@@ -287,6 +316,18 @@ export function useChat(options: UseChatOptions = {}) {
               case "done":
                 setStatus("ready");
                 setIsThinking(false);
+                // Capture response latency from done event
+                if (event.response_latency) {
+                  responseLatency = event.response_latency;
+                }
+                // Build latency object if we have any data
+                const latencyData =
+                  retrievalLatency || responseLatency
+                    ? {
+                        retrieval: retrievalLatency,
+                        response: responseLatency,
+                      }
+                    : undefined;
                 // Call onFinish with the final message
                 const finalMessage: ChatMessage = {
                   id: assistantMessageId,
@@ -295,8 +336,17 @@ export function useChat(options: UseChatOptions = {}) {
                   thinking: currentThinking || undefined,
                   tools: currentTools.length > 0 ? currentTools : undefined,
                   sources,
+                  latency: latencyData,
                   createdAt: new Date(),
                 };
+                // Update message with final latency data
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantMessageId
+                      ? { ...msg, latency: latencyData }
+                      : msg
+                  )
+                );
                 options.onFinish?.(finalMessage);
                 break;
             }

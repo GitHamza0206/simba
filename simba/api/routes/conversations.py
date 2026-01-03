@@ -3,11 +3,18 @@
 from datetime import datetime
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from simba.services.chat_service import chat as chat_service, chat_stream as chat_stream_service
+from simba.services.chat_service import (
+    chat as chat_service,
+    chat_stream as chat_stream_service,
+    delete_conversation as delete_conversation_service,
+    get_conversation_count,
+    get_conversation_messages as get_messages_service,
+    list_conversations as list_conversations_service,
+)
 
 router = APIRouter(prefix="/conversations")
 
@@ -54,10 +61,25 @@ class ConversationListResponse(BaseModel):
 
 
 @router.get("", response_model=ConversationListResponse)
-async def list_conversations():
-    """List all conversations."""
-    # TODO: Implement actual conversation listing
-    return ConversationListResponse(items=[], total=0)
+async def list_conversations(
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    """List all conversations with pagination."""
+    conversations = await list_conversations_service(limit=limit, offset=offset)
+    total = await get_conversation_count()
+
+    items = [
+        ConversationResponse(
+            id=conv["id"],
+            created_at=conv.get("updated_at", datetime.utcnow()),
+            updated_at=conv.get("updated_at", datetime.utcnow()),
+            message_count=0,  # Would need additional query to get accurate count
+        )
+        for conv in conversations
+    ]
+
+    return ConversationListResponse(items=items, total=total)
 
 
 @router.post("/chat", response_model=MessageResponse)
@@ -104,19 +126,46 @@ async def chat_stream(request: MessageRequest):
 @router.get("/{conversation_id}", response_model=ConversationResponse)
 async def get_conversation(conversation_id: str):
     """Get conversation details."""
-    # TODO: Implement actual conversation retrieval
-    raise HTTPException(status_code=404, detail="Conversation not found")
+    messages = await get_messages_service(conversation_id)
+
+    if not messages:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    return ConversationResponse(
+        id=conversation_id,
+        created_at=datetime.utcnow(),  # Could be improved with actual timestamp
+        updated_at=datetime.utcnow(),
+        message_count=len(messages),
+    )
 
 
-@router.get("/{conversation_id}/messages", response_model=list[MessageResponse])
+@router.get("/{conversation_id}/messages")
 async def get_conversation_messages(conversation_id: str):
     """Get all messages in a conversation."""
-    # TODO: Implement actual message retrieval
-    return []
+    messages = await get_messages_service(conversation_id)
+
+    if not messages:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    # Return messages in a simpler format (not MessageResponse which has sources)
+    return [
+        {
+            "id": msg.get("id") or str(uuid4()),
+            "conversation_id": conversation_id,
+            "role": msg["role"],
+            "content": msg["content"],
+            "tool_name": msg.get("tool_name"),
+        }
+        for msg in messages
+    ]
 
 
 @router.delete("/{conversation_id}")
 async def delete_conversation(conversation_id: str):
-    """Delete a conversation."""
-    # TODO: Implement actual conversation deletion
+    """Delete a conversation and all its messages."""
+    success = await delete_conversation_service(conversation_id)
+
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete conversation")
+
     return {"deleted": True, "id": conversation_id}

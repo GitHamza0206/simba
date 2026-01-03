@@ -28,6 +28,8 @@ dependencies = [
     "langchain-community>=0.3.14",
     "langchain-openai>=0.3.0",
     "langgraph>=0.2.60",
+    "langgraph-checkpoint-postgres>=2.0.0",
+    "psycopg[binary,pool]>=3.2.0",  # Required for async postgres checkpointer
 
     # Database
     "sqlalchemy>=2.0.40",
@@ -36,6 +38,7 @@ dependencies = [
     # Vector store & embeddings
     "qdrant-client>=1.9.0",
     "fastembed>=0.4.0",
+    "sentence-transformers>=3.4.0",  # For cross-encoder reranking
 
     # Object storage
     "minio>=7.2.0",
@@ -51,6 +54,10 @@ dependencies = [
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
     "python-dotenv>=1.0.1",
+
+    # Observability
+    "prometheus_client>=0.21.0",
+    "cachetools>=5.5.0",
 ]
 
 [project.optional-dependencies]
@@ -66,7 +73,6 @@ dev = [
 # Optional: Additional embedding models
 ml = [
     "langchain-huggingface>=0.1.2",
-    "sentence-transformers>=3.4.0",
 ]
 
 [project.scripts]
