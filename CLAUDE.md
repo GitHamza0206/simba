@@ -191,3 +191,21 @@ bun run build
 | PostgreSQL | 5432 |
 | Qdrant | 6333, 6334 |
 | MinIO | 9000 (API), 9001 (Console) |
+
+## Pre-commit Checks
+
+**IMPORTANT**: Always run linters before committing changes:
+
+```bash
+# Python - run ruff linter and formatter
+uv run ruff check --fix .
+uv run ruff format .
+
+# Frontend - run ESLint and TypeScript checks
+cd frontend && pnpm lint && pnpm type-check
+```
+
+Or run all checks via pre-commit:
+```bash
+uv run pre-commit run --all-files
+```
