@@ -51,7 +51,6 @@ function EvalRow({
   onUpdateComment,
   isDeleting,
   isRunning,
-  collectionName,
 }: {
   evalItem: EvalItem;
   onDelete: () => void;
@@ -59,7 +58,6 @@ function EvalRow({
   onUpdateComment: (comment: string) => void;
   isDeleting: boolean;
   isRunning: boolean;
-  collectionName: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [editingComment, setEditingComment] = useState(false);
@@ -420,7 +418,6 @@ export default function EvalsPage() {
                       onUpdateComment={(comment) => handleUpdateComment(evalItem.id, comment)}
                       isDeleting={deletingId === evalItem.id}
                       isRunning={runningId === evalItem.id}
-                      collectionName={selectedCollection}
                     />
                   ))}
                 </tbody>

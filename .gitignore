@@ -42,3 +42,4 @@ dump.rdb
 .cursor/*
 
 .db 
+node_modules

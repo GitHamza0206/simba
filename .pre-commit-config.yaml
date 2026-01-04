@@ -25,7 +25,7 @@ repos:
     hooks:
       - id: eslint
         name: eslint
-        entry: bash -c 'cd frontend && pnpm lint'
+        entry: bash -c 'cd frontend && ./node_modules/.bin/eslint src --max-warnings=0'
         language: system
         files: ^frontend/.*\.(ts|tsx|js|jsx)$
         pass_filenames: false

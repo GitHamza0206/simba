@@ -10,7 +10,7 @@ interface ChatMessage {
 type ChatStatus = "ready" | "submitted" | "streaming" | "error";
 interface UseSimbaChatOptions {
     apiUrl: string;
-    apiKey: string;
+    apiKey?: string;
     collection?: string;
     onError?: (error: Error) => void;
     onMessage?: (message: ChatMessage) => void;
@@ -24,7 +24,7 @@ interface UseSimbaChatReturn {
 }
 interface SimbaChatProps {
     apiUrl: string;
-    apiKey: string;
+    apiKey?: string;
     collection?: string;
     placeholder?: string;
     className?: string;

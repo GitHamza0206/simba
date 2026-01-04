@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { ChatWidgetWrapper } from "@/components/chat/chat-widget-wrapper";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,6 +10,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Header />
         <main className="flex-1 overflow-auto bg-muted/30 p-6">{children}</main>
       </div>
+      <ChatWidgetWrapper />
     </div>
   );
 }
