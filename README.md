@@ -199,6 +199,4 @@ We welcome contributions! Fork the repo, create a branch, and submit a PR.
 - Open an issue on [GitHub](https://github.com/GitHamza0206/simba/issues)
 - Contact: [zeroualihamza0206@gmail.com](mailto:zeroualihamza0206@gmail.com)
 
-## License
 
-MIT License - use it however you want.
