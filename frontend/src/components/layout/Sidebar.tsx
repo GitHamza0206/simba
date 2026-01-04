@@ -9,6 +9,7 @@ import {
   FileText,
   MessageSquare,
   BarChart3,
+  ClipboardCheck,
   Settings,
   HelpCircle,
   Play,
@@ -20,6 +21,7 @@ const navigation = [
   { name: "Documents", href: ROUTES.DOCUMENTS, icon: FileText },
   { name: "Conversations", href: ROUTES.CONVERSATIONS, icon: MessageSquare },
   { name: "Analytics", href: ROUTES.ANALYTICS, icon: BarChart3 },
+  { name: "Evals", href: ROUTES.EVALS, icon: ClipboardCheck },
   { name: "Settings", href: ROUTES.SETTINGS, icon: Settings },
 ];
 

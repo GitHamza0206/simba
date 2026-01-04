@@ -180,3 +180,48 @@ export interface ConversationListItem {
   updated_at: string;
   message_count: number;
 }
+
+// Eval Types
+export interface EvalItem {
+  id: string;
+  question: string;
+  response: string | null;
+  sources: string[] | null;
+  sources_groundtruth: string[] | null;
+  comment: string | null;
+  latency_ms: number | null;
+  conversation_id: string | null;
+  conversation_history: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EvalItemCreate {
+  question: string;
+  response?: string | null;
+  sources?: string[] | null;
+  sources_groundtruth?: string[] | null;
+  comment?: string | null;
+  latency_ms?: number | null;
+  conversation_id?: string | null;
+  conversation_history?: string | null;
+}
+
+export interface EvalItemUpdate {
+  comment?: string | null;
+  sources_groundtruth?: string[] | null;
+}
+
+export interface EvalListResponse {
+  items: EvalItem[];
+  total: number;
+}
+
+export interface GeneratedQuestion {
+  question: string;
+  source_documents: string[];
+}
+
+export interface GenerateQuestionsResponse {
+  questions: GeneratedQuestion[];
+}

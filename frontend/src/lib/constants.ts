@@ -10,6 +10,7 @@ export const ROUTES = {
   DOCUMENTS: "/documents",
   CONVERSATIONS: "/conversations",
   ANALYTICS: "/analytics",
+  EVALS: "/evals",
   SETTINGS: "/settings",
 } as const;
 
@@ -21,4 +22,5 @@ export const API_ROUTES = {
   RETRIEVAL: "/api/v1/retrieval",
   HEALTH: "/api/v1/health",
   ANALYTICS: "/api/v1/analytics",
+  EVALS: "/api/v1/evals",
 } as const;

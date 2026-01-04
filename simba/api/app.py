@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from simba.api.routes import analytics, collections, conversations, documents, health, metrics
+from simba.api.routes import analytics, collections, conversations, documents, evals, health, metrics
 from simba.core.config import settings
 from simba.models import init_db
 from simba.services.chat_service import shutdown_checkpointer
@@ -50,6 +50,7 @@ def create_app() -> FastAPI:
     app.include_router(documents.router, prefix=settings.api_prefix, tags=["documents"])
     app.include_router(conversations.router, prefix=settings.api_prefix, tags=["conversations"])
     app.include_router(analytics.router, prefix=settings.api_prefix, tags=["analytics"])
+    app.include_router(evals.router, prefix=settings.api_prefix, tags=["evals"])
 
     return app
 
