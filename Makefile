@@ -1,124 +1,66 @@
-# Simplified Makefile for Simba Docker Build and Deployment
+# Makefile for Simba
 
-# Variables with sensible defaults
-DEVICE ?= cpu
+# Run Celery worker
+celery:
+	@echo "Starting Celery worker..."
+	@uv run celery -A simba.core.celery_config.celery_app worker --loglevel=info -Q ingestion
 
-# Set platform based on architecture
-ifeq ($(shell uname -m),arm64)
-	DOCKER_PLATFORM := linux/arm64
-else
-	DOCKER_PLATFORM := linux/amd64
-endif
+# Run server with reload
+server:
+	@echo "Starting server with reload..."
+	@uv run uvicorn simba.api.app:app --reload
 
-# Free up Docker storage before building
-docker-prune:
-	@echo "Cleaning Docker resources to free up storage..."
-	@docker system prune -f
-	@docker builder prune -f
+# Start all services with docker-compose
+up:
+	@echo "Starting all services..."
+	@docker compose -f docker/docker-compose.yml up -d
+	@echo "Services started!"
+	@echo "  - Server:   localhost:8000"
+	@echo "  - Redis:    localhost:6379"
+	@echo "  - Postgres: localhost:5432"
+	@echo "  - Qdrant:   localhost:6333"
+	@echo "  - MinIO:    localhost:9000 (console: localhost:9001)"
 
-# Simple network setup
-setup-network:
-	@echo "Setting up Docker network..."
-	@docker network inspect simba_network >/dev/null 2>&1 || docker network create simba_network
+# Start infrastructure services only (for local development)
+services:
+	@echo "Starting infrastructure services..."
+	@docker compose -f docker/docker-compose.yml up -d redis postgres qdrant minio
+	@echo "Infrastructure services started!"
+	@echo "  - Redis:    localhost:6379"
+	@echo "  - Postgres: localhost:5432"
+	@echo "  - Qdrant:   localhost:6333"
+	@echo "  - MinIO:    localhost:9000 (console: localhost:9001)"
 
-# Setup Buildx builder (preserves cache)
-setup-builder:
-	@echo "Setting up Buildx builder..."
-	@if ! docker buildx inspect simba-builder >/dev/null 2>&1; then \
-	  docker buildx create --name simba-builder \
-	    --driver docker-container \
-	    --driver-opt "image=moby/buildkit:buildx-stable-1" \
-	    --driver-opt "network=host" \
-	    --buildkitd-flags '--allow-insecure-entitlement security.insecure' \
-	    --bootstrap --use; \
-	else \
-	  docker buildx use simba-builder; \
-	fi
-
-# Build frontend image
-build-frontend:
-	@echo "Building frontend Docker image..."
-	@docker build -t simba-frontend:latest -f frontend/Dockerfile frontend
-
-# Build image
-build: build-frontend setup-network setup-builder
-	@echo "Building backend Docker image..."
-	@docker buildx build --builder simba-builder \
-		--platform ${DOCKER_PLATFORM} \
-		--build-arg USE_GPU=${USE_GPU} \
-		--build-arg BUILDKIT_INLINE_CACHE=1 \
-		--progress=plain \
-		-t simba-backend:latest \
-		-f docker/Dockerfile \
-		--load \
-		.
-
-# Updated up command with proper profile handling
-up: setup-network
-	@echo "Starting containers..."
-	@if [ "${DEVICE}" = "cuda" ]; then \
-		echo "Detected CUDA device - enabling GPU and Ollama"; \
-		DEVICE=cuda RUNTIME=nvidia RUN_OLLAMA=ollama docker compose -f docker/docker-compose.yml up -d; \
-	elif [ "${ENABLE_OLLAMA}" = "true" ]; then \
-		echo "Enabling Ollama without GPU"; \
-		DEVICE=${DEVICE} RUNTIME="" RUN_OLLAMA=ollama docker compose -f docker/docker-compose.yml up -d; \
-	else \
-		echo "Running without Ollama"; \
-		DEVICE=${DEVICE} RUNTIME="" RUN_OLLAMA=none docker compose -f docker/docker-compose.yml up -d --force-recreate; \
-	fi
-	@echo "Containers started successfully!"
-
-# Down command - keep this part
+# Stop all services
 down:
-	@echo "Stopping containers..."
+	@echo "Stopping services..."
 	@docker compose -f docker/docker-compose.yml down
-	@echo "Containers stopped."
-
-# Clean everything
-clean: down
-	@echo "Cleaning Docker resources..."
-	@docker network rm simba_network 2>/dev/null || true
-	@docker volume rm docker_redis_data docker_ollama_models 2>/dev/null || true
-	@docker system prune -af --volumes
-	@echo "Cleanup complete!"
+	@echo "Services stopped."
 
 # Show logs
 logs:
 	@docker compose -f docker/docker-compose.yml logs -f
 
+# Run RAG evaluation
+evaluate:
+	@echo "Running RAG evaluation..."
+	@uv run python -m simba.evaluation.evaluate --test-file simba/evaluation/test_queries.json --collection default
+
+# Run RAG evaluation with reranking
+evaluate-rerank:
+	@echo "Running RAG evaluation with reranking..."
+	@uv run python -m simba.evaluation.evaluate --test-file simba/evaluation/test_queries.json --collection default --rerank
+
 # Show help
 help:
-	@echo "Simba Docker Commands:"
-	@echo "  make build         - Build Docker image"
-	@echo "  make up            - Start containers"
-	@echo "  make down          - Stop containers"
-	@echo "  make clean         - Clean up Docker resources"
-	@echo "  make logs          - View logs"
-	@echo ""
-	@echo "Options:"
-	@echo "  DEVICE=cpu|cuda|auto   (current: $(DEVICE))"
-	@echo "  Current platform: $(DOCKER_PLATFORM)"
-	@echo ""
-	@echo "Note: MPS (Metal Performance Shaders) is not supported in Docker containers."
+	@echo "Simba Commands:"
+	@echo "  make server         - Run server with reload"
+	@echo "  make celery         - Run Celery worker locally"
+	@echo "  make up             - Start all services (docker-compose)"
+	@echo "  make services       - Start infrastructure only (redis, postgres, qdrant, minio)"
+	@echo "  make down           - Stop all services"
+	@echo "  make logs           - View logs"
+	@echo "  make evaluate       - Run RAG accuracy evaluation"
+	@echo "  make evaluate-rerank - Run RAG evaluation with reranking"
 
-# Push both backend and frontend images to Docker Hub
-push-docker:
-	@if [ -z "$(USER)" ]; then \
-		echo "Error: USER is not set. Set it as an environment variable or pass it as 'make push-docker USER=yourdockerhubuser'"; \
-		exit 1; \
-	fi
-	@echo "Tagging and pushing backend image..."
-	docker tag simba-backend:latest $(USER)/simba-backend:latest
-	docker push $(USER)/simba-backend:latest
-	@echo "Tagging and pushing frontend image..."
-	docker tag simba-frontend:latest $(USER)/simba-frontend:latest
-	docker push $(USER)/simba-frontend:latest
-
-# Run Supabase migrations and seed locally
-migrate:
-	@echo "Ensuring migration script is executable..."
-	@chmod +x scripts/migrate_local.sh
-	@echo "Running Supabase migrations and seed..."
-	@cd simba && ../scripts/migrate_local.sh
-
-.PHONY: setup-network setup-builder build up down clean logs help docker-prune push-docker migrate
+.PHONY: server celery up services down logs help evaluate evaluate-rerank

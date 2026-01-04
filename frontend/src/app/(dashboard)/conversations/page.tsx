@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Search, Trash2, Loader2, Calendar } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { MessageSquare, Search, Trash2, Loader2, Calendar, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useConversations, useDeleteConversation } from "@/hooks";
@@ -38,14 +39,19 @@ function formatDate(dateString: string): string {
 function ConversationRow({
   conversation,
   onDelete,
+  onOpen,
   isDeleting,
 }: {
   conversation: ConversationListItem;
   onDelete: () => void;
+  onOpen: () => void;
   isDeleting: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between border-b p-4 last:border-0 hover:bg-muted/50">
+    <div
+      className="flex items-center justify-between border-b p-4 last:border-0 hover:bg-muted/50 cursor-pointer"
+      onClick={onOpen}
+    >
       <div className="flex items-center gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
           <MessageSquare className="h-5 w-5 text-primary" />
@@ -65,7 +71,21 @@ function ConversationRow({
         <Button
           variant="ghost"
           size="sm"
-          onClick={onDelete}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen();
+          }}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
           disabled={isDeleting}
           className="text-red-600 hover:text-red-700"
         >
@@ -83,11 +103,16 @@ function ConversationRow({
 export default function ConversationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const router = useRouter();
 
   const { data, isLoading } = useConversations();
   const deleteMutation = useDeleteConversation();
 
   const conversations = data?.items ?? [];
+
+  const handleOpen = (conversation: ConversationListItem) => {
+    router.push(`/playground?conversation=${conversation.id}`);
+  };
 
   // Filter conversations by search query (by ID for now)
   const filteredConversations = searchQuery
@@ -166,6 +191,7 @@ export default function ConversationsPage() {
                   key={conversation.id}
                   conversation={conversation}
                   onDelete={() => handleDelete(conversation)}
+                  onOpen={() => handleOpen(conversation)}
                   isDeleting={deletingId === conversation.id}
                 />
               ))}

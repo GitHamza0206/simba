@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL } from "@/lib/constants";
 
 // SSE Event types from the backend
@@ -11,6 +11,21 @@ export type SSEEventType =
   | "error"
   | "done";
 
+export interface LatencyBreakdown {
+  // Retrieval latency
+  embedding_ms?: number;
+  search_ms?: number;
+  rerank_ms?: number;
+  // Response latency
+  ttft_ms?: number; // Time to first token
+  generation_ms?: number; // LLM generation time
+  total_ms?: number;
+  // Token counts
+  input_tokens?: number;
+  output_tokens?: number;
+  reasoning_tokens?: number;
+}
+
 export interface SSEEvent {
   type: SSEEventType;
   content?: string;
@@ -18,6 +33,8 @@ export interface SSEEvent {
   name?: string;
   input?: Record<string, unknown>;
   output?: string;
+  latency?: LatencyBreakdown; // Tool latency breakdown
+  response_latency?: LatencyBreakdown; // Response latency (in done event)
   id?: string;
   args?: string;
 }
@@ -27,6 +44,7 @@ export interface ToolCall {
   input?: Record<string, unknown>;
   output?: string;
   status: "running" | "completed" | "error";
+  latency?: LatencyBreakdown;
 }
 
 export interface ChatMessage {
@@ -40,23 +58,78 @@ export interface ChatMessage {
     content: string;
     score?: number;
   }>;
+  latency?: {
+    retrieval?: LatencyBreakdown;
+    response?: LatencyBreakdown;
+  };
   createdAt: Date;
 }
 
 export type ChatStatus = "ready" | "submitted" | "streaming" | "error";
 
 interface UseChatOptions {
+  initialConversationId?: string | null;
   onError?: (error: Error) => void;
   onFinish?: (message: ChatMessage) => void;
+  onConversationChange?: (conversationId: string | null) => void;
 }
 
 export function useChat(options: UseChatOptions = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<ChatStatus>("ready");
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(
+    options.initialConversationId ?? null
+  );
   const [collection, setCollection] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const hasLoadedRef = useRef(false);
+
+  // Load conversation history from backend
+  const loadConversation = useCallback(async (convId: string) => {
+    setIsLoadingHistory(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/api/v1/conversations/${convId}/messages`
+      );
+      if (!response.ok) {
+        if (response.status === 404) {
+          // Conversation not found, clear it
+          setConversationId(null);
+          options.onConversationChange?.(null);
+          return;
+        }
+        throw new Error(`Failed to load conversation: ${response.status}`);
+      }
+      const data = await response.json();
+
+      // Convert backend messages to ChatMessage format
+      const loadedMessages: ChatMessage[] = data
+        .filter((msg: { role: string }) => msg.role === "user" || msg.role === "assistant")
+        .map((msg: { id?: string; role: "user" | "assistant"; content: string }) => ({
+          id: msg.id || crypto.randomUUID(),
+          role: msg.role,
+          content: msg.content,
+          createdAt: new Date(),
+        }));
+
+      setMessages(loadedMessages);
+    } catch (error) {
+      console.error("Failed to load conversation:", error);
+      options.onError?.(error instanceof Error ? error : new Error("Failed to load conversation"));
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [options]);
+
+  // Load conversation only on initial mount if initialConversationId is provided
+  useEffect(() => {
+    if (options.initialConversationId && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadConversation(options.initialConversationId);
+    }
+  }, [options.initialConversationId, loadConversation]);
 
   const parseSSEEvent = (line: string): SSEEvent | null => {
     if (!line.startsWith("data: ")) return null;
@@ -168,10 +241,13 @@ export function useChat(options: UseChatOptions = {}) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        // Update conversation ID from response header or first message
+        // Update conversation ID from response header
         const newConversationId = response.headers.get("X-Conversation-Id");
-        if (newConversationId && !conversationId) {
+        if (newConversationId && newConversationId !== conversationId) {
           setConversationId(newConversationId);
+          // Mark as loaded so we don't try to reload our own conversation
+          hasLoadedRef.current = true;
+          options.onConversationChange?.(newConversationId);
         }
 
         setStatus("streaming");
@@ -185,6 +261,8 @@ export function useChat(options: UseChatOptions = {}) {
         let currentContent = "";
         const currentTools: ToolCall[] = [];
         let sources: ChatMessage["sources"] = undefined;
+        let retrievalLatency: LatencyBreakdown | undefined = undefined;
+        let responseLatency: LatencyBreakdown | undefined = undefined;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -237,6 +315,7 @@ export function useChat(options: UseChatOptions = {}) {
                     ...currentTools[toolIndex],
                     output: event.output,
                     status: "completed",
+                    latency: event.latency,
                   };
 
                   // Parse sources from RAG tool output
@@ -246,6 +325,10 @@ export function useChat(options: UseChatOptions = {}) {
                     );
                     if (parsedSources) {
                       sources = parsedSources;
+                    }
+                    // Capture retrieval latency from RAG tool
+                    if (event.latency) {
+                      retrievalLatency = event.latency;
                     }
                   }
 
@@ -287,6 +370,18 @@ export function useChat(options: UseChatOptions = {}) {
               case "done":
                 setStatus("ready");
                 setIsThinking(false);
+                // Capture response latency from done event
+                if (event.response_latency) {
+                  responseLatency = event.response_latency;
+                }
+                // Build latency object if we have any data
+                const latencyData =
+                  retrievalLatency || responseLatency
+                    ? {
+                        retrieval: retrievalLatency,
+                        response: responseLatency,
+                      }
+                    : undefined;
                 // Call onFinish with the final message
                 const finalMessage: ChatMessage = {
                   id: assistantMessageId,
@@ -295,8 +390,17 @@ export function useChat(options: UseChatOptions = {}) {
                   thinking: currentThinking || undefined,
                   tools: currentTools.length > 0 ? currentTools : undefined,
                   sources,
+                  latency: latencyData,
                   createdAt: new Date(),
                 };
+                // Update message with final latency data
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantMessageId
+                      ? { ...msg, latency: latencyData }
+                      : msg
+                  )
+                );
                 options.onFinish?.(finalMessage);
                 break;
             }
@@ -347,7 +451,9 @@ export function useChat(options: UseChatOptions = {}) {
     setConversationId(null);
     setStatus("ready");
     setIsThinking(false);
-  }, []);
+    hasLoadedRef.current = false;
+    options.onConversationChange?.(null);
+  }, [options]);
 
   return {
     messages,
@@ -356,6 +462,7 @@ export function useChat(options: UseChatOptions = {}) {
     collection,
     setCollection,
     isThinking,
+    isLoadingHistory,
     sendMessage,
     stop,
     clear,

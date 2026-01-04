@@ -5,9 +5,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from simba.api.routes import analytics, collections, conversations, documents, health
+from simba.api.routes import analytics, collections, conversations, documents, health, metrics
 from simba.core.config import settings
 from simba.models import init_db
+from simba.services.chat_service import shutdown_checkpointer
 
 
 @asynccontextmanager
@@ -17,6 +18,7 @@ async def lifespan(app: FastAPI):
     init_db()
     yield
     # Shutdown
+    await shutdown_checkpointer()
 
 
 def create_app() -> FastAPI:
@@ -38,10 +40,12 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["X-Conversation-Id"],
     )
 
     # Routes
     app.include_router(health.router, prefix=settings.api_prefix, tags=["health"])
+    app.include_router(metrics.router, prefix=settings.api_prefix, tags=["metrics"])
     app.include_router(collections.router, prefix=settings.api_prefix, tags=["collections"])
     app.include_router(documents.router, prefix=settings.api_prefix, tags=["documents"])
     app.include_router(conversations.router, prefix=settings.api_prefix, tags=["conversations"])

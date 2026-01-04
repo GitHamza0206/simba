@@ -32,13 +32,30 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://simba:simba@localhost:5432/simba"
 
     # LLM (provider-agnostic via init_chat_model)
-    # Format: "provider/model" e.g. "openai/gpt-4o-mini", "anthropic/claude-3-opus"
+    # Format: "provider:model" e.g. "openai:gpt-4o-mini", "anthropic:claude-3-opus"
     llm_model: str = "openai:gpt-4o-mini"
     llm_temperature: float = 0.1
+
+    # LLM Reasoning (for models that support it: o1, o3, claude with thinking, etc.)
+    # Values: None (disabled), "low", "medium", "high"
+    llm_reasoning_effort: str | None = None
+    # Anthropic thinking budget (only used when provider is anthropic and reasoning is enabled)
+    llm_thinking_budget: int = 10000
 
     # Embedding (FastEmbed - local, free, fast)
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_dimensions: int = 384
+
+    # Retrieval settings
+    retrieval_min_score: float = 0.7
+    retrieval_limit: int = 5
+    retrieval_rerank: bool = True
+    retrieval_hybrid: bool = True
+    retrieval_sparse_model: str = "prithvida/Splade_PP_en_v1"
+
+    # Reranker settings
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    reranker_top_k: int = 5
 
     # Qdrant
     qdrant_host: str = "localhost"

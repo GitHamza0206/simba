@@ -1,5 +1,6 @@
 """Qdrant vector database service."""
 
+import logging
 from functools import lru_cache
 from typing import Any
 
@@ -8,12 +9,20 @@ from qdrant_client.models import (
     Distance,
     FieldCondition,
     Filter,
+    Fusion,
     MatchValue,
     PointStruct,
+    Prefetch,
+    SparseIndexParams,
+    SparseVector,
+    SparseVectorParams,
     VectorParams,
 )
 
 from simba.core.config import settings
+from simba.services.metrics_service import track_latency, SEARCH_LATENCY
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache
@@ -25,11 +34,12 @@ def get_qdrant_client() -> QdrantClient:
     )
 
 
-def create_collection(collection_name: str) -> None:
-    """Create a new Qdrant collection.
+def create_collection(collection_name: str, with_sparse: bool = True) -> None:
+    """Create a new Qdrant collection with optional sparse vector support.
 
     Args:
         collection_name: Name of the collection to create.
+        with_sparse: Whether to include sparse vector configuration for hybrid search.
     """
     client = get_qdrant_client()
 
@@ -38,12 +48,21 @@ def create_collection(collection_name: str) -> None:
     if any(c.name == collection_name for c in collections):
         return
 
+    sparse_config = None
+    if with_sparse:
+        sparse_config = {
+            "text-sparse": SparseVectorParams(
+                index=SparseIndexParams(on_disk=False)
+            )
+        }
+
     client.create_collection(
         collection_name=collection_name,
         vectors_config=VectorParams(
             size=settings.embedding_dimensions,
             distance=Distance.COSINE,
         ),
+        sparse_vectors_config=sparse_config,
     )
 
 
@@ -82,19 +101,36 @@ def upsert_vectors(
         points: List of points with id, vector, and payload.
             Each point should have:
             - id: str (unique identifier)
-            - vector: list[float] (embedding vector)
+            - vector: list[float] (dense embedding vector)
+            - sparse_indices: list[int] (optional, sparse vector indices)
+            - sparse_values: list[float] (optional, sparse vector values)
             - payload: dict (metadata like document_id, chunk_text, etc.)
     """
     client = get_qdrant_client()
 
-    qdrant_points = [
-        PointStruct(
-            id=point["id"],
-            vector=point["vector"],
-            payload=point.get("payload", {}),
+    qdrant_points = []
+    for point in points:
+        # Build vector config - can be just dense or dense + sparse
+        has_sparse = "sparse_indices" in point and "sparse_values" in point
+
+        if has_sparse:
+            vector = {
+                "": point["vector"],  # Default dense vector
+                "text-sparse": SparseVector(
+                    indices=point["sparse_indices"],
+                    values=point["sparse_values"],
+                ),
+            }
+        else:
+            vector = point["vector"]
+
+        qdrant_points.append(
+            PointStruct(
+                id=point["id"],
+                vector=vector,
+                payload=point.get("payload", {}),
+            )
         )
-        for point in points
-    ]
 
     client.upsert(
         collection_name=collection_name,
@@ -132,13 +168,117 @@ def search(
             ]
         )
 
-    results = client.query_points(
-        collection_name=collection_name,
-        query=query_vector,
-        query_filter=query_filter,
-        limit=limit,
-        with_payload=True,
-    ).points
+    with track_latency(SEARCH_LATENCY):
+        results = client.query_points(
+            collection_name=collection_name,
+            query=query_vector,
+            query_filter=query_filter,
+            limit=limit,
+            with_payload=True,
+        ).points
+
+    return [
+        {
+            "id": result.id,
+            "score": result.score,
+            "payload": result.payload,
+        }
+        for result in results
+    ]
+
+
+def collection_has_sparse_vectors(collection_name: str) -> bool:
+    """Check if a collection has sparse vector configuration.
+
+    Args:
+        collection_name: Name of the collection.
+
+    Returns:
+        True if collection supports sparse vectors, False otherwise.
+    """
+    client = get_qdrant_client()
+    try:
+        info = client.get_collection(collection_name=collection_name)
+        # Check if sparse_vectors_config exists and has 'text-sparse'
+        sparse_config = info.config.params.sparse_vectors
+        return sparse_config is not None and "text-sparse" in sparse_config
+    except Exception:
+        return False
+
+
+def hybrid_search(
+    collection_name: str,
+    query_dense: list[float],
+    query_sparse: tuple[list[int], list[float]] | None = None,
+    limit: int = 5,
+    document_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Hybrid search using dense + sparse vectors with RRF fusion.
+
+    Falls back to dense-only search if collection doesn't support sparse vectors
+    or if sparse query is not provided.
+
+    Args:
+        collection_name: Name of the collection.
+        query_dense: Dense embedding vector.
+        query_sparse: Optional tuple of (indices, values) for sparse vector.
+        limit: Maximum number of results.
+        document_id: Optional filter by document ID.
+
+    Returns:
+        List of search results with id, score, and payload.
+    """
+    client = get_qdrant_client()
+
+    # Build filter if document_id specified
+    query_filter = None
+    if document_id:
+        query_filter = Filter(
+            must=[
+                FieldCondition(
+                    key="document_id",
+                    match=MatchValue(value=document_id),
+                )
+            ]
+        )
+
+    # Check if we can do hybrid search
+    has_sparse = collection_has_sparse_vectors(collection_name)
+
+    if not has_sparse or query_sparse is None:
+        if query_sparse is not None and not has_sparse:
+            logger.warning(
+                f"Collection '{collection_name}' does not support sparse vectors. "
+                "Falling back to dense-only search. Consider re-indexing with sparse vectors."
+            )
+        # Fall back to dense-only search
+        return search(collection_name, query_dense, limit, document_id)
+
+    with track_latency(SEARCH_LATENCY):
+        # Hybrid search with RRF fusion
+        results = client.query_points(
+            collection_name=collection_name,
+            prefetch=[
+                Prefetch(
+                    query=query_dense,
+                    using="",  # Default dense vector
+                    limit=limit * 2,
+                    filter=query_filter,
+                ),
+                Prefetch(
+                    query=SparseVector(
+                        indices=query_sparse[0],
+                        values=query_sparse[1],
+                    ),
+                    using="text-sparse",
+                    limit=limit * 2,
+                    filter=query_filter,
+                ),
+            ],
+            query=Fusion.RRF,
+            limit=limit,
+            with_payload=True,
+        ).points
 
     return [
         {

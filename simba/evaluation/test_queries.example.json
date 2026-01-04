@@ -1,0 +1,14 @@
+[
+  {
+    "query": "What is the return policy?",
+    "expected_doc_ids": ["doc_id_1", "doc_id_2"]
+  },
+  {
+    "query": "How do I reset my password?",
+    "expected_doc_ids": ["doc_id_3"]
+  },
+  {
+    "query": "What payment methods are accepted?",
+    "expected_doc_ids": ["doc_id_4", "doc_id_5"]
+  }
+]
