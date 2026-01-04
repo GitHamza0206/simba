@@ -5,7 +5,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from simba.api.routes import analytics, collections, conversations, documents, evals, health, metrics
+from simba.api.routes import (
+    analytics,
+    collections,
+    conversations,
+    documents,
+    evals,
+    health,
+    metrics,
+)
 from simba.core.config import settings
 from simba.models import init_db
 from simba.services.chat_service import shutdown_checkpointer

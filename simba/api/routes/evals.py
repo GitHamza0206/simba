@@ -232,15 +232,15 @@ async def generate_questions(
     db: Session = Depends(get_db),
 ):
     """Generate evaluation questions from documents using LLM.
-    
+
     This endpoint samples chunks from documents in the collection and uses
     an LLM to generate diverse customer service questions based on the content.
     """
     try:
         from qdrant_client.http.exceptions import UnexpectedResponse
-        
+
         client = qdrant_service.get_qdrant_client()
-        
+
         try:
             results, _ = client.scroll(
                 collection_name=data.collection_name,
@@ -260,10 +260,12 @@ async def generate_questions(
             chunk_text = point.payload.get("chunk_text", "")
             if doc_name not in doc_chunks:
                 doc_chunks[doc_name] = []
-            doc_chunks[doc_name].append({
-                "text": chunk_text,
-                "position": point.payload.get("chunk_position", 0),
-            })
+            doc_chunks[doc_name].append(
+                {
+                    "text": chunk_text,
+                    "position": point.payload.get("chunk_position", 0),
+                }
+            )
 
         context_parts = []
         for doc_name, chunks in doc_chunks.items():
@@ -349,10 +351,7 @@ async def run_eval(
             return_latency=True,
         )
 
-        sources = [
-            f"{chunk.document_name} (score: {chunk.score:.2f})"
-            for chunk in chunks
-        ]
+        sources = [f"{chunk.document_name} (score: {chunk.score:.2f})" for chunk in chunks]
 
         context = "\n\n".join([chunk.chunk_text for chunk in chunks])
 
@@ -368,6 +367,7 @@ Question: {eval_item.question}
 Provide a helpful and accurate response based on the context. If the context doesn't contain relevant information, say so."""
 
         import time
+
         start = time.perf_counter()
         response = await llm.ainvoke(prompt)
         generation_time = (time.perf_counter() - start) * 1000
