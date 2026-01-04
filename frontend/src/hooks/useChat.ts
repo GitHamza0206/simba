@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL } from "@/lib/constants";
 
 // SSE Event types from the backend
@@ -68,17 +68,68 @@ export interface ChatMessage {
 export type ChatStatus = "ready" | "submitted" | "streaming" | "error";
 
 interface UseChatOptions {
+  initialConversationId?: string | null;
   onError?: (error: Error) => void;
   onFinish?: (message: ChatMessage) => void;
+  onConversationChange?: (conversationId: string | null) => void;
 }
 
 export function useChat(options: UseChatOptions = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<ChatStatus>("ready");
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(
+    options.initialConversationId ?? null
+  );
   const [collection, setCollection] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const hasLoadedRef = useRef(false);
+
+  // Load conversation history from backend
+  const loadConversation = useCallback(async (convId: string) => {
+    setIsLoadingHistory(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/api/v1/conversations/${convId}/messages`
+      );
+      if (!response.ok) {
+        if (response.status === 404) {
+          // Conversation not found, clear it
+          setConversationId(null);
+          options.onConversationChange?.(null);
+          return;
+        }
+        throw new Error(`Failed to load conversation: ${response.status}`);
+      }
+      const data = await response.json();
+
+      // Convert backend messages to ChatMessage format
+      const loadedMessages: ChatMessage[] = data
+        .filter((msg: { role: string }) => msg.role === "user" || msg.role === "assistant")
+        .map((msg: { id?: string; role: "user" | "assistant"; content: string }) => ({
+          id: msg.id || crypto.randomUUID(),
+          role: msg.role,
+          content: msg.content,
+          createdAt: new Date(),
+        }));
+
+      setMessages(loadedMessages);
+    } catch (error) {
+      console.error("Failed to load conversation:", error);
+      options.onError?.(error instanceof Error ? error : new Error("Failed to load conversation"));
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [options]);
+
+  // Load conversation only on initial mount if initialConversationId is provided
+  useEffect(() => {
+    if (options.initialConversationId && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadConversation(options.initialConversationId);
+    }
+  }, [options.initialConversationId, loadConversation]);
 
   const parseSSEEvent = (line: string): SSEEvent | null => {
     if (!line.startsWith("data: ")) return null;
@@ -190,10 +241,13 @@ export function useChat(options: UseChatOptions = {}) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        // Update conversation ID from response header or first message
+        // Update conversation ID from response header
         const newConversationId = response.headers.get("X-Conversation-Id");
-        if (newConversationId && !conversationId) {
+        if (newConversationId && newConversationId !== conversationId) {
           setConversationId(newConversationId);
+          // Mark as loaded so we don't try to reload our own conversation
+          hasLoadedRef.current = true;
+          options.onConversationChange?.(newConversationId);
         }
 
         setStatus("streaming");
@@ -397,7 +451,9 @@ export function useChat(options: UseChatOptions = {}) {
     setConversationId(null);
     setStatus("ready");
     setIsThinking(false);
-  }, []);
+    hasLoadedRef.current = false;
+    options.onConversationChange?.(null);
+  }, [options]);
 
   return {
     messages,
@@ -406,6 +462,7 @@ export function useChat(options: UseChatOptions = {}) {
     collection,
     setCollection,
     isThinking,
+    isLoadingHistory,
     sendMessage,
     stop,
     clear,

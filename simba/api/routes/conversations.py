@@ -12,6 +12,7 @@ from simba.services.chat_service import (
     chat_stream as chat_stream_service,
     delete_conversation as delete_conversation_service,
     get_conversation_count,
+    get_conversation_message_count,
     get_conversation_messages as get_messages_service,
     list_conversations as list_conversations_service,
 )
@@ -69,15 +70,17 @@ async def list_conversations(
     conversations = await list_conversations_service(limit=limit, offset=offset)
     total = await get_conversation_count()
 
-    items = [
-        ConversationResponse(
-            id=conv["id"],
-            created_at=conv.get("updated_at", datetime.utcnow()),
-            updated_at=conv.get("updated_at", datetime.utcnow()),
-            message_count=0,  # Would need additional query to get accurate count
+    items = []
+    for conv in conversations:
+        message_count = await get_conversation_message_count(conv["id"])
+        items.append(
+            ConversationResponse(
+                id=conv["id"],
+                created_at=conv.get("updated_at", datetime.utcnow()),
+                updated_at=conv.get("updated_at", datetime.utcnow()),
+                message_count=message_count,
+            )
         )
-        for conv in conversations
-    ]
 
     return ConversationListResponse(items=items, total=total)
 
@@ -119,6 +122,7 @@ async def chat_stream(request: MessageRequest):
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "X-Conversation-Id": conversation_id,
         },
     )
 

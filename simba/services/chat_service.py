@@ -431,25 +431,20 @@ async def list_conversations(limit: int = 50, offset: int = 0) -> list[dict]:
     try:
         async with _connection_pool.connection() as conn:
             async with conn.cursor() as cur:
-                # Get unique thread_ids with their latest checkpoint timestamp
+                # Get unique thread_ids with their latest checkpoint
                 await cur.execute("""
-                    SELECT DISTINCT ON (thread_id)
-                        thread_id,
-                        checkpoint_id,
-                        thread_ts
+                    SELECT DISTINCT thread_id
                     FROM checkpoints
-                    ORDER BY thread_id, thread_ts DESC
+                    ORDER BY thread_id
                     LIMIT %s OFFSET %s
                 """, (limit, offset))
 
                 rows = await cur.fetchall()
 
                 for row in rows:
-                    thread_id, checkpoint_id, thread_ts = row
+                    (thread_id,) = row
                     conversations.append({
                         "id": thread_id,
-                        "checkpoint_id": checkpoint_id,
-                        "updated_at": thread_ts,
                     })
 
     except Exception as e:
@@ -561,3 +556,17 @@ async def get_conversation_count() -> int:
     except Exception as e:
         logger.error(f"Error counting conversations: {e}")
         return 0
+
+
+async def get_conversation_message_count(thread_id: str) -> int:
+    """Get the number of messages in a conversation.
+
+    Args:
+        thread_id: The conversation thread ID.
+
+    Returns:
+        Number of messages (user + assistant only, excludes tool messages).
+    """
+    messages = await get_conversation_messages(thread_id)
+    # Count only user and assistant messages
+    return len([m for m in messages if m["role"] in ("user", "assistant")])

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { Bot, Trash2, Database } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Bot, Trash2, Database, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -24,6 +25,25 @@ import {
 
 export default function PlaygroundPage() {
   const [text, setText] = useState("");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Get conversation ID from URL
+  const conversationIdFromUrl = searchParams.get("conversation");
+
+  // Handle conversation ID changes - update URL
+  const handleConversationChange = useCallback(
+    (newConversationId: string | null) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (newConversationId) {
+        params.set("conversation", newConversationId);
+      } else {
+        params.delete("conversation");
+      }
+      router.replace(`?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, router]
+  );
 
   // Fetch available collections
   const { data: collectionsData, isLoading: collectionsLoading } = useCollections();
@@ -37,11 +57,14 @@ export default function PlaygroundPage() {
     status,
     collection,
     setCollection,
-    isThinking,
+    isThinking: _isThinking,
+    isLoadingHistory,
     sendMessage,
     stop,
     clear,
   } = useChat({
+    initialConversationId: conversationIdFromUrl,
+    onConversationChange: handleConversationChange,
     onError: (error) => {
       console.error("Chat error:", error);
     },
@@ -116,7 +139,11 @@ export default function PlaygroundPage() {
 
       {/* Chat Container */}
       <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-background">
-        {messages.length === 0 ? (
+        {isLoadingHistory ? (
+          <div className="flex flex-1 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : messages.length === 0 ? (
           <ChatEmptyState
             title="Start a conversation"
             description={
