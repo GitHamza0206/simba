@@ -53,9 +53,7 @@ class Document(Base):
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
-    object_key: Mapped[str] = mapped_column(
-        String(500), nullable=False
-    )  # MinIO object key
+    object_key: Mapped[str] = mapped_column(String(500), nullable=False)  # MinIO object key
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(

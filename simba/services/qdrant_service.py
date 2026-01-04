@@ -20,7 +20,7 @@ from qdrant_client.models import (
 )
 
 from simba.core.config import settings
-from simba.services.metrics_service import track_latency, SEARCH_LATENCY
+from simba.services.metrics_service import SEARCH_LATENCY, track_latency
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +50,7 @@ def create_collection(collection_name: str, with_sparse: bool = True) -> None:
 
     sparse_config = None
     if with_sparse:
-        sparse_config = {
-            "text-sparse": SparseVectorParams(
-                index=SparseIndexParams(on_disk=False)
-            )
-        }
+        sparse_config = {"text-sparse": SparseVectorParams(index=SparseIndexParams(on_disk=False))}
 
     client.create_collection(
         collection_name=collection_name,

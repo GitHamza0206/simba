@@ -8,7 +8,7 @@ from qdrant_client.http.exceptions import UnexpectedResponse
 
 from simba.core.config import settings
 from simba.services import embedding_service, qdrant_service
-from simba.services.metrics_service import track_latency, RETRIEVAL_LATENCY
+from simba.services.metrics_service import RETRIEVAL_LATENCY, track_latency
 
 
 class LatencyBreakdown(TypedDict, total=False):
@@ -176,9 +176,7 @@ def retrieve_formatted(
     # Format chunks as context
     context_parts = []
     for i, chunk in enumerate(chunks, 1):
-        context_parts.append(
-            f"[Source {i}: {chunk.document_name}]\n{chunk.chunk_text}"
-        )
+        context_parts.append(f"[Source {i}: {chunk.document_name}]\n{chunk.chunk_text}")
 
     output = "\n\n---\n\n".join(context_parts)
 

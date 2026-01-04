@@ -62,8 +62,7 @@ def migrate_collection(collection_name: str, batch_size: int = 100) -> bool:
     # Check if collection already has sparse vectors
     if collection_has_sparse_vectors(collection_name):
         logger.info(
-            f"Collection '{collection_name}' already has sparse vectors. "
-            "Skipping migration."
+            f"Collection '{collection_name}' already has sparse vectors. Skipping migration."
         )
         return True
 
@@ -84,9 +83,7 @@ def migrate_collection(collection_name: str, batch_size: int = 100) -> bool:
                 distance=Distance.COSINE,
             ),
             sparse_vectors_config={
-                "text-sparse": SparseVectorParams(
-                    index=SparseIndexParams(on_disk=False)
-                )
+                "text-sparse": SparseVectorParams(index=SparseIndexParams(on_disk=False))
             },
         )
 
@@ -187,9 +184,7 @@ def migrate_collection(collection_name: str, batch_size: int = 100) -> bool:
                 distance=Distance.COSINE,
             ),
             sparse_vectors_config={
-                "text-sparse": SparseVectorParams(
-                    index=SparseIndexParams(on_disk=False)
-                )
+                "text-sparse": SparseVectorParams(index=SparseIndexParams(on_disk=False))
             },
         )
 

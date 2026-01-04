@@ -3,9 +3,9 @@
 import json
 import logging
 import time
+from collections.abc import AsyncGenerator
 from contextvars import ContextVar
 from functools import lru_cache
-from typing import AsyncGenerator
 
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
@@ -432,20 +432,25 @@ async def list_conversations(limit: int = 50, offset: int = 0) -> list[dict]:
         async with _connection_pool.connection() as conn:
             async with conn.cursor() as cur:
                 # Get unique thread_ids with their latest checkpoint
-                await cur.execute("""
+                await cur.execute(
+                    """
                     SELECT DISTINCT thread_id
                     FROM checkpoints
                     ORDER BY thread_id
                     LIMIT %s OFFSET %s
-                """, (limit, offset))
+                """,
+                    (limit, offset),
+                )
 
                 rows = await cur.fetchall()
 
                 for row in rows:
                     (thread_id,) = row
-                    conversations.append({
-                        "id": thread_id,
-                    })
+                    conversations.append(
+                        {
+                            "id": thread_id,
+                        }
+                    )
 
     except Exception as e:
         logger.error(f"Error listing conversations: {e}")
@@ -479,27 +484,33 @@ async def get_conversation_messages(thread_id: str) -> list[dict]:
         messages = []
         for msg in messages_data:
             if isinstance(msg, HumanMessage):
-                messages.append({
-                    "role": "user",
-                    "content": msg.content,
-                    "id": msg.id if hasattr(msg, "id") else None,
-                })
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": msg.content,
+                        "id": msg.id if hasattr(msg, "id") else None,
+                    }
+                )
             elif isinstance(msg, AIMessage):
                 # Skip tool call messages (they have empty content but tool_calls)
                 if msg.content:
-                    messages.append({
-                        "role": "assistant",
-                        "content": msg.content,
-                        "id": msg.id if hasattr(msg, "id") else None,
-                    })
+                    messages.append(
+                        {
+                            "role": "assistant",
+                            "content": msg.content,
+                            "id": msg.id if hasattr(msg, "id") else None,
+                        }
+                    )
             elif isinstance(msg, ToolMessage):
                 # Include tool results as system messages for context
-                messages.append({
-                    "role": "tool",
-                    "content": msg.content,
-                    "tool_name": msg.name if hasattr(msg, "name") else "unknown",
-                    "id": msg.id if hasattr(msg, "id") else None,
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "content": msg.content,
+                        "tool_name": msg.name if hasattr(msg, "name") else "unknown",
+                        "id": msg.id if hasattr(msg, "id") else None,
+                    }
+                )
 
         return messages
 
@@ -523,14 +534,10 @@ async def delete_conversation(thread_id: str) -> bool:
         async with _connection_pool.connection() as conn:
             async with conn.cursor() as cur:
                 # Delete all checkpoints for this thread
-                await cur.execute(
-                    "DELETE FROM checkpoints WHERE thread_id = %s",
-                    (thread_id,)
-                )
+                await cur.execute("DELETE FROM checkpoints WHERE thread_id = %s", (thread_id,))
                 # Also delete from checkpoint_writes if it exists
                 await cur.execute(
-                    "DELETE FROM checkpoint_writes WHERE thread_id = %s",
-                    (thread_id,)
+                    "DELETE FROM checkpoint_writes WHERE thread_id = %s", (thread_id,)
                 )
                 await conn.commit()
                 return True

@@ -4,7 +4,6 @@ from io import BytesIO
 
 from unstructured.partition.auto import partition
 
-
 # MIME type to file extension mapping for unstructured
 MIME_TO_EXT = {
     "application/pdf": ".pdf",

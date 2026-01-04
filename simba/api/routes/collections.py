@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from simba.models import Collection, Document, get_db
-from simba.services import ingestion_service, qdrant_service, storage_service
+from simba.services import qdrant_service, storage_service
 
 router = APIRouter(prefix="/collections")
 

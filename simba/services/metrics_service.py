@@ -1,11 +1,11 @@
 """Prometheus metrics service for latency tracking."""
 
 import time
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from functools import wraps
-from typing import Callable, Generator
 
-from prometheus_client import Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, Histogram, generate_latest
 
 # Latency histograms with buckets optimized for sub-100ms targets
 EMBEDDING_LATENCY = Histogram(

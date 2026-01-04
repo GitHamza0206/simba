@@ -5,7 +5,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from simba.core.config import settings
-from simba.services.metrics_service import track_latency, RERANK_LATENCY
+from simba.services.metrics_service import RERANK_LATENCY, track_latency
 
 logger = logging.getLogger(__name__)
 

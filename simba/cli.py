@@ -1,6 +1,7 @@
 """CLI for Simba."""
 
 import argparse
+
 import uvicorn
 
 

@@ -252,7 +252,11 @@ async def reprocess_document(document_id: str, db: Session = Depends(get_db)):
 
     process_document.delay(document_id)
 
-    return {"status": "pending", "document_id": document_id, "message": "Document queued for reprocessing"}
+    return {
+        "status": "pending",
+        "document_id": document_id,
+        "message": "Document queued for reprocessing",
+    }
 
 
 @router.get("/{document_id}/download")

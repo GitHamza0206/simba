@@ -83,9 +83,7 @@ def ingest_document(document_id: str, db: Session) -> None:
 
         # Prepare points for Qdrant (dense + sparse vectors)
         points = []
-        for i, (chunk, embedding, sparse) in enumerate(
-            zip(chunks, embeddings, sparse_embeddings)
-        ):
+        for i, (chunk, embedding, sparse) in enumerate(zip(chunks, embeddings, sparse_embeddings)):
             point_id = str(uuid4())
             points.append(
                 {

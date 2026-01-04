@@ -4,10 +4,10 @@ import logging
 from functools import lru_cache
 
 from cachetools import TTLCache
-from fastembed import TextEmbedding, SparseTextEmbedding
+from fastembed import SparseTextEmbedding, TextEmbedding
 
 from simba.core.config import settings
-from simba.services.metrics_service import track_latency, EMBEDDING_LATENCY
+from simba.services.metrics_service import EMBEDDING_LATENCY, track_latency
 
 logger = logging.getLogger(__name__)
 
@@ -97,10 +97,12 @@ def get_sparse_embeddings(texts: list[str]) -> list[tuple[list[int], list[float]
 
     for sparse_embedding in embeddings_generator:
         # SparseEmbedding has .indices and .values attributes
-        results.append((
-            sparse_embedding.indices.tolist(),
-            sparse_embedding.values.tolist(),
-        ))
+        results.append(
+            (
+                sparse_embedding.indices.tolist(),
+                sparse_embedding.values.tolist(),
+            )
+        )
 
     return results
 

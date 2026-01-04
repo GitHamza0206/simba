@@ -5,15 +5,16 @@ We recommend using Poetry for installation, but this file is provided for compat
 """
 
 import re
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 # Read version from __init__.py
-with open("simba_sdk/__init__.py", "r") as f:
+with open("simba_sdk/__init__.py") as f:
     version_match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', f.read())
     version = version_match.group(1) if version_match else "0.1.0"
 
 # Read README.md for long description
-with open("README.md", "r") as f:
+with open("README.md") as f:
     long_description = f.read()
 
 setup(
@@ -48,4 +49,4 @@ setup(
         "Source": "https://github.com/yourusername/simba-client",
         "Bug Tracker": "https://github.com/yourusername/simba-client/issues",
     },
-) 
+)

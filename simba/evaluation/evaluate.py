@@ -204,7 +204,7 @@ def main():
     print(f"  Recall@{args.limit}:    {results['metrics']['recall@k']:.2%}")
     print(f"  Precision@{args.limit}: {results['metrics']['precision@k']:.2%}")
     print(f"  MRR:          {results['metrics']['mrr']:.4f}")
-    print(f"\nLatency:")
+    print("\nLatency:")
     print(f"  Avg:  {results['latency']['avg_ms']:.1f}ms")
     print(f"  P50:  {results['latency']['p50_ms']:.1f}ms")
     print(f"  P99:  {results['latency']['p99_ms']:.1f}ms")
