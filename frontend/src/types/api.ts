@@ -192,6 +192,13 @@ export interface EvalItem {
   latency_ms: number | null;
   conversation_id: string | null;
   conversation_history: string | null;
+  answer_groundtruth: string | null;
+  retrieval_precision: number | null;
+  retrieval_recall: number | null;
+  relevance_score: number | null;
+  faithfulness_score: number | null;
+  passed: boolean | null;
+  error_category: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -201,6 +208,7 @@ export interface EvalItemCreate {
   response?: string | null;
   sources?: string[] | null;
   sources_groundtruth?: string[] | null;
+  answer_groundtruth?: string | null;
   comment?: string | null;
   latency_ms?: number | null;
   conversation_id?: string | null;
@@ -210,6 +218,15 @@ export interface EvalItemCreate {
 export interface EvalItemUpdate {
   comment?: string | null;
   sources_groundtruth?: string[] | null;
+  answer_groundtruth?: string | null;
+  error_category?: string | null;
+}
+
+export interface RunAllEvalsResponse {
+  total: number;
+  completed: number;
+  failed: number;
+  results: EvalItem[];
 }
 
 export interface EvalListResponse {
@@ -220,6 +237,7 @@ export interface EvalListResponse {
 export interface GeneratedQuestion {
   question: string;
   source_documents: string[];
+  answer_groundtruth: string;
 }
 
 export interface GenerateQuestionsResponse {
