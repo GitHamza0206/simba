@@ -88,6 +88,7 @@ jobs:
           context: .
           file: docker/Dockerfile
           push: true
+          platforms: linux/amd64
           tags: |
             ${{ env.REGISTRY }}/api:latest
             ${{ env.REGISTRY }}/api:${{ github.sha }}
@@ -119,6 +120,7 @@ jobs:
           context: .
           file: frontend/Dockerfile
           push: true
+          platforms: linux/amd64
           tags: |
             ${{ env.REGISTRY }}/frontend:latest
             ${{ env.REGISTRY }}/frontend:${{ github.sha }}
