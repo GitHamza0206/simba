@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Bot, Trash2, Database, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import {
   ChatStatus,
 } from "@/components/chat";
 
-export default function PlaygroundPage() {
+function PlaygroundContent() {
   const [text, setText] = useState("");
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -200,5 +200,19 @@ export default function PlaygroundPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PlaygroundPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <PlaygroundContent />
+    </Suspense>
   );
 }
