@@ -31,8 +31,25 @@ COPY pyproject.toml uv.lock README.md ./
 # Install PyTorch CPU-only first (saves ~4GB by avoiding CUDA)
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
-# Install dependencies
-RUN uv sync --frozen --no-dev
+# Install dependencies (skip torch since we installed CPU-only version above)
+RUN uv sync --frozen --no-dev \
+    --no-install-package torch \
+    --no-install-package nvidia-cublas-cu12 \
+    --no-install-package nvidia-cuda-cupti-cu12 \
+    --no-install-package nvidia-cuda-nvrtc-cu12 \
+    --no-install-package nvidia-cuda-runtime-cu12 \
+    --no-install-package nvidia-cudnn-cu12 \
+    --no-install-package nvidia-cufft-cu12 \
+    --no-install-package nvidia-cufile-cu12 \
+    --no-install-package nvidia-curand-cu12 \
+    --no-install-package nvidia-cusolver-cu12 \
+    --no-install-package nvidia-cusparse-cu12 \
+    --no-install-package nvidia-cusparselt-cu12 \
+    --no-install-package nvidia-nccl-cu12 \
+    --no-install-package nvidia-nvjitlink-cu12 \
+    --no-install-package nvidia-nvshmem-cu12 \
+    --no-install-package nvidia-nvtx-cu12 \
+    --no-install-package triton
 
 # Copy application code
 COPY simba/ ./simba/
