@@ -37,7 +37,7 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - DATABASE_URL=postgresql://simba:simba@postgres:5432/simba
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
       redis:
         condition: service_healthy
@@ -60,7 +60,7 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - DATABASE_URL=postgresql://simba:simba@postgres:5432/simba
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     command: ["celery", "-A", "simba.core.celery_config.celery_app", "worker", "--loglevel=info", "-Q", "ingestion"]
     depends_on:
       redis:
@@ -77,14 +77,16 @@ services:
 
   postgres:
     image: postgres:16-alpine
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-simba}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-simba}
-      POSTGRES_DB: ${POSTGRES_DB:-simba}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-simba}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 3s
       retries: 3
@@ -120,9 +122,11 @@ services:
 
   minio:
     image: minio/minio:latest
+    env_file:
+      - .env
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
