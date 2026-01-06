@@ -91,7 +91,7 @@ export function DocumentsTable({ collectionId }: DocumentsTableProps) {
   );
 
   // Auto-refresh while documents are processing
-  const refetchInterval = hasProcessing ? 3000 : false;
+  const _refetchInterval = hasProcessing ? 3000 : false;
 
   const handleDelete = async (doc: Document) => {
     if (!confirm(`Delete "${doc.name}"? This cannot be undone.`)) return;

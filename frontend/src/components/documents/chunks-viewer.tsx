@@ -65,7 +65,7 @@ export function ChunksViewer({ documentId, documentName, onClose }: ChunksViewer
                 {data?.chunk_count} chunk(s) total
               </div>
 
-              {data?.chunks.map((chunk, index) => (
+              {data?.chunks.map((chunk, _index) => (
                 <div
                   key={chunk.id}
                   className="rounded-lg border bg-muted/30 p-4"

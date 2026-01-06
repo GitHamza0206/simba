@@ -31,7 +31,7 @@ export function ChatInput({
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const isLoading = status === "submitted" || status === "streaming";
+  const _isLoading = status === "submitted" || status === "streaming";
   const isDisabled = disabled || (status === "submitted");
 
   // Auto-resize textarea

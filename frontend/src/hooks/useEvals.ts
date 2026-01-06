@@ -7,6 +7,7 @@ import type {
   EvalItemCreate,
   EvalItemUpdate,
   GenerateQuestionsResponse,
+  RunAllEvalsResponse,
 } from "@/types/api";
 
 const EVALS_KEY = ["evals"];
@@ -81,6 +82,18 @@ export function useRunEval() {
   return useMutation({
     mutationFn: (data: { eval_id: string; collection_name: string }) =>
       api.post<EvalItem>(`${API_ROUTES.EVALS}/run`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: EVALS_KEY });
+    },
+  });
+}
+
+export function useRunAllEvals() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { collection_name: string }) =>
+      api.post<RunAllEvalsResponse>(`${API_ROUTES.EVALS}/run-all`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: EVALS_KEY });
     },

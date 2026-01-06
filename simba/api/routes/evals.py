@@ -36,6 +36,13 @@ class EvalItemResponse(BaseModel):
     latency_ms: float | None
     conversation_id: str | None
     conversation_history: str | None
+    answer_groundtruth: str | None
+    retrieval_precision: float | None
+    retrieval_recall: float | None
+    relevance_score: float | None
+    faithfulness_score: float | None
+    passed: bool | None
+    error_category: str | None
     created_at: str
     updated_at: str
 
@@ -48,6 +55,7 @@ class EvalItemCreate(BaseModel):
     response: str | None = None
     sources: list[str] | None = None
     sources_groundtruth: list[str] | None = None
+    answer_groundtruth: str | None = None
     comment: str | None = None
     latency_ms: float | None = None
     conversation_id: str | None = None
@@ -57,6 +65,8 @@ class EvalItemCreate(BaseModel):
 class EvalItemUpdate(BaseModel):
     comment: str | None = None
     sources_groundtruth: list[str] | None = None
+    answer_groundtruth: str | None = None
+    error_category: str | None = None
 
 
 class EvalListResponse(BaseModel):
@@ -72,6 +82,7 @@ class GenerateQuestionsRequest(BaseModel):
 class GeneratedQuestion(BaseModel):
     question: str
     source_documents: list[str]
+    answer_groundtruth: str
 
 
 class GenerateQuestionsResponse(BaseModel):
@@ -81,6 +92,55 @@ class GenerateQuestionsResponse(BaseModel):
 class RunEvalRequest(BaseModel):
     eval_id: str
     collection_name: str = "default"
+
+
+class RunAllEvalsRequest(BaseModel):
+    collection_name: str = "default"
+
+
+class RunAllEvalsResponse(BaseModel):
+    total: int
+    completed: int
+    failed: int
+    results: list[EvalItemResponse]
+
+
+def _eval_to_response(item: EvalItem) -> EvalItemResponse:
+    return EvalItemResponse(
+        id=item.id,
+        question=item.question,
+        response=item.response,
+        sources=item.sources,
+        sources_groundtruth=item.sources_groundtruth,
+        comment=item.comment,
+        latency_ms=item.latency_ms,
+        conversation_id=item.conversation_id,
+        conversation_history=item.conversation_history,
+        answer_groundtruth=item.answer_groundtruth,
+        retrieval_precision=item.retrieval_precision,
+        retrieval_recall=item.retrieval_recall,
+        relevance_score=item.relevance_score,
+        faithfulness_score=item.faithfulness_score,
+        passed=item.passed,
+        error_category=item.error_category,
+        created_at=item.created_at.isoformat(),
+        updated_at=item.updated_at.isoformat(),
+    )
+
+
+def _calculate_retrieval_metrics(
+    sources: list[str] | None, groundtruth: list[str] | None
+) -> tuple[float | None, float | None]:
+    if not sources or not groundtruth:
+        return None, None
+
+    source_names = {s.split(" (")[0] for s in sources}
+    groundtruth_set = set(groundtruth)
+
+    correct = len(source_names & groundtruth_set)
+    precision = correct / len(source_names) if source_names else None
+    recall = correct / len(groundtruth_set) if groundtruth_set else None
+    return precision, recall
 
 
 @router.get("", response_model=EvalListResponse)
@@ -95,22 +155,7 @@ async def list_evals(
     items = query.offset(skip).limit(limit).all()
 
     return EvalListResponse(
-        items=[
-            EvalItemResponse(
-                id=item.id,
-                question=item.question,
-                response=item.response,
-                sources=item.sources,
-                sources_groundtruth=item.sources_groundtruth,
-                comment=item.comment,
-                latency_ms=item.latency_ms,
-                conversation_id=item.conversation_id,
-                conversation_history=item.conversation_history,
-                created_at=item.created_at.isoformat(),
-                updated_at=item.updated_at.isoformat(),
-            )
-            for item in items
-        ],
+        items=[_eval_to_response(item) for item in items],
         total=total,
     )
 
@@ -127,6 +172,7 @@ async def create_eval(
         response=data.response,
         sources=data.sources,
         sources_groundtruth=data.sources_groundtruth,
+        answer_groundtruth=data.answer_groundtruth,
         comment=data.comment,
         latency_ms=data.latency_ms,
         conversation_id=data.conversation_id,
@@ -136,19 +182,7 @@ async def create_eval(
     db.commit()
     db.refresh(eval_item)
 
-    return EvalItemResponse(
-        id=eval_item.id,
-        question=eval_item.question,
-        response=eval_item.response,
-        sources=eval_item.sources,
-        sources_groundtruth=eval_item.sources_groundtruth,
-        comment=eval_item.comment,
-        latency_ms=eval_item.latency_ms,
-        conversation_id=eval_item.conversation_id,
-        conversation_history=eval_item.conversation_history,
-        created_at=eval_item.created_at.isoformat(),
-        updated_at=eval_item.updated_at.isoformat(),
-    )
+    return _eval_to_response(eval_item)
 
 
 @router.get("/{eval_id}", response_model=EvalItemResponse)
@@ -161,19 +195,7 @@ async def get_eval(
     if not eval_item:
         raise HTTPException(status_code=404, detail="Eval item not found")
 
-    return EvalItemResponse(
-        id=eval_item.id,
-        question=eval_item.question,
-        response=eval_item.response,
-        sources=eval_item.sources,
-        sources_groundtruth=eval_item.sources_groundtruth,
-        comment=eval_item.comment,
-        latency_ms=eval_item.latency_ms,
-        conversation_id=eval_item.conversation_id,
-        conversation_history=eval_item.conversation_history,
-        created_at=eval_item.created_at.isoformat(),
-        updated_at=eval_item.updated_at.isoformat(),
-    )
+    return _eval_to_response(eval_item)
 
 
 @router.patch("/{eval_id}", response_model=EvalItemResponse)
@@ -191,23 +213,15 @@ async def update_eval(
         eval_item.comment = data.comment
     if data.sources_groundtruth is not None:
         eval_item.sources_groundtruth = data.sources_groundtruth
+    if data.answer_groundtruth is not None:
+        eval_item.answer_groundtruth = data.answer_groundtruth
+    if data.error_category is not None:
+        eval_item.error_category = data.error_category
 
     db.commit()
     db.refresh(eval_item)
 
-    return EvalItemResponse(
-        id=eval_item.id,
-        question=eval_item.question,
-        response=eval_item.response,
-        sources=eval_item.sources,
-        sources_groundtruth=eval_item.sources_groundtruth,
-        comment=eval_item.comment,
-        latency_ms=eval_item.latency_ms,
-        conversation_id=eval_item.conversation_id,
-        conversation_history=eval_item.conversation_history,
-        created_at=eval_item.created_at.isoformat(),
-        updated_at=eval_item.updated_at.isoformat(),
-    )
+    return _eval_to_response(eval_item)
 
 
 @router.delete("/{eval_id}")
@@ -229,7 +243,6 @@ async def delete_eval(
 @router.post("/generate", response_model=GenerateQuestionsResponse)
 async def generate_questions(
     data: GenerateQuestionsRequest,
-    db: Session = Depends(get_db),
 ):
     """Generate evaluation questions from documents using LLM.
 
@@ -288,14 +301,16 @@ The questions should:
 Documents:
 {context}
 
-Generate exactly {data.num_questions} questions. For each question, identify which document(s) would be the primary source for answering it.
+Generate exactly {data.num_questions} questions. For each question:
+1. Identify which document(s) would be the primary source for answering it
+2. Provide the ideal/expected answer based on the document content (this will be used as ground truth for evaluation)
 
-Return your response as a JSON array with objects containing "question" and "source_documents" fields.
+Return your response as a JSON array with objects containing "question", "source_documents", and "answer_groundtruth" fields.
 
 Example format:
 [
-  {{"question": "What is your return policy for electronics?", "source_documents": ["returns-policy.pdf"]}},
-  {{"question": "How long does shipping take?", "source_documents": ["shipping-guide.pdf", "faq.pdf"]}}
+  {{"question": "What is your return policy for electronics?", "source_documents": ["returns-policy.pdf"], "answer_groundtruth": "Electronics can be returned within 30 days of purchase with original receipt and packaging."}},
+  {{"question": "How long does shipping take?", "source_documents": ["shipping-guide.pdf", "faq.pdf"], "answer_groundtruth": "Standard shipping takes 5-7 business days, while express shipping takes 2-3 business days."}}
 ]
 
 Return ONLY the JSON array, no other text."""
@@ -319,6 +334,7 @@ Return ONLY the JSON array, no other text."""
             GeneratedQuestion(
                 question=q["question"],
                 source_documents=q.get("source_documents", list(doc_chunks.keys())),
+                answer_groundtruth=q.get("answer_groundtruth", ""),
             )
             for q in questions_data
         ]
@@ -378,23 +394,152 @@ Provide a helpful and accurate response based on the context. If the context doe
         eval_item.sources = sources
         eval_item.latency_ms = total_latency
 
+        precision, recall = _calculate_retrieval_metrics(sources, eval_item.sources_groundtruth)
+        eval_item.retrieval_precision = precision
+        eval_item.retrieval_recall = recall
+
+        relevance, faithfulness = await _score_response(
+            llm, eval_item.question, response.content, context
+        )
+        eval_item.relevance_score = relevance
+        eval_item.faithfulness_score = faithfulness
+
+        eval_item.passed = _determine_pass(precision, recall, relevance, faithfulness)
+
         db.commit()
         db.refresh(eval_item)
 
-        return EvalItemResponse(
-            id=eval_item.id,
-            question=eval_item.question,
-            response=eval_item.response,
-            sources=eval_item.sources,
-            sources_groundtruth=eval_item.sources_groundtruth,
-            comment=eval_item.comment,
-            latency_ms=eval_item.latency_ms,
-            conversation_id=eval_item.conversation_id,
-            conversation_history=eval_item.conversation_history,
-            created_at=eval_item.created_at.isoformat(),
-            updated_at=eval_item.updated_at.isoformat(),
-        )
+        return _eval_to_response(eval_item)
 
     except Exception as e:
         logger.error(f"Error running eval: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _score_response(llm, question: str, response: str, context: str) -> tuple[float, float]:
+    scoring_prompt = f"""You are evaluating a customer service response. Score the following on a scale of 0.0 to 1.0.
+
+Question: {question}
+
+Context provided to agent:
+{context}
+
+Agent's response:
+{response}
+
+Evaluate:
+1. Relevance: How relevant is the response to the question? (0.0 = completely irrelevant, 1.0 = perfectly relevant)
+2. Faithfulness: Is the response grounded in the provided context? (0.0 = contains hallucinations/unsupported claims, 1.0 = fully supported by context)
+
+Return ONLY a JSON object with "relevance" and "faithfulness" as numbers between 0.0 and 1.0.
+Example: {{"relevance": 0.85, "faithfulness": 0.9}}"""
+
+    try:
+        score_response = await llm.ainvoke(scoring_prompt)
+        content = score_response.content.strip()
+        if content.startswith("```"):
+            lines = content.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            content = "\n".join(lines).strip()
+            if content.startswith("json"):
+                content = content[4:].strip()
+        scores = json.loads(content)
+        return float(scores.get("relevance", 0)), float(scores.get("faithfulness", 0))
+    except Exception as e:
+        logger.warning(f"Failed to score response: {e}")
+        return 0.0, 0.0
+
+
+def _determine_pass(
+    precision: float | None,
+    recall: float | None,
+    relevance: float | None,
+    faithfulness: float | None,
+) -> bool:
+    if relevance is not None and relevance < 0.5:
+        return False
+    if faithfulness is not None and faithfulness < 0.5:
+        return False
+    if recall is not None and recall < 0.3:
+        return False
+    return True
+
+
+@router.post("/run-all", response_model=RunAllEvalsResponse)
+async def run_all_evals(
+    data: RunAllEvalsRequest,
+    db: Session = Depends(get_db),
+):
+    """Run evaluation on all eval items that don't have responses yet."""
+    evals_to_run = db.query(EvalItem).filter(EvalItem.response.is_(None)).all()
+
+    results = []
+    completed = 0
+    failed = 0
+
+    for eval_item in evals_to_run:
+        try:
+            chunks, latency = retrieval_service.retrieve(
+                query=eval_item.question,
+                collection_name=data.collection_name,
+                limit=5,
+                return_latency=True,
+            )
+
+            sources = [f"{chunk.document_name} (score: {chunk.score:.2f})" for chunk in chunks]
+            context = "\n\n".join([chunk.chunk_text for chunk in chunks])
+
+            llm = init_chat_model(model=settings.llm_model, temperature=0)
+
+            prompt = f"""You are a helpful customer service assistant. Answer the following question based on the provided context.
+
+Context:
+{context}
+
+Question: {eval_item.question}
+
+Provide a helpful and accurate response based on the context. If the context doesn't contain relevant information, say so."""
+
+            import time
+
+            start = time.perf_counter()
+            response = await llm.ainvoke(prompt)
+            generation_time = (time.perf_counter() - start) * 1000
+
+            total_latency = latency.get("total_ms", 0) + generation_time
+
+            eval_item.response = response.content
+            eval_item.sources = sources
+            eval_item.latency_ms = total_latency
+
+            precision, recall = _calculate_retrieval_metrics(sources, eval_item.sources_groundtruth)
+            eval_item.retrieval_precision = precision
+            eval_item.retrieval_recall = recall
+
+            relevance, faithfulness = await _score_response(
+                llm, eval_item.question, response.content, context
+            )
+            eval_item.relevance_score = relevance
+            eval_item.faithfulness_score = faithfulness
+
+            eval_item.passed = _determine_pass(precision, recall, relevance, faithfulness)
+
+            db.commit()
+            db.refresh(eval_item)
+
+            results.append(_eval_to_response(eval_item))
+            completed += 1
+
+        except Exception as e:
+            logger.error(f"Error running eval {eval_item.id}: {e}")
+            failed += 1
+
+    return RunAllEvalsResponse(
+        total=len(evals_to_run),
+        completed=completed,
+        failed=failed,
+        results=results,
+    )
