@@ -175,3 +175,39 @@ jobs:
       - name: Cleanup SSH key
         if: always()
         run: rm -f ~/.ssh/vultr_key
+
+  cleanup-registry:
+    name: Cleanup Old Registry Images
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Login to Vultr Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ams.vultrcr.com
+          username: ${{ secrets.VULTR_REGISTRY_USERNAME }}
+          password: ${{ secrets.VULTR_REGISTRY_PASSWORD }}
+
+      - name: Install regctl
+        run: |
+          curl -sL https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 -o regctl
+          chmod +x regctl
+          sudo mv regctl /usr/local/bin/
+
+      - name: Cleanup old API images (keep latest 2)
+        run: |
+          # Get all tags except 'latest', sort by creation, delete all but newest 2
+          TAGS=$(regctl tag list ${{ env.REGISTRY }}/api 2>/dev/null | grep -v '^latest$' | tail -n +3) || true
+          for TAG in $TAGS; do
+            echo "Deleting old tag: $TAG"
+            regctl tag delete ${{ env.REGISTRY }}/api:$TAG || true
+          done
+
+      - name: Cleanup old Frontend images (keep latest 2)
+        run: |
+          TAGS=$(regctl tag list ${{ env.REGISTRY }}/frontend 2>/dev/null | grep -v '^latest$' | tail -n +3) || true
+          for TAG in $TAGS; do
+            echo "Deleting old tag: $TAG"
+            regctl tag delete ${{ env.REGISTRY }}/frontend:$TAG || true
+          done
