@@ -1,6 +1,9 @@
+fly.toml
+.opencode
+
 .env
 
-.venv 
+.venv
 
 .pytest_cache
 
@@ -27,7 +30,7 @@ backend/*
 
 dump.rdb
 
-.nox 
+.nox
 
 .coverage
 
@@ -41,5 +44,5 @@ dump.rdb
 .cursor/
 .cursor/*
 
-.db 
+.db
 node_modules
