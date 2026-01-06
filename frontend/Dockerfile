@@ -1,6 +1,6 @@
 FROM node:20-alpine AS base
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@9 --activate
 
 FROM base AS deps
 WORKDIR /app
@@ -12,15 +12,16 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY frontend/package.json ./frontend/
 COPY packages/simba-chat/package.json ./packages/simba-chat/
 
-# Install dependencies (without frozen-lockfile due to workspace)
-WORKDIR /app/frontend
-RUN pnpm install --filter @simba/dashboard
+# Install all dependencies
+RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
 
-# Copy dependencies
+# Copy all node_modules from deps (including root and workspace packages)
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
+COPY --from=deps /app/packages/simba-chat/node_modules ./packages/simba-chat/node_modules
 
 # Copy source files
 COPY packages/simba-chat ./packages/simba-chat
