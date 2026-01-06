@@ -27,12 +27,22 @@ COPY --from=deps /app/packages/simba-chat/node_modules ./packages/simba-chat/nod
 COPY packages/simba-chat ./packages/simba-chat
 COPY frontend ./frontend
 
+# Build simba-chat package first
+WORKDIR /app/packages/simba-chat
+RUN pnpm build
+
+# Replace symlink with actual built package
+RUN rm -rf /app/frontend/node_modules/simba-chat && \
+    cp -r /app/packages/simba-chat /app/frontend/node_modules/simba-chat
+
+# Build frontend
 WORKDIR /app/frontend
 
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-RUN pnpm build
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm build --webpack
 
 FROM base AS runner
 WORKDIR /app
