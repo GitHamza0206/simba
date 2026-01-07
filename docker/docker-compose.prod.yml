@@ -61,7 +61,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    command: ["celery", "-A", "simba.core.celery_config.celery_app", "worker", "--loglevel=info", "-Q", "ingestion"]
+    command: ["uv", "run", "celery", "-A", "simba.core.celery_config.celery_app", "worker", "--loglevel=info", "-Q", "ingestion"]
     depends_on:
       redis:
         condition: service_healthy
@@ -112,10 +112,10 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:6333/readyz"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
     restart: unless-stopped
     networks:
       - simba_network
