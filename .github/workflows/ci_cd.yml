@@ -95,44 +95,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  build-and-push-frontend:
-    name: Build and Push Frontend Image
-    runs-on: ubuntu-latest
-    needs: [frontend-checks]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Vultr Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ams.vultrcr.com
-          username: ${{ secrets.VULTR_REGISTRY_USERNAME }}
-          password: ${{ secrets.VULTR_REGISTRY_PASSWORD }}
-
-      - name: Build and push Frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: frontend/Dockerfile
-          push: true
-          platforms: linux/amd64
-          tags: |
-            ${{ env.REGISTRY }}/frontend:latest
-            ${{ env.REGISTRY }}/frontend:${{ github.sha }}
-          build-args: |
-            NEXT_PUBLIC_API_URL=/api
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   deploy:
     name: Deploy to Vultr VPC
     runs-on: ubuntu-latest
-    needs: [build-and-push-api, build-and-push-frontend]
+    needs: [build-and-push-api]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - name: Checkout code
@@ -158,14 +124,15 @@ jobs:
             # Login to Vultr registry
             echo "${{ secrets.VULTR_REGISTRY_PASSWORD }}" | docker login ams.vultrcr.com -u ${{ secrets.VULTR_REGISTRY_USERNAME }} --password-stdin
 
+            # Cleanup old images and build cache before pulling
+            docker image prune -af
+            docker builder prune -af
+
             # Pull latest images
             docker compose pull
 
             # Deploy with zero-downtime
             docker compose up -d --remove-orphans
-
-            # Cleanup old images
-            docker image prune -f
 
             # Health check
             sleep 10
@@ -202,12 +169,4 @@ jobs:
           for TAG in $TAGS; do
             echo "Deleting old tag: $TAG"
             regctl tag delete ${{ env.REGISTRY }}/api:$TAG || true
-          done
-
-      - name: Cleanup old Frontend images (keep latest 2)
-        run: |
-          TAGS=$(regctl tag list ${{ env.REGISTRY }}/frontend 2>/dev/null | grep -v '^latest$' | tail -n +3) || true
-          for TAG in $TAGS; do
-            echo "Deleting old tag: $TAG"
-            regctl tag delete ${{ env.REGISTRY }}/frontend:$TAG || true
           done
