@@ -45,6 +45,30 @@ up-prod:
 	@echo "  - Qdrant:   running"
 	@echo "  - MinIO:    running"
 
+# Start all services with local builds (for Apple Silicon / ARM64)
+up-local:
+	@echo "Building and starting all services locally..."
+	@docker compose -f docker/docker-compose.local.yml up -d --build
+	@echo "Local services started!"
+	@echo "  - Nginx:    localhost:80 (HTTP), localhost:443 (HTTPS)"
+	@echo "  - Frontend: localhost:3000"
+	@echo "  - Server:   localhost:8000"
+	@echo "  - Celery:   running"
+	@echo "  - Redis:    running"
+	@echo "  - Postgres: running"
+	@echo "  - Qdrant:   running"
+	@echo "  - MinIO:    running"
+
+# Stop local services
+down-local:
+	@echo "Stopping local services..."
+	@docker compose -f docker/docker-compose.local.yml down
+	@echo "Local services stopped."
+
+# Show local logs
+logs-local:
+	@docker compose -f docker/docker-compose.local.yml logs -f
+
 # Stop all services
 down:
 	@echo "Stopping services..."
@@ -81,13 +105,16 @@ help:
 	@echo "  make server          - Run server with reload"
 	@echo "  make celery          - Run Celery worker locally"
 	@echo "  make up              - Start all services (docker-compose)"
-	@echo "  make up-prod         - Start all production services (includes frontend)"
+	@echo "  make up-prod         - Start all production services (pulls from registry)"
+	@echo "  make up-local        - Build and start all services locally (for ARM64/Apple Silicon)"
 	@echo "  make services        - Start infrastructure only (redis, postgres, qdrant, minio)"
 	@echo "  make down            - Stop all services"
 	@echo "  make down-prod       - Stop all production services"
+	@echo "  make down-local      - Stop local services"
 	@echo "  make logs            - View logs"
 	@echo "  make logs-prod       - View production logs"
+	@echo "  make logs-local      - View local logs"
 	@echo "  make evaluate        - Run RAG accuracy evaluation"
 	@echo "  make evaluate-rerank - Run RAG evaluation with reranking"
 
-.PHONY: server celery up up-prod services down down-prod logs logs-prod help evaluate evaluate-rerank
+.PHONY: server celery up up-prod up-local services down down-prod down-local logs logs-prod logs-local help evaluate evaluate-rerank
