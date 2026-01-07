@@ -11,17 +11,6 @@ services:
       - /etc/ssl/simba:/etc/ssl/simba:ro
     depends_on:
       - server
-      - frontend
-    restart: unless-stopped
-    networks:
-      - simba_network
-
-  frontend:
-    image: ams.vultrcr.com/simba/frontend:latest
-    expose:
-      - "3000"
-    environment:
-      - NODE_ENV=production
     restart: unless-stopped
     networks:
       - simba_network
