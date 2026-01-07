@@ -13,6 +13,8 @@ services:
     environment:
       - QDRANT_HOST=qdrant
       - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY
+      - MINIO_SECRET_KEY
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - DATABASE_URL=postgresql://simba:simba@postgres:5432/simba
@@ -35,11 +37,15 @@ services:
     environment:
       - QDRANT_HOST=qdrant
       - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY
+      - MINIO_SECRET_KEY
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - DATABASE_URL=postgresql://simba:simba@postgres:5432/simba
     command: ["uv", "run", "celery", "-A", "simba.core.celery_config.celery_app", "worker", "--loglevel=info", "-Q", "ingestion"]
     depends_on:
+      server:
+        condition: service_started
       redis:
         condition: service_healthy
       qdrant:
@@ -103,9 +109,11 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    env_file:
+      - ../.env
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"

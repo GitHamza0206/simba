@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     poppler-utils \
     tesseract-ocr \
+    libgl1 \
+    libglib2.0-0 \
     # General utilities
     curl \
     && rm -rf /var/lib/apt/lists/*

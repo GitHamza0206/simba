@@ -35,6 +35,8 @@ services:
     environment:
       - QDRANT_HOST=qdrant
       - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY
+      - MINIO_SECRET_KEY
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -58,11 +60,15 @@ services:
     environment:
       - QDRANT_HOST=qdrant
       - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY
+      - MINIO_SECRET_KEY
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     command: ["uv", "run", "celery", "-A", "simba.core.celery_config.celery_app", "worker", "--loglevel=info", "-Q", "ingestion"]
     depends_on:
+      server:
+        condition: service_started
       redis:
         condition: service_healthy
       qdrant:
