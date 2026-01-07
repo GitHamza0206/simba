@@ -9,12 +9,10 @@ ENV PYTHONUNBUFFERED=1 \
 
 # Install system dependencies for document parsing
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # For unstructured document parsing
+    # For docling document parsing
     libmagic1 \
     poppler-utils \
     tesseract-ocr \
-    libreoffice \
-    pandoc \
     # General utilities
     curl \
     && rm -rf /var/lib/apt/lists/*

@@ -1,27 +1,38 @@
-"""Document parsing service using Unstructured."""
+"""Document parsing service using Docling."""
 
-from io import BytesIO
+import tempfile
+from pathlib import Path
 
-from unstructured.partition.auto import partition
+from docling.document_converter import DocumentConverter
 
-# MIME type to file extension mapping for unstructured
+# MIME type to file extension mapping
 MIME_TO_EXT = {
     "application/pdf": ".pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
-    "application/msword": ".doc",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
-    "application/vnd.ms-excel": ".xls",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
-    "application/vnd.ms-powerpoint": ".ppt",
     "text/plain": ".txt",
     "text/markdown": ".md",
     "text/html": ".html",
-    "text/csv": ".csv",
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "text/asciidoc": ".adoc",
 }
+
+# Initialize converter once (lazy loading on first use)
+_converter: DocumentConverter | None = None
+
+
+def _get_converter() -> DocumentConverter:
+    """Get or create the document converter instance."""
+    global _converter
+    if _converter is None:
+        _converter = DocumentConverter()
+    return _converter
 
 
 def parse_document(file_content: bytes, mime_type: str, filename: str) -> str:
-    """Parse a document and extract text content.
+    """Parse a document and extract text content using Docling.
 
     Args:
         file_content: Raw file content as bytes.
@@ -29,7 +40,7 @@ def parse_document(file_content: bytes, mime_type: str, filename: str) -> str:
         filename: Original filename (used for extension detection).
 
     Returns:
-        Extracted text content as a single string.
+        Extracted text content as markdown string.
 
     Raises:
         ValueError: If the file type is not supported.
@@ -42,21 +53,17 @@ def parse_document(file_content: bytes, mime_type: str, filename: str) -> str:
     if not ext:
         raise ValueError(f"Unsupported file type: {mime_type}")
 
-    # Use unstructured's partition function
-    # It automatically detects and handles different file types
-    elements = partition(
-        file=BytesIO(file_content),
-        metadata_filename=filename,
-    )
+    # Docling requires a file path, so write to a temp file
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        tmp.write(file_content)
+        tmp_path = Path(tmp.name)
 
-    # Combine all elements into a single text
-    text_parts = []
-    for element in elements:
-        text = str(element)
-        if text.strip():
-            text_parts.append(text.strip())
-
-    return "\n\n".join(text_parts)
+    try:
+        converter = _get_converter()
+        result = converter.convert(str(tmp_path))
+        return result.document.export_to_markdown()
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
 
 def get_supported_mime_types() -> list[str]:

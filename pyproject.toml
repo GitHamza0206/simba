@@ -44,7 +44,7 @@ dependencies = [
     "minio>=7.2.0",
 
     # Document parsing
-    "unstructured[all-docs]>=0.16.0",
+    "docling>=2.15.0",
 
     # Task queue
     "celery>=5.4.0",
