@@ -15,6 +15,7 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - DATABASE_URL=postgresql://simba:simba@postgres:5432/simba
     depends_on:
       redis:
         condition: service_healthy
@@ -22,14 +23,13 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     networks:
       - simba_network
 
   celery_worker:
     image: ${IMAGE_NAME:-simba}:${IMAGE_TAG:-latest}
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
     env_file:
       - ../.env
     environment:
@@ -37,13 +37,16 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
-    command: ["celery", "-A", "simba.core.celery_config.celery_app", "worker", "--loglevel=info", "-Q", "ingestion"]
+      - DATABASE_URL=postgresql://simba:simba@postgres:5432/simba
+    command: ["uv", "run", "celery", "-A", "simba.core.celery_config.celery_app", "worker", "--loglevel=info", "-Q", "ingestion"]
     depends_on:
       redis:
         condition: service_healthy
       qdrant:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     networks:
       - simba_network
@@ -88,10 +91,10 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:6333/readyz"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
     networks:
       - simba_network
 
