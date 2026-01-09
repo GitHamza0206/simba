@@ -43,8 +43,9 @@ dependencies = [
     # Object storage
     "minio>=7.2.0",
 
-    # Document parsing
+    # Document parsing (default: Docling)
     "docling>=2.15.0",
+    # Optional parsers installed via extras: mistral, unstructured
 
     # Task queue
     "celery>=5.4.0",
@@ -73,6 +74,14 @@ dev = [
 # Optional: Additional embedding models
 ml = [
     "langchain-huggingface>=0.1.2",
+]
+
+# Optional: Alternative document parsers (use PARSER_BACKEND env var to select)
+mistral = [
+    "mistralai>=1.0.0",
+]
+unstructured = [
+    "unstructured[all-docs]>=0.16.0",
 ]
 
 [project.scripts]
@@ -122,3 +131,8 @@ explicit = true
 torch = { index = "pytorch-cpu" }
 torchvision = { index = "pytorch-cpu" }
 torchaudio = { index = "pytorch-cpu" }
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.10",
+]

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from simba.api.middleware.auth import OrganizationContext, get_current_org
 from simba.models import Collection, Document, get_db
 from simba.services import qdrant_service, storage_service
 
@@ -38,6 +39,11 @@ class CollectionListResponse(BaseModel):
     total: int
 
 
+def get_qdrant_collection_name(org_id: str, collection_name: str) -> str:
+    """Generate Qdrant collection name with org namespace."""
+    return f"{org_id}_{collection_name}"
+
+
 # --- Routes ---
 
 
@@ -46,11 +52,17 @@ async def list_collections(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
 ):
-    """List all collections."""
-    total = db.query(Collection).count()
+    """List all collections for the current organization."""
+    total = db.query(Collection).filter(Collection.organization_id == org.organization_id).count()
     collections = (
-        db.query(Collection).order_by(Collection.created_at.desc()).offset(skip).limit(limit).all()
+        db.query(Collection)
+        .filter(Collection.organization_id == org.organization_id)
+        .order_by(Collection.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
     )
 
     items = [
@@ -69,16 +81,28 @@ async def list_collections(
 
 
 @router.post("", response_model=CollectionResponse)
-async def create_collection(data: CollectionCreate, db: Session = Depends(get_db)):
-    """Create a new collection."""
-    # Check if collection name already exists
-    existing = db.query(Collection).filter(Collection.name == data.name).first()
+async def create_collection(
+    data: CollectionCreate,
+    db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
+):
+    """Create a new collection for the current organization."""
+    # Check if collection name already exists for this organization
+    existing = (
+        db.query(Collection)
+        .filter(
+            Collection.organization_id == org.organization_id,
+            Collection.name == data.name,
+        )
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=400, detail="Collection with this name already exists")
 
     # Create collection in database
     collection = Collection(
         id=str(uuid4()),
+        organization_id=org.organization_id,
         name=data.name,
         description=data.description,
         document_count=0,
@@ -87,8 +111,9 @@ async def create_collection(data: CollectionCreate, db: Session = Depends(get_db
     db.commit()
     db.refresh(collection)
 
-    # Create corresponding Qdrant collection
-    qdrant_service.create_collection(data.name)
+    # Create corresponding Qdrant collection with org namespace
+    qdrant_collection_name = get_qdrant_collection_name(org.organization_id, data.name)
+    qdrant_service.create_collection(qdrant_collection_name)
 
     return CollectionResponse(
         id=collection.id,
@@ -101,9 +126,20 @@ async def create_collection(data: CollectionCreate, db: Session = Depends(get_db
 
 
 @router.get("/{collection_id}", response_model=CollectionResponse)
-async def get_collection(collection_id: str, db: Session = Depends(get_db)):
+async def get_collection(
+    collection_id: str,
+    db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
+):
     """Get collection details."""
-    collection = db.query(Collection).filter(Collection.id == collection_id).first()
+    collection = (
+        db.query(Collection)
+        .filter(
+            Collection.id == collection_id,
+            Collection.organization_id == org.organization_id,
+        )
+        .first()
+    )
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
@@ -118,9 +154,20 @@ async def get_collection(collection_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/{collection_id}")
-async def delete_collection(collection_id: str, db: Session = Depends(get_db)):
+async def delete_collection(
+    collection_id: str,
+    db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
+):
     """Delete a collection and all its documents."""
-    collection = db.query(Collection).filter(Collection.id == collection_id).first()
+    collection = (
+        db.query(Collection)
+        .filter(
+            Collection.id == collection_id,
+            Collection.organization_id == org.organization_id,
+        )
+        .first()
+    )
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
@@ -132,9 +179,10 @@ async def delete_collection(collection_id: str, db: Session = Depends(get_db)):
         except Exception:
             pass
 
-    # Delete Qdrant collection
+    # Delete Qdrant collection with org namespace
     try:
-        qdrant_service.delete_collection(collection.name)
+        qdrant_collection_name = get_qdrant_collection_name(org.organization_id, collection.name)
+        qdrant_service.delete_collection(qdrant_collection_name)
     except Exception:
         pass
 
@@ -146,9 +194,20 @@ async def delete_collection(collection_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{collection_id}/stats")
-async def get_collection_stats(collection_id: str, db: Session = Depends(get_db)):
+async def get_collection_stats(
+    collection_id: str,
+    db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
+):
     """Get collection statistics including vector count."""
-    collection = db.query(Collection).filter(Collection.id == collection_id).first()
+    collection = (
+        db.query(Collection)
+        .filter(
+            Collection.id == collection_id,
+            Collection.organization_id == org.organization_id,
+        )
+        .first()
+    )
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
@@ -170,11 +229,12 @@ async def get_collection_stats(collection_id: str, db: Session = Depends(get_db)
         .count()
     )
 
-    # Get Qdrant stats
+    # Get Qdrant stats with org namespace
     qdrant_info = None
     try:
-        if qdrant_service.collection_exists(collection.name):
-            qdrant_info = qdrant_service.get_collection_info(collection.name)
+        qdrant_collection_name = get_qdrant_collection_name(org.organization_id, collection.name)
+        if qdrant_service.collection_exists(qdrant_collection_name):
+            qdrant_info = qdrant_service.get_collection_info(qdrant_collection_name)
     except Exception:
         pass
 

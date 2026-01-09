@@ -28,12 +28,10 @@ WORKDIR /app
 # Copy dependency files first (for caching)
 COPY pyproject.toml uv.lock README.md ./
 
-# Install PyTorch CPU-only first (saves ~4GB by avoiding CUDA)
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
-# Install dependencies (skip torch since we installed CPU-only version above)
+# Install dependencies (skip torch, torchvision, and CUDA packages)
 RUN uv sync --frozen --no-dev \
     --no-install-package torch \
+    --no-install-package torchvision \
     --no-install-package nvidia-cublas-cu12 \
     --no-install-package nvidia-cuda-cupti-cu12 \
     --no-install-package nvidia-cuda-nvrtc-cu12 \
@@ -51,11 +49,15 @@ RUN uv sync --frozen --no-dev \
     --no-install-package nvidia-nvtx-cu12 \
     --no-install-package triton
 
+# Install CPU-only PyTorch and torchvision into the venv (saves ~4GB by avoiding CUDA)
+# torchvision is required by docling-ibm-models for AutoProcessor in transformers
+RUN uv pip install --python /app/.venv/bin/python torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
 # Copy application code
 COPY simba/ ./simba/
 
 # Expose port
 EXPOSE 8000
 
-# Default command - run the API server
-CMD ["uv", "run", "uvicorn", "simba.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command - run the API server using the venv's python
+CMD ["/app/.venv/bin/python", "-m", "uvicorn", "simba.api.app:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,46 @@
+# Simba API Dockerfile (Production - Mistral OCR)
+# Lightweight image using Mistral OCR API instead of heavy local Docling
+
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_SYSTEM_PYTHON=1 \
+    PARSER_BACKEND=mistral
+
+# Install minimal system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependency files first (for caching)
+COPY pyproject.toml uv.lock README.md ./
+
+# Install dependencies with mistral extra (skip docling and heavy deps)
+RUN uv sync --frozen --no-dev --extra mistral \
+    --no-install-package docling \
+    --no-install-package docling-core \
+    --no-install-package docling-ibm-models \
+    --no-install-package docling-parse \
+    --no-install-package torch \
+    --no-install-package torchvision \
+    --no-install-package opencv-python \
+    --no-install-package pandas \
+    --no-install-package accelerate \
+    --no-install-package transformers
+
+# Copy application code
+COPY simba/ ./simba/
+
+# Expose port
+EXPOSE 8000
+
+# Default command - run the API server
+CMD ["/app/.venv/bin/python", "-m", "uvicorn", "simba.api.app:app", "--host", "0.0.0.0", "--port", "8000"]

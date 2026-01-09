@@ -1,0 +1,21 @@
+app = 'simba-worker'
+primary_region = 'cdg'
+
+[build]
+  dockerfile = 'docker/Dockerfile.prod'
+
+[env]
+  PYTHONUNBUFFERED = '1'
+  PARSER_BACKEND = 'mistral'
+
+# Override the default command to run Celery worker using venv's python
+[processes]
+  worker = '/app/.venv/bin/python -m celery -A simba.core.celery_config.celery_app worker --loglevel=info -Q ingestion'
+
+# No HTTP service needed - this is a background worker
+# Workers should always be running (no auto-stop)
+[[vm]]
+  memory = '4gb'
+  cpu_kind = 'shared'
+  cpus = 2
+  processes = ['worker']

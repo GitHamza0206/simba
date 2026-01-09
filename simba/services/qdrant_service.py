@@ -28,9 +28,20 @@ logger = logging.getLogger(__name__)
 @lru_cache
 def get_qdrant_client() -> QdrantClient:
     """Get cached Qdrant client instance."""
+    host = settings.qdrant_host
+
+    # If host contains a protocol, use url parameter instead
+    if host.startswith("http://") or host.startswith("https://"):
+        return QdrantClient(
+            url=host,
+            api_key=settings.qdrant_api_key,
+        )
+
+    # Local connection without protocol
     return QdrantClient(
-        host=settings.qdrant_host,
+        host=host,
         port=settings.qdrant_port,
+        api_key=settings.qdrant_api_key,
     )
 
 

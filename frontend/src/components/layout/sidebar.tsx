@@ -10,7 +10,7 @@ import {
   MessageSquare,
   BarChart3,
   ClipboardCheck,
-  Settings,
+  Rocket,
   HelpCircle,
   Play,
 } from "lucide-react";
@@ -22,7 +22,7 @@ const navigation = [
   { name: "Conversations", href: ROUTES.CONVERSATIONS, icon: MessageSquare },
   { name: "Analytics", href: ROUTES.ANALYTICS, icon: BarChart3 },
   { name: "Evals", href: ROUTES.EVALS, icon: ClipboardCheck },
-  { name: "Settings", href: ROUTES.SETTINGS, icon: Settings },
+  { name: "Deploy", href: ROUTES.DEPLOY, icon: Rocket },
 ];
 
 export function Sidebar() {

@@ -1,22 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { API_ROUTES } from "@/lib/constants";
+import { useAuth } from "@/providers/auth-provider";
 import type { Collection, CollectionCreate, ListResponse } from "@/types/api";
 
 const COLLECTIONS_KEY = ["collections"];
 
 export function useCollections() {
+  const { isReady } = useAuth();
+
   return useQuery({
     queryKey: COLLECTIONS_KEY,
     queryFn: () => api.get<ListResponse<Collection>>(API_ROUTES.COLLECTIONS),
+    enabled: isReady,
   });
 }
 
 export function useCollection(collectionId: string) {
+  const { isReady } = useAuth();
+
   return useQuery({
     queryKey: [...COLLECTIONS_KEY, collectionId],
     queryFn: () => api.get<Collection>(`${API_ROUTES.COLLECTIONS}/${collectionId}`),
-    enabled: !!collectionId,
+    enabled: isReady && !!collectionId,
   });
 }
 

@@ -2,6 +2,7 @@ fly.toml
 .opencode
 
 .env
+.env.*
 docker/.env
 
 .venv

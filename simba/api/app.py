@@ -2,8 +2,9 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from simba.api.routes import (
     analytics,
@@ -59,6 +60,14 @@ def create_app() -> FastAPI:
     app.include_router(conversations.router, prefix=settings.api_prefix, tags=["conversations"])
     app.include_router(analytics.router, prefix=settings.api_prefix, tags=["analytics"])
     app.include_router(evals.router, prefix=settings.api_prefix, tags=["evals"])
+
+    # Global exception handler to ensure CORS headers on error responses
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(exc)},
+        )
 
     return app
 

@@ -77,8 +77,8 @@ def ingest_document(document_id: str, db: Session) -> None:
         # Step 5: Store in Qdrant
         logger.info(f"Storing {len(embeddings)} vectors (dense + sparse) in Qdrant")
 
-        # Ensure collection exists
-        collection_name = document.collection.name
+        # Ensure collection exists with org namespace
+        collection_name = f"{document.organization_id}_{document.collection.name}"
         qdrant_service.create_collection(collection_name)
 
         # Prepare points for Qdrant (dense + sparse vectors)

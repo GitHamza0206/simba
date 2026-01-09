@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     # Qdrant
     qdrant_host: str = "localhost"
     qdrant_port: int = 6333
+    qdrant_api_key: str | None = None
 
     # MinIO (S3-compatible storage)
     minio_endpoint: str = "localhost:9000"
@@ -71,6 +72,13 @@ class Settings(BaseSettings):
     # Celery
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/1"
+
+    # Document parsing
+    # Options: "docling", "mistral", "unstructured"
+    parser_backend: str = "docling"
+    mistral_api_key: str | None = None
+    unstructured_api_key: str | None = None
+    unstructured_api_url: str = "https://api.unstructuredapp.io/general/v0/general"
 
 
 @lru_cache

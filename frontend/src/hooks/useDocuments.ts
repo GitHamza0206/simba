@@ -1,8 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { API_URL } from "@/lib/constants";
+import { useAuth } from "@/providers/auth-provider";
 import type { Document, DocumentUploadResponse, ListResponse } from "@/types/api";
 
 const DOCUMENTS_KEY = ["documents"];
+
+// Get org ID from localStorage for mutations
+function getOrgHeader(): Record<string, string> {
+  const orgId = typeof window !== "undefined" ? localStorage.getItem("simba_active_org") : null;
+  return orgId ? { "X-Organization-Id": orgId } : {};
+}
 
 interface UseDocumentsOptions {
   collectionId?: string;
@@ -11,6 +19,7 @@ interface UseDocumentsOptions {
 
 export function useDocuments(options: UseDocumentsOptions = {}) {
   const { collectionId, status } = options;
+  const { isReady } = useAuth();
 
   return useQuery({
     queryKey: [...DOCUMENTS_KEY, { collectionId, status }],
@@ -20,12 +29,11 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
       if (status) params.set("status", status);
 
       const queryString = params.toString();
-      const url = `${API_URL}/api/v1/documents${queryString ? `?${queryString}` : ""}`;
+      const endpoint = `/api/v1/documents${queryString ? `?${queryString}` : ""}`;
 
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to fetch documents");
-      return response.json() as Promise<ListResponse<Document>>;
+      return api.get<ListResponse<Document>>(endpoint);
     },
+    enabled: isReady,
     // Auto-refresh every 3s when documents are processing
     refetchInterval: (query) => {
       const data = query.state.data;
@@ -38,14 +46,12 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
 }
 
 export function useDocument(documentId: string) {
+  const { isReady } = useAuth();
+
   return useQuery({
     queryKey: [...DOCUMENTS_KEY, documentId],
-    queryFn: async () => {
-      const response = await fetch(`${API_URL}/api/v1/documents/${documentId}`);
-      if (!response.ok) throw new Error("Failed to fetch document");
-      return response.json() as Promise<Document>;
-    },
-    enabled: !!documentId,
+    queryFn: () => api.get<Document>(`/api/v1/documents/${documentId}`),
+    enabled: isReady && !!documentId,
   });
 }
 
@@ -67,6 +73,8 @@ export function useUploadDocument() {
         {
           method: "POST",
           body: formData,
+          headers: getOrgHeader(),
+          credentials: "include",
         }
       );
 
@@ -88,11 +96,7 @@ export function useDeleteDocument() {
 
   return useMutation({
     mutationFn: async (documentId: string) => {
-      const response = await fetch(`${API_URL}/api/v1/documents/${documentId}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Failed to delete document");
-      return response.json();
+      return api.delete(`/api/v1/documents/${documentId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY });
@@ -105,12 +109,7 @@ export function useReprocessDocument() {
 
   return useMutation({
     mutationFn: async (documentId: string) => {
-      const response = await fetch(
-        `${API_URL}/api/v1/documents/${documentId}/reprocess`,
-        { method: "POST" }
-      );
-      if (!response.ok) throw new Error("Failed to reprocess document");
-      return response.json();
+      return api.post(`/api/v1/documents/${documentId}/reprocess`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY });
@@ -119,16 +118,12 @@ export function useReprocessDocument() {
 }
 
 export function useDocumentDownloadUrl(documentId: string) {
+  const { isReady } = useAuth();
+
   return useQuery({
     queryKey: [...DOCUMENTS_KEY, documentId, "download"],
-    queryFn: async () => {
-      const response = await fetch(
-        `${API_URL}/api/v1/documents/${documentId}/download`
-      );
-      if (!response.ok) throw new Error("Failed to get download URL");
-      return response.json() as Promise<{ download_url: string; filename: string }>;
-    },
-    enabled: !!documentId,
+    queryFn: () => api.get<{ download_url: string; filename: string }>(`/api/v1/documents/${documentId}/download`),
+    enabled: isReady && !!documentId,
   });
 }
 
@@ -147,18 +142,11 @@ export interface ChunksResponse {
 }
 
 export function useDocumentChunks(documentId: string | null) {
+  const { isReady } = useAuth();
+
   return useQuery({
     queryKey: [...DOCUMENTS_KEY, documentId, "chunks"],
-    queryFn: async () => {
-      const response = await fetch(
-        `${API_URL}/api/v1/documents/${documentId}/chunks`
-      );
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.detail || "Failed to get chunks");
-      }
-      return response.json() as Promise<ChunksResponse>;
-    },
-    enabled: !!documentId,
+    queryFn: () => api.get<ChunksResponse>(`/api/v1/documents/${documentId}/chunks`),
+    enabled: isReady && !!documentId,
   });
 }

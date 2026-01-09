@@ -6,6 +6,29 @@ type RequestOptions = {
   headers?: Record<string, string>;
 };
 
+// Storage key for active organization
+const ACTIVE_ORG_KEY = "simba_active_org";
+
+// Get active organization ID from localStorage
+function getActiveOrgId(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(ACTIVE_ORG_KEY);
+}
+
+// Set active organization ID in localStorage
+export function setActiveOrgId(orgId: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(ACTIVE_ORG_KEY, orgId);
+  }
+}
+
+// Clear active organization ID
+export function clearActiveOrgId(): void {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(ACTIVE_ORG_KEY);
+  }
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -16,12 +39,22 @@ class ApiClient {
   private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const { method = "GET", body, headers = {} } = options;
 
+    // Build headers with organization context
+    const requestHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...headers,
+    };
+
+    // Add organization ID header if available
+    const orgId = getActiveOrgId();
+    if (orgId) {
+      requestHeaders["X-Organization-Id"] = orgId;
+    }
+
     const config: RequestInit = {
       method,
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
+      headers: requestHeaders,
+      credentials: "include", // Include cookies for session
     };
 
     if (body) {

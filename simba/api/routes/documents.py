@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from simba.api.middleware.auth import OrganizationContext, get_current_org
+from simba.api.routes.collections import get_qdrant_collection_name
 from simba.models import Collection, Document, get_db
 from simba.services import ingestion_service, parser_service, qdrant_service, storage_service
 from simba.tasks import process_document
@@ -66,9 +68,10 @@ async def list_documents(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
 ):
-    """List all documents with optional filtering."""
-    query = db.query(Document)
+    """List all documents for the current organization with optional filtering."""
+    query = db.query(Document).filter(Document.organization_id == org.organization_id)
 
     if collection_id:
         query = query.filter(Document.collection_id == collection_id)
@@ -102,9 +105,12 @@ async def list_documents(
 async def get_documents_status(
     collection_id: str | None = Query(None, description="Filter by collection ID"),
     db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
 ):
     """Lightweight endpoint to check document statuses (for polling)."""
-    query = db.query(Document.id, Document.status)
+    query = db.query(Document.id, Document.status).filter(
+        Document.organization_id == org.organization_id
+    )
 
     if collection_id:
         query = query.filter(Document.collection_id == collection_id)
@@ -122,10 +128,18 @@ async def upload_document(
     file: UploadFile = File(...),
     collection_id: str = Query(..., description="Collection ID to upload to"),
     db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
 ):
     """Upload a new document and queue it for processing."""
-    # Validate collection exists
-    collection = db.query(Collection).filter(Collection.id == collection_id).first()
+    # Validate collection exists and belongs to org
+    collection = (
+        db.query(Collection)
+        .filter(
+            Collection.id == collection_id,
+            Collection.organization_id == org.organization_id,
+        )
+        .first()
+    )
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
@@ -141,10 +155,10 @@ async def upload_document(
     file_content = await file.read()
     file_size = len(file_content)
 
-    # Generate document ID and object key
+    # Generate document ID and object key (with org namespace)
     document_id = str(uuid4())
     filename = file.filename or "document"
-    object_key = f"documents/{document_id}/{filename}"
+    object_key = f"{org.organization_id}/documents/{document_id}/{filename}"
 
     # Upload to MinIO
     storage_service.upload_file(file_content, object_key, mime_type)
@@ -152,6 +166,7 @@ async def upload_document(
     # Create document record
     document = Document(
         id=document_id,
+        organization_id=org.organization_id,
         name=filename,
         collection_id=collection_id,
         status="pending",
@@ -175,9 +190,20 @@ async def upload_document(
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
-async def get_document(document_id: str, db: Session = Depends(get_db)):
+async def get_document(
+    document_id: str,
+    db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
+):
     """Get document details."""
-    document = db.query(Document).filter(Document.id == document_id).first()
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.organization_id == org.organization_id,
+        )
+        .first()
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -197,13 +223,27 @@ async def get_document(document_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/{document_id}")
-async def delete_document(document_id: str, db: Session = Depends(get_db)):
+async def delete_document(
+    document_id: str,
+    db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
+):
     """Delete a document and its associated vectors."""
-    document = db.query(Document).filter(Document.id == document_id).first()
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.organization_id == org.organization_id,
+        )
+        .first()
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    collection_name = document.collection.name
+    # Get Qdrant collection name with org namespace
+    qdrant_collection_name = get_qdrant_collection_name(
+        org.organization_id, document.collection.name
+    )
 
     # Delete from MinIO
     try:
@@ -213,7 +253,7 @@ async def delete_document(document_id: str, db: Session = Depends(get_db)):
 
     # Delete vectors from Qdrant
     try:
-        ingestion_service.delete_document_vectors(document_id, collection_name)
+        ingestion_service.delete_document_vectors(document_id, qdrant_collection_name)
     except Exception:
         pass  # Vectors might not exist
 
@@ -225,9 +265,20 @@ async def delete_document(document_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{document_id}/reprocess")
-async def reprocess_document(document_id: str, db: Session = Depends(get_db)):
+async def reprocess_document(
+    document_id: str,
+    db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
+):
     """Reprocess a failed document."""
-    document = db.query(Document).filter(Document.id == document_id).first()
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.organization_id == org.organization_id,
+        )
+        .first()
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -237,10 +288,12 @@ async def reprocess_document(document_id: str, db: Session = Depends(get_db)):
             detail=f"Cannot reprocess document in status: {document.status}",
         )
 
-    # Delete existing vectors
+    # Delete existing vectors with org namespace
     try:
-        collection_name = document.collection.name
-        ingestion_service.delete_document_vectors(document_id, collection_name)
+        qdrant_collection_name = get_qdrant_collection_name(
+            org.organization_id, document.collection.name
+        )
+        ingestion_service.delete_document_vectors(document_id, qdrant_collection_name)
     except Exception:
         pass
 
@@ -260,9 +313,20 @@ async def reprocess_document(document_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{document_id}/download")
-async def get_document_download_url(document_id: str, db: Session = Depends(get_db)):
+async def get_document_download_url(
+    document_id: str,
+    db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
+):
     """Get a presigned URL for downloading the document."""
-    document = db.query(Document).filter(Document.id == document_id).first()
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.organization_id == org.organization_id,
+        )
+        .first()
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -272,9 +336,20 @@ async def get_document_download_url(document_id: str, db: Session = Depends(get_
 
 
 @router.get("/{document_id}/chunks")
-async def get_document_chunks(document_id: str, db: Session = Depends(get_db)):
+async def get_document_chunks(
+    document_id: str,
+    db: Session = Depends(get_db),
+    org: OrganizationContext = Depends(get_current_org),
+):
     """Get all chunks for a document."""
-    document = db.query(Document).filter(Document.id == document_id).first()
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.organization_id == org.organization_id,
+        )
+        .first()
+    )
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -284,8 +359,11 @@ async def get_document_chunks(document_id: str, db: Session = Depends(get_db)):
             detail=f"Document is not ready (status: {document.status})",
         )
 
-    collection_name = document.collection.name
-    chunks = qdrant_service.get_document_chunks(collection_name, document_id)
+    # Use org-namespaced collection name
+    qdrant_collection_name = get_qdrant_collection_name(
+        org.organization_id, document.collection.name
+    )
+    chunks = qdrant_service.get_document_chunks(qdrant_collection_name, document_id)
 
     return {
         "document_id": document_id,
