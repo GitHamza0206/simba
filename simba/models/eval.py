@@ -22,9 +22,7 @@ class EvalItem(Base):
     question: Mapped[str] = mapped_column(Text, nullable=False)
     response: Mapped[str | None] = mapped_column(Text, nullable=True)
     sources: Mapped[list[str] | None] = mapped_column(StringListType(), nullable=True)
-    sources_groundtruth: Mapped[list[str] | None] = mapped_column(
-        StringListType(), nullable=True
-    )
+    sources_groundtruth: Mapped[list[str] | None] = mapped_column(StringListType(), nullable=True)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     latency_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
     conversation_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
