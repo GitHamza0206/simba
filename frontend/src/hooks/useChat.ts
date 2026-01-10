@@ -91,8 +91,18 @@ export function useChat(options: UseChatOptions = {}) {
   const loadConversation = useCallback(async (convId: string) => {
     setIsLoadingHistory(true);
     try {
+      const headers: Record<string, string> = {};
+      const orgId = getActiveOrgId();
+      if (orgId) {
+        headers["X-Organization-Id"] = orgId;
+      }
+
       const response = await fetch(
-        `${API_URL}/api/v1/conversations/${convId}/messages`
+        `${API_URL}/api/v1/conversations/${convId}/messages`,
+        {
+          headers,
+          credentials: "include",
+        }
       );
       if (!response.ok) {
         if (response.status === 404) {
