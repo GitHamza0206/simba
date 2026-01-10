@@ -4052,6 +4052,7 @@ dependencies = [
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
     { name = "minio" },
+    { name = "mistralai" },
     { name = "prometheus-client" },
     { name = "psycopg", extra = ["binary", "pool"] },
     { name = "psycopg2-binary" },
@@ -4087,6 +4088,7 @@ unstructured = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pre-commit" },
     { name = "ruff" },
 ]
 
@@ -4105,6 +4107,7 @@ requires-dist = [
     { name = "langgraph", specifier = ">=0.2.60" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=2.0.0" },
     { name = "minio", specifier = ">=7.2.0" },
+    { name = "mistralai", specifier = ">=1.10.0" },
     { name = "mistralai", marker = "extra == 'mistral'", specifier = ">=1.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.15.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.1.0" },
@@ -4128,7 +4131,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.14.10" }]
+dev = [
+    { name = "pre-commit", specifier = ">=4.5.1" },
+    { name = "ruff", specifier = ">=0.14.10" },
+]
 
 [[package]]
 name = "six"

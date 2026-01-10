@@ -21,7 +21,6 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.34.0",
     "python-multipart>=0.0.20",
-
     # LangChain ecosystem (latest)
     "langchain>=0.3.14",
     "langchain-core>=0.3.29",
@@ -29,36 +28,30 @@ dependencies = [
     "langchain-openai>=0.3.0",
     "langgraph>=0.2.60",
     "langgraph-checkpoint-postgres>=2.0.0",
-    "psycopg[binary,pool]>=3.2.0",  # Required for async postgres checkpointer
-
+    "psycopg[binary,pool]>=3.2.0", # Required for async postgres checkpointer
     # Database
     "sqlalchemy>=2.0.40",
     "psycopg2-binary>=2.9.10",
-
     # Vector store & embeddings
     "qdrant-client>=1.9.0",
     "fastembed>=0.4.0",
-    "sentence-transformers>=3.4.0",  # For cross-encoder reranking
-
+    "sentence-transformers>=3.4.0", # For cross-encoder reranking
     # Object storage
     "minio>=7.2.0",
-
     # Document parsing (default: Docling)
     "docling>=2.15.0",
     # Optional parsers installed via extras: mistral, unstructured
-
     # Task queue
     "celery>=5.4.0",
     "redis>=5.2.0",
-
     # Utilities
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
     "python-dotenv>=1.0.1",
-
     # Observability
     "prometheus_client>=0.21.0",
     "cachetools>=5.5.0",
+    "mistralai>=1.10.0",
 ]
 
 [project.optional-dependencies]
@@ -134,5 +127,6 @@ torchaudio = { index = "pytorch-cpu" }
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.5.1",
     "ruff>=0.14.10",
 ]

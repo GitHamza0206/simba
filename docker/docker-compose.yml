@@ -13,8 +13,8 @@ services:
     environment:
       - QDRANT_HOST=qdrant
       - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY
-      - MINIO_SECRET_KEY
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - DATABASE_URL=postgresql://simba:simba@postgres:5432/simba
@@ -37,8 +37,8 @@ services:
     environment:
       - QDRANT_HOST=qdrant
       - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY
-      - MINIO_SECRET_KEY
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - DATABASE_URL=postgresql://simba:simba@postgres:5432/simba
@@ -112,8 +112,8 @@ services:
     env_file:
       - ../.env
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
