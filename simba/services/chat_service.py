@@ -11,6 +11,8 @@ from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import tool
+from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg_pool import AsyncConnectionPool
@@ -25,7 +27,7 @@ _tool_latencies: ContextVar[dict] = ContextVar("tool_latencies", default={})
 
 # Global connection pool and checkpointer (async)
 _connection_pool: AsyncConnectionPool | None = None
-_checkpointer: AsyncPostgresSaver | None = None
+_checkpointer: BaseCheckpointSaver | None = None
 _pool_initialized: bool = False
 
 SYSTEM_PROMPT = """You are Simba, a helpful customer service assistant.
@@ -115,9 +117,22 @@ def get_llm():
     )
 
 
-async def get_checkpointer() -> AsyncPostgresSaver:
-    """Get or create the async PostgreSQL checkpointer for conversation persistence."""
+def _is_postgres_url(database_url: str) -> bool:
+    """Return True when the database URL targets PostgreSQL."""
+    return database_url.startswith("postgresql") or database_url.startswith("postgres")
+
+
+async def get_checkpointer() -> BaseCheckpointSaver:
+    """Get or create the checkpointer used for conversation persistence."""
     global _connection_pool, _checkpointer, _pool_initialized
+
+    if not _is_postgres_url(settings.database_url):
+        if _checkpointer is None:
+            logger.warning(
+                "Using in-memory checkpointer; set DATABASE_URL to PostgreSQL for persistence."
+            )
+            _checkpointer = MemorySaver()
+        return _checkpointer
 
     if _checkpointer is None:
         logger.info("Initializing async PostgreSQL checkpointer for conversation persistence")
@@ -153,8 +168,8 @@ async def shutdown_checkpointer() -> None:
         logger.info("Closing async PostgreSQL connection pool")
         await _connection_pool.close()
         _connection_pool = None
-        _checkpointer = None
-        _pool_initialized = False
+    _checkpointer = None
+    _pool_initialized = False
 
 
 async def get_agent(collection: str | None = None):

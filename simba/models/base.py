@@ -1,7 +1,9 @@
 """SQLAlchemy base and database session management."""
 
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from simba.core.config import settings
 
@@ -12,8 +14,18 @@ class Base(DeclarativeBase):
     pass
 
 
+def _create_engine() -> Engine:
+    """Create a database engine with SQLite-safe defaults."""
+    engine_options: dict[str, object] = {"echo": settings.debug}
+    if settings.database_url.startswith("sqlite"):
+        engine_options["connect_args"] = {"check_same_thread": False}
+        if settings.database_url.endswith(":memory:"):
+            engine_options["poolclass"] = StaticPool
+    return create_engine(settings.database_url, **engine_options)
+
+
 # Database engine
-engine = create_engine(settings.database_url, echo=settings.debug)
+engine = _create_engine()
 
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

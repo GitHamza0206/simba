@@ -14,6 +14,7 @@ function App() {
   return (
     <SimbaChat
       apiUrl="${API_URL}"
+      organizationId="your-organization-id"
       apiKey="your-api-key"
       collection="default"
       placeholder="Ask me anything..."
@@ -28,6 +29,7 @@ function App() {
   return (
     <SimbaChatBubble
       apiUrl="${API_URL}"
+      organizationId="your-organization-id"
       apiKey="your-api-key"
       position="bottom-right"
       defaultOpen={false}
@@ -53,6 +55,7 @@ Install: npm install simba-chat
 
 ## Configuration
 - API URL: ${API_URL}
+- Organization ID: (required for multi-tenant access)
 - API Key: (optional, for authenticated access)
 - Collection: "default" (or specify your collection name)
 
@@ -65,6 +68,7 @@ import 'simba-chat/styles.css';
 
 <SimbaChat
   apiUrl="${API_URL}"
+  organizationId="your-organization-id"
   apiKey="your-api-key"
   collection="default"
   placeholder="Ask me anything..."
@@ -80,6 +84,7 @@ import 'simba-chat/styles.css';
 
 <SimbaChatBubble
   apiUrl="${API_URL}"
+  organizationId="your-organization-id"
   apiKey="your-api-key"
   position="bottom-right"
   defaultOpen={false}
@@ -92,6 +97,7 @@ import { useSimbaChat } from 'simba-chat';
 
 const { messages, status, sendMessage, stop, clear } = useSimbaChat({
   apiUrl: '${API_URL}',
+  organizationId: 'your-organization-id',
   apiKey: 'your-api-key',
   collection: 'default',
 });
@@ -101,6 +107,7 @@ const { messages, status, sendMessage, stop, clear } = useSimbaChat({
 | Prop | Type | Required | Description |
 |------|------|----------|-------------|
 | apiUrl | string | Yes | Simba API base URL |
+| organizationId | string | Yes | Organization ID for multi-tenant requests |
 | apiKey | string | No | API key for authentication |
 | collection | string | No | Collection name for RAG queries |
 | placeholder | string | No | Input placeholder text |

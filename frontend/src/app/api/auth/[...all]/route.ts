@@ -1,4 +1,14 @@
-import { auth } from "@/lib/auth";
+import { auth, ensureAuthMigrations } from "@/lib/auth";
 import { toNextJsHandler } from "better-auth/next-js";
 
-export const { POST, GET } = toNextJsHandler(auth);
+const { POST: basePost, GET: baseGet } = toNextJsHandler(auth);
+
+export const POST = async (request: Request) => {
+  await ensureAuthMigrations();
+  return basePost(request);
+};
+
+export const GET = async (request: Request) => {
+  await ensureAuthMigrations();
+  return baseGet(request);
+};

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL } from "@/lib/constants";
+import { getActiveOrgId } from "@/lib/api";
 
 // SSE Event types from the backend
 export type SSEEventType =
@@ -223,11 +224,17 @@ export function useChat(options: UseChatOptions = {}) {
       setMessages((prev) => [...prev, assistantMessage]);
 
       try {
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        const orgId = getActiveOrgId();
+        if (orgId) {
+          headers["X-Organization-Id"] = orgId;
+        }
+
         const response = await fetch(
           `${API_URL}/api/v1/conversations/chat/stream`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify({
               content: userMessage.content,
               conversation_id: conversationId,

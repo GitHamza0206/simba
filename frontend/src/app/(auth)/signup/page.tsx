@@ -24,9 +24,10 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const { error: signUpError } = await signUp.email({
         name,
-        email,
+        email: normalizedEmail,
         password,
       });
 
@@ -39,7 +40,7 @@ export default function SignupPage() {
       // Auto-create organization for the user
       const { error: orgError } = await organization.create({
         name: `${name}'s Workspace`,
-        slug: email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "-"),
+        slug: normalizedEmail.split("@")[0].replace(/[^a-z0-9]/g, "-"),
       });
 
       if (orgError) {

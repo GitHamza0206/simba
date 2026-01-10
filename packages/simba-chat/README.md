@@ -24,6 +24,7 @@ function App() {
   return (
     <SimbaChat
       apiUrl="https://your-simba-api.com"
+      organizationId="your-organization-id"
       apiKey="your-api-key"
       collection="my-docs"
       placeholder="Ask me anything..."
@@ -44,6 +45,7 @@ function App() {
   return (
     <SimbaChatBubble
       apiUrl="https://your-simba-api.com"
+      organizationId="your-organization-id"
       apiKey="your-api-key"
       position="bottom-right"
       defaultOpen={false}
@@ -60,6 +62,7 @@ import { useSimbaChat } from 'simba-chat';
 function CustomChat() {
   const { messages, status, sendMessage, stop, clear } = useSimbaChat({
     apiUrl: 'https://your-simba-api.com',
+    organizationId: 'your-organization-id',
     apiKey: 'your-api-key',
     collection: 'my-docs',
   });
@@ -86,7 +89,8 @@ function CustomChat() {
 | Prop | Type | Required | Description |
 |------|------|----------|-------------|
 | `apiUrl` | `string` | Yes | Simba API base URL |
-| `apiKey` | `string` | Yes | API key for authentication |
+| `organizationId` | `string` | Yes | Organization ID for multi-tenant requests |
+| `apiKey` | `string` | No | API key for authentication |
 | `collection` | `string` | No | Collection name for RAG queries |
 | `placeholder` | `string` | No | Input placeholder text |
 | `className` | `string` | No | Additional CSS class |

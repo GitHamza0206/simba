@@ -9,6 +9,7 @@ import type { SimbaChatProps } from "../types";
 export function SimbaChat({
   apiUrl,
   apiKey,
+  organizationId,
   collection,
   placeholder = "Type a message...",
   className,
@@ -21,6 +22,7 @@ export function SimbaChat({
   const { messages, status, sendMessage, stop, clear } = useSimbaChat({
     apiUrl,
     apiKey,
+    organizationId,
     collection,
     onError,
     onMessage,

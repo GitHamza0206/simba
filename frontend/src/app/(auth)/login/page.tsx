@@ -23,8 +23,9 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const { error } = await signIn.email({
-        email,
+        email: normalizedEmail,
         password,
       });
 

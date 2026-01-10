@@ -8,7 +8,7 @@ import type {
 } from "../types";
 
 export function useSimbaChat(options: UseSimbaChatOptions): UseSimbaChatReturn {
-  const { apiUrl, apiKey, collection, onError, onMessage } = options;
+  const { apiUrl, apiKey, organizationId, collection, onError, onMessage } = options;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<ChatStatus>("ready");
@@ -55,14 +55,21 @@ export function useSimbaChat(options: UseSimbaChatOptions): UseSimbaChatReturn {
       setMessages((prev) => [...prev, assistantMessage]);
 
       try {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (apiKey) {
+          headers.Authorization = `Bearer ${apiKey}`;
+        }
+        if (organizationId) {
+          headers["X-Organization-Id"] = organizationId;
+        }
+
         const response = await fetch(
           `${apiUrl}/api/v1/conversations/chat/stream`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
+            headers,
             body: JSON.stringify({
               content: userMessage.content,
               conversation_id: conversationId,
@@ -164,7 +171,16 @@ export function useSimbaChat(options: UseSimbaChatOptions): UseSimbaChatReturn {
         onError?.(error instanceof Error ? error : new Error(errorMessage));
       }
     },
-    [apiUrl, apiKey, collection, conversationId, status, onError, onMessage]
+    [
+      apiUrl,
+      apiKey,
+      organizationId,
+      collection,
+      conversationId,
+      status,
+      onError,
+      onMessage,
+    ]
   );
 
   const stop = useCallback(() => {

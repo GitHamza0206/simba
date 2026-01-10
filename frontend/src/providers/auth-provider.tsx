@@ -17,11 +17,50 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, isPending: isSessionLoading } = useSession();
+
+  useEffect(() => {
+    if (!isSessionLoading && !session) {
+      clearActiveOrgId();
+    }
+  }, [isSessionLoading, session]);
+
+  if (!session) {
+    return (
+      <AuthContext.Provider
+        value={{
+          session,
+          isLoading: isSessionLoading,
+          isReady: false,
+          activeOrganization: null,
+          organizations: null,
+          setActiveOrganization: async () => {},
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
+    );
+  }
+
+  return (
+    <AuthProviderWithOrganizations session={session} isSessionLoading={isSessionLoading}>
+      {children}
+    </AuthProviderWithOrganizations>
+  );
+}
+
+function AuthProviderWithOrganizations({
+  children,
+  session,
+  isSessionLoading,
+}: {
+  children: ReactNode;
+  session: NonNullable<ReturnType<typeof useSession>["data"]>;
+  isSessionLoading: boolean;
+}) {
   const { data: activeOrg, isPending: isOrgLoading } = useActiveOrganization();
   const { data: organizations, isPending: isOrgsLoading } = useListOrganizations();
   const [isSettingOrg, setIsSettingOrg] = useState(false);
 
-  // Sync active org to localStorage for API client
   useEffect(() => {
     if (activeOrg?.id) {
       setActiveOrgId(activeOrg.id);
@@ -30,7 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [activeOrg?.id]);
 
-  // Auto-set active organization if user has orgs but none is active
   useEffect(() => {
     if (session && organizations && organizations.length > 0 && !activeOrg && !isSettingOrg) {
       setIsSettingOrg(true);
@@ -45,7 +83,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const isLoading = isSessionLoading || isOrgLoading || isOrgsLoading || isSettingOrg;
-  // Ready when we have a session and an active org (or no orgs at all)
   const isReady = !isLoading && !!session && (!!activeOrg || (organizations?.length === 0));
 
   return (

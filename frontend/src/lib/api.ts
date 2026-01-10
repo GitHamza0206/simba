@@ -10,7 +10,7 @@ type RequestOptions = {
 const ACTIVE_ORG_KEY = "simba_active_org";
 
 // Get active organization ID from localStorage
-function getActiveOrgId(): string | null {
+export function getActiveOrgId(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(ACTIVE_ORG_KEY);
 }
