@@ -64,9 +64,17 @@ def create_app() -> FastAPI:
     # Global exception handler to ensure CORS headers on error responses
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
+        headers = {}
+        origin = request.headers.get("origin")
+        if origin and (origin in settings.cors_origins or "*" in settings.cors_origins):
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
+            headers["Vary"] = "Origin"
+
         return JSONResponse(
             status_code=500,
             content={"detail": str(exc)},
+            headers=headers,
         )
 
     return app

@@ -10,7 +10,7 @@ function cn(...inputs) {
 // src/hooks/useSimbaChat.ts
 import { useCallback, useRef, useState } from "react";
 function useSimbaChat(options) {
-  const { apiUrl, apiKey, collection, onError, onMessage } = options;
+  const { apiUrl, apiKey, organizationId, collection, onError, onMessage } = options;
   const [messages, setMessages] = useState([]);
   const [status, setStatus] = useState("ready");
   const [conversationId, setConversationId] = useState(null);
@@ -47,14 +47,20 @@ function useSimbaChat(options) {
       };
       setMessages((prev) => [...prev, assistantMessage]);
       try {
+        const headers = {
+          "Content-Type": "application/json"
+        };
+        if (apiKey) {
+          headers.Authorization = `Bearer ${apiKey}`;
+        }
+        if (organizationId) {
+          headers["X-Organization-Id"] = organizationId;
+        }
         const response = await fetch(
           `${apiUrl}/api/v1/conversations/chat/stream`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`
-            },
+            headers,
             body: JSON.stringify({
               content: userMessage.content,
               conversation_id: conversationId,
@@ -134,7 +140,16 @@ function useSimbaChat(options) {
         onError?.(error instanceof Error ? error : new Error(errorMessage));
       }
     },
-    [apiUrl, apiKey, collection, conversationId, status, onError, onMessage]
+    [
+      apiUrl,
+      apiKey,
+      organizationId,
+      collection,
+      conversationId,
+      status,
+      onError,
+      onMessage
+    ]
   );
   const stop = useCallback(() => {
     if (abortControllerRef.current) {
@@ -392,6 +407,7 @@ import { jsx as jsx5, jsxs as jsxs3 } from "react/jsx-runtime";
 function SimbaChat({
   apiUrl,
   apiKey,
+  organizationId,
   collection,
   placeholder = "Type a message...",
   className,
@@ -403,6 +419,7 @@ function SimbaChat({
   const { messages, status, sendMessage, stop, clear } = useSimbaChat({
     apiUrl,
     apiKey,
+    organizationId,
     collection,
     onError,
     onMessage

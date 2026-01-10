@@ -11,6 +11,7 @@ type ChatStatus = "ready" | "submitted" | "streaming" | "error";
 interface UseSimbaChatOptions {
     apiUrl: string;
     apiKey?: string;
+    organizationId?: string;
     collection?: string;
     onError?: (error: Error) => void;
     onMessage?: (message: ChatMessage) => void;
@@ -25,6 +26,7 @@ interface UseSimbaChatReturn {
 interface SimbaChatProps {
     apiUrl: string;
     apiKey?: string;
+    organizationId?: string;
     collection?: string;
     placeholder?: string;
     className?: string;
@@ -38,7 +40,7 @@ interface SimbaChatBubbleProps extends SimbaChatProps {
     defaultOpen?: boolean;
 }
 
-declare function SimbaChat({ apiUrl, apiKey, collection, placeholder, className, style, onError, onMessage, }: SimbaChatProps): react_jsx_runtime.JSX.Element;
+declare function SimbaChat({ apiUrl, apiKey, organizationId, collection, placeholder, className, style, onError, onMessage, }: SimbaChatProps): react_jsx_runtime.JSX.Element;
 
 declare function SimbaChatBubble({ position, bubbleIcon, defaultOpen, className, style, ...chatProps }: SimbaChatBubbleProps): react_jsx_runtime.JSX.Element;
 
