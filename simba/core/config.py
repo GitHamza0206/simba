@@ -3,6 +3,7 @@
 from functools import lru_cache
 
 from dotenv import load_dotenv
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load .env into actual environment variables (required for init_chat_model)
@@ -64,8 +65,14 @@ class Settings(BaseSettings):
 
     # MinIO (S3-compatible storage)
     minio_endpoint: str = "localhost:9000"
-    minio_access_key: str = "minioadmin"
-    minio_secret_key: str = "minioadmin"
+    minio_access_key: str = Field(
+        default="minioadmin",
+        validation_alias=AliasChoices("MINIO_ACCESS_KEY", "MINIO_ROOT_USER"),
+    )
+    minio_secret_key: str = Field(
+        default="minioadmin",
+        validation_alias=AliasChoices("MINIO_SECRET_KEY", "MINIO_ROOT_PASSWORD"),
+    )
     minio_bucket: str = "simba-documents"
     minio_secure: bool = False
 
